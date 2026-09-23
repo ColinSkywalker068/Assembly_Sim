@@ -1,0 +1,7 @@
+fail candidates [('piece_7', 0.04, 0.0)]
+anchor None order ['piece_4', 'piece_0', 'piece_5', 'piece_2', 'piece_1', 'piece_3', 'piece_6', 'piece_7'] sides {'piece_0': 0, 'piece_1': 1, 'piece_2': 0, 'piece_3': 0, 'piece_4': 1, 'piece_5': 0, 'piece_6': 1, 'piece_7': 1} failing piece_7 pred {'centroid_offset': [0.0, -0.0, -0.0], 'yaw_deg': 0.0, 'rot_deg': 0.0}
+home ik arm 0 [ 0.43 -0.22 -0.69 -0.   -1.1  -0.43]
+home ik arm 1 [ 0.43 -0.22 -0.69 -0.   -1.1  -0.43]
+failure is scripted: 180-degree pose hypothesis
+check pose lift above contact: 0.01
+frames 1375 seconds 45.83 {'propose': [0, 83], 'act': [84, 1091], 'check': [1092, 1217], 'diagnose': [1218, 1314], 'done': [1315, 1374]}
