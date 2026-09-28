@@ -12,7 +12,11 @@
   },
   "physics": {
     "dt": 0.008333333333333333,
-    "gravity": [0.0, 0.0, -9.81],
+    "gravity": [
+      0.0,
+      0.0,
+      -9.81
+    ],
     "fragment_density": 650.0,
     "static_friction": 0.8,
     "dynamic_friction": 0.65,
@@ -22,16 +26,42 @@
   },
   "render": {
     "dt": 0.03333333333333333,
-    "camera_resolution": [640, 480],
+    "camera_resolution": [
+      640,
+      480
+    ],
     "renderer": "RayTracedLighting"
   },
   "robot": {
     "prim_path": "/World/Robot",
-    "base_position": [-0.78, 0.0, 0.75],
-    "base_orientation_wxyz": [1.0, 0.0, 0.0, 0.0],
-    "home_joint_positions": [0.43, -0.22, -0.69, 0.0, -1.1, -0.43],
+    "base_position": [
+      -0.78,
+      0.0,
+      0.75
+    ],
+    "base_orientation_wxyz": [
+      0.9914448613738104,
+      0.0,
+      0.0,
+      0.13052619222005157
+    ],
+    "home_joint_positions": [
+      0.43,
+      -0.22,
+      -0.69,
+      0.0,
+      -1.1,
+      -0.43
+    ],
     "joint_jog_radians": 0.08726646259971647,
-    "arm_dof_names": ["joint_1", "joint_2", "joint_3", "joint_4", "joint_5", "joint_6"],
+    "arm_dof_names": [
+      "joint_1",
+      "joint_2",
+      "joint_3",
+      "joint_4",
+      "joint_5",
+      "joint_6"
+    ],
     "gripper_dof_names": [
       "finger_joint",
       "right_outer_knuckle_joint",
@@ -46,40 +76,322 @@
     "gripper_closed_radians": 0.8
   },
   "environment": {
-    "floor_position": [0.0, 0.0, -0.01],
-    "floor_size": [8.0, 8.0, 0.02],
-    "table_position": [0.0, 0.0, 0.725],
-    "table_size": [2.1, 1.3, 0.05],
-    "plate_position": [0.05, 0.15, 0.7548],
+    "floor_position": [
+      0.0,
+      0.0,
+      -0.01
+    ],
+    "floor_size": [
+      8.0,
+      8.0,
+      0.02
+    ],
+    "table_position": [
+      0.0,
+      0.0,
+      0.725
+    ],
+    "table_size": [
+      2.1,
+      1.3,
+      0.05
+    ],
+    "plate_position": [
+      0.05,
+      0.15,
+      0.7548
+    ],
     "staging_gap": 0.04,
     "workspace_margin": 0.08
   },
   "fragments": {
-    "names": ["piece_0", "piece_1", "piece_2", "piece_3", "piece_4", "piece_5", "piece_6", "piece_7"],
-    "initial_poses": {}
+    "names": [
+      "piece_0",
+      "piece_1",
+      "piece_2",
+      "piece_3",
+      "piece_4",
+      "piece_5",
+      "piece_6",
+      "piece_7"
+    ],
+    "initial_poses": {
+      "piece_0": {
+        "position": [
+          -0.7713333333333334,
+          0.2844,
+          0.75
+        ],
+        "orientation_wxyz": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "piece_1": {
+        "position": [
+          -0.9223880597014926,
+          0.2867462686567164,
+          0.734
+        ],
+        "orientation_wxyz": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "piece_2": {
+        "position": [
+          -0.49689655172413794,
+          0.2190344827586206,
+          0.75
+        ],
+        "orientation_wxyz": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "piece_3": {
+        "position": [
+          -0.47003809523809525,
+          -0.20527619047619053,
+          0.654
+        ],
+        "orientation_wxyz": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "piece_4": {
+        "position": [
+          -0.4714539249146758,
+          -0.01533788395904441,
+          0.75
+        ],
+        "orientation_wxyz": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "piece_5": {
+        "position": [
+          -0.7851525423728815,
+          0.43027118644067786,
+          0.75
+        ],
+        "orientation_wxyz": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "piece_6": {
+        "position": [
+          -0.6237777777777779,
+          0.29277777777777775,
+          0.622
+        ],
+        "orientation_wxyz": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "piece_7": {
+        "position": [
+          -0.8008039728175641,
+          -0.3530172503920544,
+          0.75
+        ],
+        "orientation_wxyz": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    }
   },
   "cameras": {
     "agent": {
       "prim_path": "/World/Cameras/Agent",
       "parent": "/World",
-      "position": [1.35, -2.05, 1.72],
-      "look_at": [0.0, 0.05, 0.78],
+      "position": [
+        1.35,
+        -2.05,
+        1.72
+      ],
+      "look_at": [
+        0.0,
+        0.05,
+        0.78
+      ],
       "focal_length": 25.0,
-      "clipping_range": [0.01, 100.0]
+      "clipping_range": [
+        0.01,
+        100.0
+      ]
     },
     "wrist": {
       "prim_path": "/World/Robot/flange/WristCamera",
       "parent": "/World/Robot/flange",
-      "position": [0.08, 0.0, 0.06],
-      "look_at_local": [0.28, 0.0, -0.12],
+      "position": [
+        0.08,
+        0.0,
+        0.06
+      ],
+      "look_at_local": [
+        0.28,
+        0.0,
+        -0.12
+      ],
       "focal_length": 18.0,
-      "clipping_range": [0.01, 10.0]
+      "clipping_range": [
+        0.01,
+        10.0
+      ]
     }
   },
   "placement": {
     "grid_step": 0.04,
     "approach_height": 0.16,
-    "robot_yaw_candidates_degrees": [0.0, -15.0, 15.0],
-    "table_exclusion_padding": 0.05
+    "robot_yaw_candidates_degrees": [
+      0.0,
+      -15.0,
+      15.0
+    ],
+    "table_exclusion_padding": 0.05,
+    "reachability": {
+      "all_reachable": true,
+      "targets": {
+        "piece_0": {
+          "position_error": 2.337379070940279e-05,
+          "rotation_error": 7.754716313024415e-06,
+          "joint_margin": 1.3020194796595477,
+          "joints": [
+            1.8395805203404523,
+            -0.20864247352589327,
+            -1.0013288292536833,
+            -9.872248262488261e-06,
+            -0.7781123763328074,
+            1.0402173998924613
+          ]
+        },
+        "piece_1": {
+          "position_error": 7.246918255164984e-05,
+          "rotation_error": 0.00034121875049084076,
+          "joint_margin": 1.2700675042129517,
+          "joints": [
+            -1.8715324957870483,
+            0.16874487461092796,
+            -2.1661659318823796,
+            0.00042471270093236667,
+            0.7640415027167499,
+            -0.7469256398441401
+          ]
+        },
+        "piece_2": {
+          "position_error": 2.282727588897307e-05,
+          "rotation_error": 6.015842953722902e-05,
+          "joint_margin": 2.265951122596655,
+          "joints": [
+            0.7882971740915441,
+            -0.037569894666032444,
+            -0.827372802876144,
+            6.808027765948512e-05,
+            -0.7809573547604889,
+            -1.050148877403345
+          ]
+        },
+        "piece_3": {
+          "position_error": 2.878296608619986e-05,
+          "rotation_error": 1.8383170722836625e-05,
+          "joint_margin": 2.3569037014295326,
+          "joints": [
+            -0.3999262107982653,
+            -0.07308924341787329,
+            -0.859176827937526,
+            -1.598367965721858e-05,
+            -0.7846962985704674,
+            0.1381305889233833
+          ]
+        },
+        "piece_4": {
+          "position_error": 2.1393924734588264e-05,
+          "rotation_error": 0.00011629046332160848,
+          "joint_margin": 2.1365502554086326,
+          "joints": [
+            0.12933975424052968,
+            -0.1967411889830277,
+            -0.7999052967006608,
+            4.723157936440485e-05,
+            -0.9675579028105976,
+            1.1795497445913674
+          ]
+        },
+        "piece_5": {
+          "position_error": 5.031595369828058e-05,
+          "rotation_error": 4.6958644595526336e-05,
+          "joint_margin": 1.4235822301061702,
+          "joints": [
+            1.7180177698938297,
+            0.05699302594210635,
+            -0.8191328030077932,
+            2.871327295221444e-05,
+            -0.6946644367289616,
+            1.1617105796954708
+          ]
+        },
+        "piece_6": {
+          "position_error": 2.092904696406376e-05,
+          "rotation_error": 1.6611416503679135e-05,
+          "joint_margin": 1.8327116032233104,
+          "joints": [
+            1.3088883967766896,
+            -0.1572485359340792,
+            -0.8851135522414624,
+            4.991084085203671e-06,
+            -0.8429157040791587,
+            -0.7852972113719254
+          ]
+        },
+        "piece_7": {
+          "position_error": 2.209045130168168e-05,
+          "rotation_error": 1.3160179541158412e-05,
+          "joint_margin": 1.8533852498793202,
+          "joints": [
+            0.8219235215406564,
+            0.26855051347438547,
+            -2.5904722562453992,
+            -4.932742341278766e-06,
+            1.2882147501206798,
+            -1.083725107444234
+          ]
+        },
+        "plate_center": {
+          "position_error": 2.1068003208604568e-05,
+          "rotation_error": 2.318509327401885e-05,
+          "joint_margin": 2.103617927490157,
+          "joints": [
+            0.09579215395321508,
+            0.5396653286267062,
+            0.006846124444258419,
+            2.542017913210212e-05,
+            -1.037982072509843,
+            -0.3576101694644301
+          ]
+        }
+      }
+    }
   }
 }
