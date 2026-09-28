@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import math
-import sys
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
@@ -232,14 +231,21 @@ def _tcp_target(position: Sequence[float], closing_degrees: float) -> np.ndarray
 
 
 def _load_kinematics(config: SceneConfig):
-    scripts = config.repo_root / "03_scripts"
-    if str(scripts) not in sys.path:
-        sys.path.insert(0, str(scripts))
-    from asm_kin import Arm, T
+    import importlib.util
 
-    arm = Arm(str(config.resolve_repo_path("probe_json")))
+    scripts = config.repo_root / "03_scripts"
+    source = scripts / "asm_kin.py"
+    if not source.is_file():
+        source = Path(__file__).resolve().parents[2] / "03_scripts" / "asm_kin.py"
+    spec = importlib.util.spec_from_file_location("interactive_scene_layout_asm_kin", source)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"cannot load legacy kinematics helper: {source}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    arm = module.Arm(str(config.resolve_repo_path("probe_json")))
     robot = config.data["robot"]
-    arm.base = T(robot["base_position"], robot["base_orientation_wxyz"])
+    arm.base = module.T(robot["base_position"], robot["base_orientation_wxyz"])
     return arm
 
 

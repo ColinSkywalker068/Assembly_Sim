@@ -5,6 +5,8 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sys
+import traceback
 from pathlib import Path
 
 os.environ.setdefault("OMNI_KIT_ACCEPT_EULA", "YES")
@@ -175,4 +177,14 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        process_exit_code = main()
+    except BaseException:
+        traceback.print_exc()
+        process_exit_code = 1
+    sys.stdout.flush()
+    sys.stderr.flush()
+    # Kit can intercept SystemExit on Windows and report a successful process even
+    # when validation failed. main() has already closed SimulationApp, so terminate
+    # directly to preserve the validator's command-line contract.
+    os._exit(process_exit_code)
