@@ -38,16 +38,16 @@ def Xform "World"
             prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI", "PhysxRigidBodyAPI"]
         )
         {
-            vector3f physics:angularVelocity = (-0.00048949214, 0.00018211555, -0.000006449493)
-            point3f physics:centerOfMass = (-0.0046666665, -0.0004, 0.012)
+            point3f physics:centerOfMass = (-1.3877788e-17, 1.3877788e-17, 0.069866665)
             float physics:density = 650
             bool physics:rigidBodyEnabled = 1
-            vector3f physics:velocity = (3.9557282e-8, 8.658463e-8, 0.00019855723)
+            uniform bool physics:startsAsleep = 1
             float physxRigidBody:angularDamping = 0.25
             float physxRigidBody:linearDamping = 0.15
-            quatf xformOp:orient = (1, 1.6119957e-7, -2.7953682e-9, -9.178126e-8)
+            float physxRigidBody:sleepThreshold = 0
+            quatf xformOp:orient = (1, 0, 0, 0)
             float3 xformOp:scale = (1, 1, 1)
-            double3 xformOp:translate = (-0.7713333964347839, 0.28439998626708984, 0.7500001788139343)
+            double3 xformOp:translate = (-0.7713333333333334, 0.2844, 0.75)
             uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
 
             def Mesh "Visual" (
@@ -686,22 +686,6 @@ def Xform "World"
                     double3 xformOp:translate = (0.051333333333333314, 0.03160000000000001, 0.12)
                     uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
                 }
-
-                def Cube "SupportFootprint" (
-                    prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
-                )
-                {
-                    rel material:binding:physics = </World/Looks/ContactMaterial> (
-                        bindMaterialAs = "weakerThanDescendants"
-                    )
-                    bool physics:collisionEnabled = 1
-                    double size = 1
-                    token visibility = "invisible"
-                    quatf xformOp:orient = (1, 0, 0, 0)
-                    float3 xformOp:scale = (0.128, 0.128, 0.004)
-                    double3 xformOp:translate = (-0.0046666666666666835, -0.0003999999999999976, 0.002)
-                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
-                }
             }
         }
 
@@ -709,16 +693,16 @@ def Xform "World"
             prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI", "PhysxRigidBodyAPI"]
         )
         {
-            vector3f physics:angularVelocity = (0.00007730676, 0.00033769972, -0.0000061371384)
-            point3f physics:centerOfMass = (0.0023880596, -0.0027462686, 0.028)
+            point3f physics:centerOfMass = (0, 0, 0.093014926)
             float physics:density = 650
             bool physics:rigidBodyEnabled = 1
-            vector3f physics:velocity = (9.6485536e-8, -4.2808153e-9, 0.00019900175)
+            uniform bool physics:startsAsleep = 1
             float physxRigidBody:angularDamping = 0.25
             float physxRigidBody:linearDamping = 0.15
-            quatf xformOp:orient = (1, -1.9174473e-7, 6.071381e-9, 4.5331035e-8)
+            float physxRigidBody:sleepThreshold = 0
+            quatf xformOp:orient = (1, 0, 0, 0)
             float3 xformOp:scale = (1, 1, 1)
-            double3 xformOp:translate = (-0.9223880767822266, 0.2867462635040283, 0.7340002655982971)
+            double3 xformOp:translate = (-0.9223880597014926, 0.2867462686567164, 0.734)
             uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
 
             def Mesh "Visual" (
@@ -1213,22 +1197,6 @@ def Xform "World"
                     double3 xformOp:translate = (0.03438805970149256, 0.00525373134328359, 0.15200000000000002)
                     uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
                 }
-
-                def Cube "SupportFootprint" (
-                    prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
-                )
-                {
-                    rel material:binding:physics = </World/Looks/ContactMaterial> (
-                        bindMaterialAs = "weakerThanDescendants"
-                    )
-                    bool physics:collisionEnabled = 1
-                    double size = 1
-                    token visibility = "invisible"
-                    quatf xformOp:orient = (1, 0, 0, 0)
-                    float3 xformOp:scale = (0.08, 0.128, 0.004)
-                    double3 xformOp:translate = (0.0023880597014925495, -0.00274626865671641, 0.018000000000000002)
-                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
-                }
             }
         }
 
@@ -1236,16 +1204,16 @@ def Xform "World"
             prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI", "PhysxRigidBodyAPI"]
         )
         {
-            vector3f physics:angularVelocity = (-0.010053834, 0.00513824, -0.0003392441)
-            point3f physics:centerOfMass = (-0.0011034483, -0.0030344827, 0.012)
+            point3f physics:centerOfMass = (0, 0, 0.058206897)
             float physics:density = 650
             bool physics:rigidBodyEnabled = 1
-            vector3f physics:velocity = (0.000001116789, 0.0000012393594, 0.00018650889)
+            uniform bool physics:startsAsleep = 1
             float physxRigidBody:angularDamping = 0.25
             float physxRigidBody:linearDamping = 0.15
-            quatf xformOp:orient = (1, 2.4185337e-7, 4.0153264e-8, 4.2954653e-8)
+            float physxRigidBody:sleepThreshold = 0
+            quatf xformOp:orient = (1, 0, 0, 0)
             float3 xformOp:scale = (1, 1, 1)
-            double3 xformOp:translate = (-0.49689656496047974, 0.21903447806835175, 0.7500001788139343)
+            double3 xformOp:translate = (-0.49689655172413794, 0.2190344827586206, 0.75)
             uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
 
             def Mesh "Visual" (
@@ -1580,22 +1548,6 @@ def Xform "World"
                     double3 xformOp:translate = (0.022896551724137938, 0.020965517241379315, 0.12)
                     uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
                 }
-
-                def Cube "SupportFootprint" (
-                    prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
-                )
-                {
-                    rel material:binding:physics = </World/Looks/ContactMaterial> (
-                        bindMaterialAs = "weakerThanDescendants"
-                    )
-                    bool physics:collisionEnabled = 1
-                    double size = 1
-                    token visibility = "invisible"
-                    quatf xformOp:orient = (1, 0, 0, 0)
-                    float3 xformOp:scale = (0.064, 0.112, 0.004)
-                    double3 xformOp:translate = (-0.001103448275862064, -0.003034482758620685, 0.002)
-                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
-                }
             }
         }
 
@@ -1603,16 +1555,16 @@ def Xform "World"
             prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI", "PhysxRigidBodyAPI"]
         )
         {
-            vector3f physics:angularVelocity = (-0.0003111877, 0.0001560444, -0.0000013171405)
-            point3f physics:centerOfMass = (-0.003961905, 0.0032761905, 0.108)
+            point3f physics:centerOfMass = (0, 0, 0.15855238)
             float physics:density = 650
             bool physics:rigidBodyEnabled = 1
-            vector3f physics:velocity = (3.2953942e-8, 6.385187e-8, 0.0001990431)
+            uniform bool physics:startsAsleep = 1
             float physxRigidBody:angularDamping = 0.25
             float physxRigidBody:linearDamping = 0.15
-            quatf xformOp:orient = (1, -1.2289044e-7, -4.654941e-9, -1.4127745e-7)
+            float physxRigidBody:sleepThreshold = 0
+            quatf xformOp:orient = (1, 0, 0, 0)
             float3 xformOp:scale = (1, 1, 1)
-            double3 xformOp:translate = (-0.4700380563735962, -0.205276221036911, 0.6540001630783081)
+            double3 xformOp:translate = (-0.47003809523809525, -0.20527619047619053, 0.654)
             uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
 
             def Mesh "Visual" (
@@ -2043,22 +1995,6 @@ def Xform "World"
                     double3 xformOp:translate = (0.012038095238095252, 0.01127619047619048, 0.21600000000000003)
                     uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
                 }
-
-                def Cube "SupportFootprint" (
-                    prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
-                )
-                {
-                    rel material:binding:physics = </World/Looks/ContactMaterial> (
-                        bindMaterialAs = "weakerThanDescendants"
-                    )
-                    bool physics:collisionEnabled = 1
-                    double size = 1
-                    token visibility = "invisible"
-                    quatf xformOp:orient = (1, 0, 0, 0)
-                    float3 xformOp:scale = (0.112, 0.096, 0.004)
-                    double3 xformOp:translate = (-0.00396190476190475, 0.003276190476190481, 0.098)
-                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
-                }
             }
         }
 
@@ -2066,16 +2002,16 @@ def Xform "World"
             prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI", "PhysxRigidBodyAPI"]
         )
         {
-            vector3f physics:angularVelocity = (-0.0022404739, 0.0020065901, -0.000023522565)
-            point3f physics:centerOfMass = (-0.008546075, 0.017337885, 0.012)
+            point3f physics:centerOfMass = (-2.7755576e-17, 1.3877788e-17, 0.0989215)
             float physics:density = 650
             bool physics:rigidBodyEnabled = 1
-            vector3f physics:velocity = (4.4333385e-7, 3.3843122e-7, 0.0001914279)
+            uniform bool physics:startsAsleep = 1
             float physxRigidBody:angularDamping = 0.25
             float physxRigidBody:linearDamping = 0.15
-            quatf xformOp:orient = (1, 1.949465e-7, 9.327583e-10, -4.430602e-8)
+            float physxRigidBody:sleepThreshold = 0
+            quatf xformOp:orient = (1, 0, 0, 0)
             float3 xformOp:scale = (1, 1, 1)
-            double3 xformOp:translate = (-0.4714539647102356, -0.015337892808020115, 0.7500001192092896)
+            double3 xformOp:translate = (-0.4714539249146758, -0.01533788395904441, 0.75)
             uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
 
             def Mesh "Visual" (
@@ -3130,22 +3066,6 @@ def Xform "World"
                     double3 xformOp:translate = (0.04745392491467575, 0.009337883959044377, 0.184)
                     uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
                 }
-
-                def Cube "SupportFootprint" (
-                    prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
-                )
-                {
-                    rel material:binding:physics = </World/Looks/ContactMaterial> (
-                        bindMaterialAs = "weakerThanDescendants"
-                    )
-                    bool physics:collisionEnabled = 1
-                    double size = 1
-                    token visibility = "invisible"
-                    quatf xformOp:orient = (1, 0, 0, 0)
-                    float3 xformOp:scale = (0.16, 0.224, 0.004)
-                    double3 xformOp:translate = (-0.008546075085324248, 0.017337883959044377, 0.002)
-                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
-                }
             }
         }
 
@@ -3153,16 +3073,16 @@ def Xform "World"
             prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI", "PhysxRigidBodyAPI"]
         )
         {
-            vector3f physics:angularVelocity = (0.022445975, -0.0011140406, -0.0017882116)
-            point3f physics:centerOfMass = (0.005152542, -0.00027118644, 0.012)
+            point3f physics:centerOfMass = (0, 0, 0.04298305)
             float physics:density = 650
             bool physics:rigidBodyEnabled = 1
-            vector3f physics:velocity = (0.000001589297, -0.000009700164, 0.00021501869)
+            uniform bool physics:startsAsleep = 1
             float physxRigidBody:angularDamping = 0.25
             float physxRigidBody:linearDamping = 0.15
-            quatf xformOp:orient = (1, 3.939268e-7, 1.1175228e-8, 2.6005688e-7)
+            float physxRigidBody:sleepThreshold = 0
+            quatf xformOp:orient = (1, 0, 0, 0)
             float3 xformOp:scale = (1, 1, 1)
-            double3 xformOp:translate = (-0.7851526737213135, 0.4302711486816406, 0.7500001788139343)
+            double3 xformOp:translate = (-0.7851525423728815, 0.43027118644067786, 0.75)
             uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
 
             def Mesh "Visual" (
@@ -3433,22 +3353,6 @@ def Xform "World"
                     double3 xformOp:translate = (0.021152542372881358, -0.01627118644067798, 0.10400000000000001)
                     uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
                 }
-
-                def Cube "SupportFootprint" (
-                    prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
-                )
-                {
-                    rel material:binding:physics = </World/Looks/ContactMaterial> (
-                        bindMaterialAs = "weakerThanDescendants"
-                    )
-                    bool physics:collisionEnabled = 1
-                    double size = 1
-                    token visibility = "invisible"
-                    quatf xformOp:orient = (1, 0, 0, 0)
-                    float3 xformOp:scale = (0.08, 0.08, 0.004)
-                    double3 xformOp:translate = (0.005152542372881354, -0.00027118644067797987, 0.002)
-                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
-                }
             }
         }
 
@@ -3456,16 +3360,16 @@ def Xform "World"
             prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI", "PhysxRigidBodyAPI"]
         )
         {
-            vector3f physics:angularVelocity = (0.0006002683, -0.0073647075, -0.008785611)
-            point3f physics:centerOfMass = (0.0017777778, -0.008777778, 0.14)
+            point3f physics:centerOfMass = (0, 0, 0.19111112)
             float physics:density = 650
             bool physics:rigidBodyEnabled = 1
-            vector3f physics:velocity = (0.00002852695, 0.000007260262, 0.0001994052)
+            uniform bool physics:startsAsleep = 1
             float physxRigidBody:angularDamping = 0.25
             float physxRigidBody:linearDamping = 0.15
-            quatf xformOp:orient = (1, 3.7247514e-9, 2.6631972e-7, -3.1660388e-8)
+            float physxRigidBody:sleepThreshold = 0
+            quatf xformOp:orient = (1, 0, 0, 0)
             float3 xformOp:scale = (1, 1, 1)
-            double3 xformOp:translate = (-0.6237778067588806, 0.2927778363227844, 0.6220002174377441)
+            double3 xformOp:translate = (-0.6237777777777779, 0.29277777777777775, 0.622)
             uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
 
             def Mesh "Visual" (
@@ -3912,22 +3816,6 @@ def Xform "World"
                     double3 xformOp:translate = (0.02577777777777777, 0.04722222222222223, 0.264)
                     uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
                 }
-
-                def Cube "SupportFootprint" (
-                    prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
-                )
-                {
-                    rel material:binding:physics = </World/Looks/ContactMaterial> (
-                        bindMaterialAs = "weakerThanDescendants"
-                    )
-                    bool physics:collisionEnabled = 1
-                    double size = 1
-                    token visibility = "invisible"
-                    quatf xformOp:orient = (1, 0, 0, 0)
-                    float3 xformOp:scale = (0.096, 0.128, 0.004)
-                    double3 xformOp:translate = (0.001777777777777774, -0.008777777777777773, 0.13)
-                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
-                }
             }
         }
 
@@ -3935,16 +3823,18 @@ def Xform "World"
             prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI", "PhysxRigidBodyAPI"]
         )
         {
-            vector3f physics:angularVelocity = (-0.001604151, 0.00005285481, 0.00019331613)
-            point3f physics:centerOfMass = (0.030803973, -0.01698275, 0.012)
+            vector3f physics:angularVelocity = (-0.03284287, -0.093679436, 0.033390142)
+            point3f physics:centerOfMass = (0, 0, 0.18655096)
             float physics:density = 650
             bool physics:rigidBodyEnabled = 1
-            vector3f physics:velocity = (1.6999904e-7, -0.000002092926, 0.00019400775)
+            uniform bool physics:startsAsleep = 1
+            vector3f physics:velocity = (-0.00030567736, 0.0001168065, 0.00017971476)
             float physxRigidBody:angularDamping = 0.25
             float physxRigidBody:linearDamping = 0.15
-            quatf xformOp:orient = (1, 7.422106e-8, 5.9660324e-24, -1.4072782e-7)
+            float physxRigidBody:sleepThreshold = 0
+            quatf xformOp:orient = (1, 0.0000016088596, 0.000010852235, 0.0000019595025)
             float3 xformOp:scale = (1, 1, 1)
-            double3 xformOp:translate = (-0.8008039593696594, -0.35301727056503296, 0.7500001192092896)
+            double3 xformOp:translate = (-0.800804078578949, -0.3530171513557434, 0.7500004172325134)
             uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
 
             def Mesh "Visual" (
@@ -10533,22 +10423,6 @@ def Xform "World"
                     quatf xformOp:orient = (1, 0, 0, 0)
                     float3 xformOp:scale = (0.016, 0.016, 0.016)
                     double3 xformOp:translate = (0.19080397281756406, 0.039017250392054365, 0.328)
-                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
-                }
-
-                def Cube "SupportFootprint" (
-                    prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
-                )
-                {
-                    rel material:binding:physics = </World/Looks/ContactMaterial> (
-                        bindMaterialAs = "weakerThanDescendants"
-                    )
-                    bool physics:collisionEnabled = 1
-                    double size = 1
-                    token visibility = "invisible"
-                    quatf xformOp:orient = (1, 0, 0, 0)
-                    float3 xformOp:scale = (0.4, 0.32, 0.004)
-                    double3 xformOp:translate = (0.030803972817564043, -0.01698274960794563, 0.002)
                     uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
                 }
             }

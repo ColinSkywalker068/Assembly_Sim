@@ -15,6 +15,7 @@ from build_scene import build_stage, validate_manifest
 from scene_config import SceneConfig
 from scene_controls import SceneController
 from scene_cameras import capture_rgb, save_portable_stage, validate_stability, validated_scene_output
+from scene_geometry import merge_voxel_cells
 
 
 def _step(world, count: int) -> None:
@@ -25,6 +26,7 @@ def _step(world, count: int) -> None:
 def validate_robot_motion(handles) -> dict:
     import numpy as np
     from pxr import UsdGeom
+    from isaacsim.core.prims import RigidPrim
 
     robot = handles.robot
     if robot is None:
@@ -55,8 +57,12 @@ def validate_robot_motion(handles) -> dict:
     )
     finger_motion = float(np.linalg.norm(closed_position - open_position))
 
+    fragment = handles.fragments[0]
+    fragment_body = RigidPrim(fragment.root_path, reset_xform_properties=False)
+    fragment_body.set_velocities(np.asarray([[0.35, 0.0, 0.0, 0.0, 0.0, 1.0]], dtype=float))
+    _step(handles.world, 8)
     controller.reset()
-    _step(handles.world, 90)
+    _step(handles.world, 30)
     reset_positions = np.asarray(robot.robot.get_joint_positions(), dtype=float)
     reset_arm = reset_positions[list(robot.arm_dof_indices)]
     expected_home = np.asarray(handles.config.data["robot"]["home_joint_positions"], dtype=float)
@@ -67,6 +73,26 @@ def validate_robot_motion(handles) -> dict:
     expected_gripper = tuple(
         str(name) for name in handles.config.data["robot"]["gripper_dof_names"]
     )
+    fragment_position, fragment_orientation = fragment_body.get_world_poses()
+    fragment_velocity = np.asarray(fragment_body.get_velocities(), dtype=float)
+    expected_fragment_pose = handles.config.data["fragments"]["initial_poses"][fragment.name]
+    fragment_position_error = float(
+        np.max(
+            np.abs(
+                np.asarray(fragment_position[0], dtype=float)
+                - np.asarray(expected_fragment_pose["position"], dtype=float)
+            )
+        )
+    )
+    expected_orientation = np.asarray(expected_fragment_pose["orientation_wxyz"], dtype=float)
+    actual_orientation = np.asarray(fragment_orientation[0], dtype=float)
+    fragment_orientation_error = float(
+        min(
+            np.max(np.abs(actual_orientation - expected_orientation)),
+            np.max(np.abs(actual_orientation + expected_orientation)),
+        )
+    )
+    fragment_speed = float(np.max(np.abs(fragment_velocity)))
     ok = (
         jog.accepted
         and close.accepted
@@ -75,6 +101,9 @@ def validate_robot_motion(handles) -> dict:
         and arm_motion > 1e-4
         and finger_motion > 1e-5
         and reset_error < 0.03
+        and fragment_position_error < 1e-4
+        and fragment_orientation_error < 1e-4
+        and fragment_speed < 1e-4
     )
     return {
         "ok": bool(ok),
@@ -83,7 +112,31 @@ def validate_robot_motion(handles) -> dict:
         "arm_motion_radians": arm_motion,
         "finger_motion_meters": finger_motion,
         "reset_max_error_radians": reset_error,
+        "fragment_reset_position_error_meters": fragment_position_error,
+        "fragment_reset_orientation_error": fragment_orientation_error,
+        "fragment_reset_max_speed": fragment_speed,
     }
+
+
+def validate_fragment_collision_contract(handles) -> dict:
+    with handles.config.resolve_repo_path("layout_json").open("r", encoding="utf-8") as stream:
+        layout = json.load(stream)
+    pieces = {piece["name"]: piece for piece in layout["pieces"]}
+    failures = []
+    for fragment in handles.fragments:
+        expected_count = len(merge_voxel_cells(pieces[fragment.name]["cells"]))
+        expected_paths = tuple(
+            f"{fragment.root_path}/Colliders/Box_{index:03d}" for index in range(expected_count)
+        )
+        if fragment.collider_paths != expected_paths:
+            failures.append(
+                {
+                    "fragment": fragment.name,
+                    "expected_paths": expected_paths,
+                    "actual_paths": fragment.collider_paths,
+                }
+            )
+    return {"ok": not failures, "failures": failures}
 
 
 def main() -> int:
@@ -103,6 +156,7 @@ def main() -> int:
             result = validate_robot_motion(handles)
         elif arguments.full:
             manifest = validate_manifest(handles)
+            collision_geometry = validate_fragment_collision_contract(handles)
             stability = validate_stability(handles, seconds=3.0)
             saved = None
             captures = {}
@@ -145,12 +199,14 @@ def main() -> int:
             result = {
                 "ok": bool(
                     manifest.ok
+                    and collision_geometry["ok"]
                     and stability.ok
                     and not missing_after_reopen
                     and (not arguments.save_stage or saved is not None)
                     and (not arguments.capture or len(captures) == 2)
                 ),
                 "fragment_count": manifest.fragment_count,
+                "collision_geometry": collision_geometry,
                 "stability": {
                     "ok": stability.ok,
                     "frames": stability.frames,

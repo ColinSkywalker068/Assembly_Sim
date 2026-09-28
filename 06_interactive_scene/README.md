@@ -77,4 +77,4 @@ The agent camera is fixed in front of and above the workcell. It frames the comp
 
 ## Deliberate non-goals
 
-This version is for scene construction, inspection, and minor manual motion. It does not include policy training, data collection, domain randomization, task rewards, motion planning, automatic grasping, or assembly success metrics. The thin hidden fragment support footprints favor a stable first inspection scene; collision fidelity should be revisited before policy training.
+This version is for scene construction, inspection, and minor manual motion. It does not include policy training, data collection, domain randomization, task rewards, motion planning, automatic grasping, or assembly success metrics. Fragment collision is limited to merged occupied-voxel boxes; the fragments begin asleep for a stable inspection view and wake normally when contacted.

@@ -221,55 +221,17 @@ def author_fragment(stage, config: SceneConfig, name: str) -> FragmentHandle:
         _bind_physics(collider.GetPrim(), physics_material)
         collider_paths.append(collider_path)
 
-    # Several skull fragments have a sparse voxel contact patch and topple
-    # before an operator can inspect the scene.  A thin footprint proxy keeps
-    # their authored upright staging pose stable while leaving every visible
-    # voxel and the manipulation volume above the table unchanged.
     cells_array = np.asarray(piece["cells"], dtype=float)
-    cell_min = np.min(cells_array, axis=0)
-    cell_max = np.max(cells_array, axis=0) + 1.0
-    local_min = np.asarray(
-        [
-            (cell_min[0] - float(piece["fp_cell"][0])) * pitch,
-            (cell_min[1] - float(piece["fp_cell"][1])) * pitch,
-            cell_min[2] * pitch,
-        ]
-    )
-    local_max = np.asarray(
-        [
-            (cell_max[0] - float(piece["fp_cell"][0])) * pitch,
-            (cell_max[1] - float(piece["fp_cell"][1])) * pitch,
-            cell_max[2] * pitch,
-        ]
-    )
-    footprint_path = f"{root_path}/Colliders/SupportFootprint"
-    footprint = UsdGeom.Cube.Define(stage, footprint_path)
-    footprint.CreateSizeAttr(1.0)
-    footprint_thickness = min(0.004, pitch * 0.25)
-    _set_transform(
-        footprint,
-        (
-            float((local_min[0] + local_max[0]) / 2.0),
-            float((local_min[1] + local_max[1]) / 2.0),
-            float(local_min[2] + footprint_thickness / 2.0),
-        ),
-        scale=(
-            float(local_max[0] - local_min[0]),
-            float(local_max[1] - local_min[1]),
-            footprint_thickness,
-        ),
-    )
-    footprint.GetVisibilityAttr().Set(UsdGeom.Tokens.invisible)
-    UsdPhysics.CollisionAPI.Apply(footprint.GetPrim()).CreateCollisionEnabledAttr(True)
-    _bind_physics(footprint.GetPrim(), physics_material)
-    collider_paths.append(footprint_path)
-
     rigid_body = UsdPhysics.RigidBodyAPI.Apply(root.GetPrim())
     rigid_body.CreateRigidBodyEnabledAttr(True)
+    # Preserve the exact occupied-voxel collision volume.  Sparse fragments
+    # begin asleep for inspection and wake normally when contacted or driven.
+    rigid_body.CreateStartsAsleepAttr(True)
     mass = UsdPhysics.MassAPI.Apply(root.GetPrim())
     mass.CreateDensityAttr(float(config.data["physics"]["fragment_density"]))
-    center_of_mass = (local_min + local_max) / 2.0
-    center_of_mass[2] = local_min[2] + min(0.012, (local_max[2] - local_min[2]) * 0.15)
+    center_of_mass = np.mean(cells_array + 0.5, axis=0) * pitch
+    center_of_mass[0] -= float(piece["fp_cell"][0]) * pitch
+    center_of_mass[1] -= float(piece["fp_cell"][1]) * pitch
     mass.CreateCenterOfMassAttr(Gf.Vec3f(*[float(value) for value in center_of_mass]))
     physx_body = PhysxSchema.PhysxRigidBodyAPI.Apply(root.GetPrim())
     physx_body.CreateLinearDampingAttr(float(config.data["physics"]["linear_damping"]))

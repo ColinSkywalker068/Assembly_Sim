@@ -175,7 +175,9 @@ class SceneController:
 
     def reset(self) -> None:
         import numpy as np
-        from isaacsim.core.prims import XFormPrim
+        from omni.physx import get_physx_simulation_interface
+        from pxr import PhysicsSchemaTools, UsdUtils
+        from isaacsim.core.prims import RigidPrim
 
         arm_targets = np.asarray(
             self.handles.config.data["robot"]["home_joint_positions"], dtype=float
@@ -209,13 +211,24 @@ class SceneController:
         self.arm.home()
         self.gripper.command(1.0)
         poses = self.handles.config.data["fragments"]["initial_poses"]
-        for fragment in self.handles.fragments:
-            pose = poses[fragment.name]
-            prim = XFormPrim(fragment.root_path)
-            prim.set_world_poses(
-                positions=np.asarray([pose["position"]], dtype=float),
-                orientations=np.asarray([pose["orientation_wxyz"]], dtype=float),
-            )
+        fragment_paths = [fragment.root_path for fragment in self.handles.fragments]
+        rigid_fragments = RigidPrim(fragment_paths, reset_xform_properties=False)
+        rigid_fragments.set_world_poses(
+            positions=np.asarray(
+                [poses[fragment.name]["position"] for fragment in self.handles.fragments],
+                dtype=float,
+            ),
+            orientations=np.asarray(
+                [poses[fragment.name]["orientation_wxyz"] for fragment in self.handles.fragments],
+                dtype=float,
+            ),
+        )
+        rigid_fragments.set_velocities(np.zeros((len(fragment_paths), 6), dtype=float))
+
+        stage_id = UsdUtils.StageCache.Get().GetId(self.handles.stage).ToLongInt()
+        simulation = get_physx_simulation_interface()
+        for path in fragment_paths:
+            simulation.put_to_sleep(stage_id, PhysicsSchemaTools.sdfPathToInt(path))
 
 
 def compose_robot(stage: Any, world: Any, config: SceneConfig) -> RobotHandle:
