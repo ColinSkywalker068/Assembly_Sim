@@ -7,6 +7,7 @@ from typing import Any
 
 from scene_assets import FragmentHandle, StageManifest, author_environment, author_fragment, expected_stage_manifest
 from scene_config import SceneConfig
+from scene_controls import RobotHandle, SceneController, compose_robot
 
 
 @dataclass
@@ -17,6 +18,7 @@ class SceneHandles:
     stage: Any
     manifest: StageManifest
     fragments: tuple[FragmentHandle, ...]
+    robot: RobotHandle | None = None
 
 
 @dataclass(frozen=True)
@@ -68,8 +70,16 @@ def build_stage(config: SceneConfig, headless: bool = True) -> SceneHandles:
     UsdGeom.Xform.Define(stage, "/World/Fragments")
     author_environment(stage, config)
     fragments = tuple(author_fragment(stage, config, name) for name in config.fragment_names)
+    robot = compose_robot(stage, world, config)
     world.reset()
-    return SceneHandles(config, app, world, stage, expected_stage_manifest(config), fragments)
+    robot.initialize_dofs()
+    handles = SceneHandles(
+        config, app, world, stage, expected_stage_manifest(config), fragments, robot
+    )
+    SceneController(handles).reset()
+    for _ in range(4):
+        world.step(render=False)
+    return handles
 
 
 def validate_manifest(handles: SceneHandles) -> ValidationReport:
@@ -77,6 +87,7 @@ def validate_manifest(handles: SceneHandles) -> ValidationReport:
         handles.manifest.floor_path,
         handles.manifest.table_path,
         handles.manifest.plate_path,
+        handles.manifest.robot_path,
         *handles.manifest.fragment_paths,
     )
     missing = tuple(path for path in required if not handles.stage.GetPrimAtPath(path).IsValid())
