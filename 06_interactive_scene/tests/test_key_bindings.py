@@ -12,6 +12,7 @@ from run_scene import (
     camera_action_paths,
     capture_requests,
     key_action,
+    ready_message,
 )
 
 
@@ -126,3 +127,7 @@ def test_capture_mapping_has_three_unambiguous_outputs():
         ("left_wrist", "/LeftWrist", "left_wrist_image"),
         ("right_wrist", "/RightWrist", "right_wrist_image"),
     )
+
+
+def test_ready_message_names_initial_active_robot():
+    assert "Active robot: left" in ready_message("left")

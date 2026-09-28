@@ -56,6 +56,13 @@ def capture_requests(cameras: Any) -> tuple[tuple[str, str, str], ...]:
     )
 
 
+def ready_message(active_robot_name: str) -> str:
+    return (
+        f"Interactive scene ready. Active robot: {active_robot_name}. "
+        "Press Tab to switch arms; see README for controls."
+    )
+
+
 def _event_key(event: Any) -> str:
     value = getattr(event, "input", event)
     return str(getattr(value, "name", value)).upper()
@@ -201,7 +208,7 @@ def main() -> int:
         )
         keyboard_controller.subscribe()
         dispatcher(ControlAction("camera_agent"))
-        print("Interactive scene ready. Press 1-6 to select a joint; see README for controls.", flush=True)
+        print(ready_message(dispatcher.controller.active_robot_name), flush=True)
         frames = 0
         while handles.app.is_running():
             handles.world.step(render=True)

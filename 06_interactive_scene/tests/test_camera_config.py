@@ -78,3 +78,10 @@ def test_each_wrist_parent_matches_named_flange(config):
     robots["right"].flange_path = "/World/Wrong/flange"
     with pytest.raises(ValueError, match="right_wrist"):
         validate_wrist_parents(specs, robots)
+
+
+def test_wrist_cameras_clear_the_gripper_mount(config):
+    for name in ("left_wrist", "right_wrist"):
+        position = camera_specs(config)[name].position
+        assert position[2] >= 0.16
+        assert abs(position[1]) >= 0.12

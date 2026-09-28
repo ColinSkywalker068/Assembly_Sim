@@ -295,8 +295,8 @@
       "parent": "/World/Robots/Left/flange",
       "position": [
         0.08,
-        0.0,
-        0.06
+        -0.16,
+        0.18
       ],
       "look_at_local": [
         0.28,
@@ -314,8 +314,8 @@
       "parent": "/World/Robots/Right/flange",
       "position": [
         0.08,
-        0.0,
-        0.06
+        -0.16,
+        0.18
       ],
       "look_at_local": [
         0.28,
