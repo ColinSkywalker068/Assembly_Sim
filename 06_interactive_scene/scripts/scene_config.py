@@ -9,6 +9,7 @@ from typing import Any, Mapping
 
 
 EXPECTED_FRAGMENTS = tuple(f"piece_{index}" for index in range(8))
+EXPECTED_ROBOTS = ("left", "right")
 INPUT_PATH_KEYS = ("arm_usd", "gripper_usd", "probe_json", "layout_json", "bricks_dir")
 
 
@@ -43,6 +44,8 @@ class SceneConfig:
             raise ValueError(f"unsupported scene schema_version: {self.schema_version}")
         if self.fragment_names != EXPECTED_FRAGMENTS:
             raise ValueError("interactive scene requires exactly piece_0 through piece_7")
+        if self.robot_names != EXPECTED_ROBOTS:
+            raise ValueError("interactive scene requires exactly left and right robots")
         if self.physics_dt <= 0 or self.render_dt <= 0:
             raise ValueError("physics_dt and render_dt must be positive")
         width, height = self.camera_resolution
@@ -69,6 +72,15 @@ class SceneConfig:
     @property
     def fragment_names(self) -> tuple[str, ...]:
         return tuple(str(name) for name in self.data["fragments"]["names"])
+
+    @property
+    def robot_names(self) -> tuple[str, ...]:
+        return tuple(str(name) for name in self.data["robots"])
+
+    def robot_spec(self, name: str) -> Mapping[str, Any]:
+        if name not in EXPECTED_ROBOTS:
+            raise KeyError(f"unknown robot: {name}")
+        return self.data["robots"][name]
 
     def resolve_repo_path(self, key: str) -> Path:
         try:

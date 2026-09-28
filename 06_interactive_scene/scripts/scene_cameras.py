@@ -47,7 +47,7 @@ class StabilityReport:
 
 def camera_specs(config: SceneConfig) -> Mapping[str, CameraSpec]:
     result: dict[str, CameraSpec] = {}
-    for name in ("agent", "wrist"):
+    for name in ("agent", "left_wrist", "right_wrist"):
         value = config.data["cameras"][name]
         position = tuple(float(component) for component in value["position"])
         target_key = "look_at" if name == "agent" else "look_at_local"
@@ -65,7 +65,12 @@ def camera_specs(config: SceneConfig) -> Mapping[str, CameraSpec]:
 
 
 def validated_scene_output(config: SceneConfig, key: str) -> Path:
-    if key not in {"generated_usd", "agent_image", "wrist_image"}:
+    if key not in {
+        "generated_usd",
+        "agent_image",
+        "left_wrist_image",
+        "right_wrist_image",
+    }:
         raise KeyError(f"unknown generated output: {key}")
     output = config.resolve_repo_path(key)
     scene_root = (config.repo_root / "06_interactive_scene").resolve()

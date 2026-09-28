@@ -13,6 +13,7 @@ if str(SCRIPTS) not in sys.path:
 
 from plan_layout import (
     AABB2D,
+    Pose,
     check_reachability,
     compute_staging_poses,
     freeze_layout,
@@ -24,6 +25,16 @@ from scene_config import SceneConfig
 
 
 CONFIG_PATH = SCENE_ROOT / "config" / "scene.json"
+
+
+def configured_poses(config):
+    return {
+        name: Pose(
+            tuple(config.data["fragments"]["initial_poses"][name]["position"]),
+            tuple(config.data["fragments"]["initial_poses"][name]["orientation_wxyz"]),
+        )
+        for name in config.fragment_names
+    }
 
 
 def test_staging_poses_are_stable_separated_and_inside_table():
@@ -50,25 +61,30 @@ def test_staging_poses_are_stable_separated_and_inside_table():
             assert not aabbs[first].expanded(gap / 2).overlaps(aabbs[second].expanded(gap / 2))
 
 
-def test_reachability_names_nine_targets_with_joints_inside_limits():
+def test_reachability_reports_an_arm_for_every_demo_fragment():
     config = SceneConfig.load(CONFIG_PATH)
-    extents = load_piece_extents(config)
-    poses = compute_staging_poses(
-        extents,
-        table_bounds(config),
-        scene_exclusions(config),
-        float(config.data["environment"]["staging_gap"]),
-    )
-
-    report = check_reachability(config, poses)
+    report = check_reachability(config, configured_poses(config))
 
     assert report.all_reachable
-    assert set(report.targets) == {*config.fragment_names, "plate_center"}
-    for target in report.targets.values():
-        assert target.reachable
-        assert target.position_error < 0.002
-        assert target.rotation_error < 0.02
-        assert all(low <= joint <= high for joint, low, high in zip(target.joints, report.lower_limits, report.upper_limits))
+    assert tuple(report.robots) == config.robot_names
+    for name in config.fragment_names:
+        assert report.reachable_robots(name)
+        for robot_name in report.reachable_robots(name):
+            robot = report.robots[robot_name]
+            target = robot.targets[name]
+            assert target.position_error < 0.002
+            assert target.rotation_error < 0.02
+            assert all(
+                low <= joint <= high
+                for joint, low, high in zip(target.joints, robot.lower_limits, robot.upper_limits)
+            )
+
+
+def test_plate_center_is_reachable_by_both_arms():
+    config = SceneConfig.load(CONFIG_PATH)
+    report = check_reachability(config, configured_poses(config))
+
+    assert report.reachable_robots("plate_center") == config.robot_names
 
 
 def test_reachability_works_from_repository_path_with_spaces(tmp_path):
@@ -84,15 +100,7 @@ def test_reachability_works_from_repository_path_with_spaces(tmp_path):
         shutil.copy2(original.resolve_repo_path(key), destination)
     config_path.write_text(json.dumps(original.data), encoding="utf-8")
     config = SceneConfig.load(config_path)
-    extents = load_piece_extents(config)
-    poses = compute_staging_poses(
-        extents,
-        table_bounds(config),
-        scene_exclusions(config),
-        float(config.data["environment"]["staging_gap"]),
-    )
-
-    report = check_reachability(config, poses)
+    report = check_reachability(config, configured_poses(config))
 
     assert report.all_reachable
     assert Path(report.probe_path).is_relative_to(relocated)
@@ -115,9 +123,8 @@ def test_freeze_layout_writes_only_reachable_poses(tmp_path):
     frozen = json.loads(config_path.read_text(encoding="utf-8"))
 
     assert report.all_reachable
-    assert set(frozen["fragments"]["initial_poses"]) == set(original.fragment_names)
+    assert frozen["fragments"]["initial_poses"] == original.data["fragments"]["initial_poses"]
     assert frozen["placement"]["reachability"]["all_reachable"] is True
-    assert set(frozen["placement"]["reachability"]["targets"]) == {
-        *original.fragment_names,
-        "plate_center",
-    }
+    assert tuple(frozen["placement"]["reachability"]["robots"]) == original.robot_names
+    for robot in frozen["placement"]["reachability"]["robots"].values():
+        assert set(robot["targets"]) == {*original.fragment_names, "plate_center"}

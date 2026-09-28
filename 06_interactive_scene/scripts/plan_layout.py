@@ -1,4 +1,4 @@
-"""Deterministic staging and offline reachability checks for one FANUC arm."""
+"""Deterministic staging and offline reachability checks for both FANUC arms."""
 
 from __future__ import annotations
 
@@ -100,15 +100,30 @@ class ReachabilityTarget:
 
 
 @dataclass(frozen=True)
-class ReachabilityReport:
+class RobotReachability:
     targets: Mapping[str, ReachabilityTarget]
     lower_limits: tuple[float, ...]
     upper_limits: tuple[float, ...]
+
+
+@dataclass(frozen=True)
+class ReachabilityReport:
+    robots: Mapping[str, RobotReachability]
     probe_path: str
 
     @property
     def all_reachable(self) -> bool:
-        return bool(self.targets) and all(target.reachable for target in self.targets.values())
+        if not self.robots:
+            return False
+        target_names = next(iter(self.robots.values())).targets
+        return bool(target_names) and all(self.reachable_robots(name) for name in target_names)
+
+    def reachable_robots(self, target_name: str) -> tuple[str, ...]:
+        return tuple(
+            name
+            for name, report in self.robots.items()
+            if report.targets[target_name].reachable
+        )
 
 
 def _layout(config: SceneConfig) -> dict:
@@ -153,12 +168,14 @@ def table_bounds(config: SceneConfig) -> TableBounds:
 
 
 def scene_exclusions(config: SceneConfig) -> list[AABB2D]:
-    robot_position = config.data["robot"]["base_position"]
-    robot = AABB2D.from_center_extent(robot_position[:2], (0.34, 0.34))
+    robots = [
+        AABB2D.from_center_extent(config.robot_spec(name)["base_position"][:2], (0.34, 0.34))
+        for name in config.robot_names
+    ]
     layout = _layout(config)
     plate_position = config.data["environment"]["plate_position"]
     plate = AABB2D.from_center_extent(plate_position[:2], layout["plate"]["size"][:2])
-    return [robot, plate]
+    return [*robots, plate]
 
 
 def _positions(start: float, stop: float, step: float) -> list[float]:
@@ -230,7 +247,7 @@ def _tcp_target(position: Sequence[float], closing_degrees: float) -> np.ndarray
     return flange
 
 
-def _load_kinematics(config: SceneConfig):
+def _load_kinematics(config: SceneConfig, robot_name: str):
     import importlib.util
 
     scripts = config.repo_root / "03_scripts"
@@ -244,7 +261,7 @@ def _load_kinematics(config: SceneConfig):
     spec.loader.exec_module(module)
 
     arm = module.Arm(str(config.resolve_repo_path("probe_json")))
-    robot = config.data["robot"]
+    robot = config.robot_spec(robot_name)
     arm.base = module.T(robot["base_position"], robot["base_orientation_wxyz"])
     return arm
 
@@ -282,93 +299,89 @@ def _best_ik(arm, targets: Sequence[np.ndarray], home: np.ndarray) -> Reachabili
 def check_reachability(config: SceneConfig, poses: Mapping[str, Pose]) -> ReachabilityReport:
     layout = _layout(config)
     pieces = {piece["name"]: piece for piece in layout["pieces"]}
-    arm = _load_kinematics(config)
-    home = np.asarray(config.data["robot"]["home_joint_positions"], dtype=float)
     approach_height = float(config.data["placement"]["approach_height"])
-    results: dict[str, ReachabilityTarget] = {}
-    for name in config.fragment_names:
-        piece = pieces[name]
-        pose = poses[name]
-        grasp = piece["grasp"]
-        target_position = (
-            pose.position[0] + float(grasp["xy"][0]),
-            pose.position[1] + float(grasp["xy"][1]),
-            pose.position[2] + float(grasp["z_top"]) - 0.012 + approach_height,
+    robot_reports: dict[str, RobotReachability] = {}
+    for robot_name in config.robot_names:
+        arm = _load_kinematics(config, robot_name)
+        home = np.asarray(config.robot_spec(robot_name)["home_joint_positions"], dtype=float)
+        results: dict[str, ReachabilityTarget] = {}
+        for name in config.fragment_names:
+            piece = pieces[name]
+            pose = poses[name]
+            grasp = piece["grasp"]
+            target_position = (
+                pose.position[0] + float(grasp["xy"][0]),
+                pose.position[1] + float(grasp["xy"][1]),
+                pose.position[2] + float(grasp["z_top"]) - 0.012 + approach_height,
+            )
+            angle = float(grasp["angle_deg"])
+            result = _best_ik(
+                arm,
+                [_tcp_target(target_position, angle), _tcp_target(target_position, angle + 180.0)],
+                home,
+            )
+            results[name] = ReachabilityTarget(
+                name=name,
+                **{key: value for key, value in result.__dict__.items() if key != "name"},
+            )
+
+        plate = config.data["environment"]["plate_position"]
+        plate_position = (
+            float(plate[0]),
+            float(plate[1]),
+            float(plate[2]) + approach_height + 0.12,
         )
-        angle = float(grasp["angle_deg"])
-        result = _best_ik(
+        plate_result = _best_ik(
             arm,
-            [_tcp_target(target_position, angle), _tcp_target(target_position, angle + 180.0)],
+            [_tcp_target(plate_position, 90.0), _tcp_target(plate_position, 270.0)],
             home,
         )
-        results[name] = ReachabilityTarget(name=name, **{key: value for key, value in result.__dict__.items() if key != "name"})
-
-    plate = config.data["environment"]["plate_position"]
-    plate_position = (float(plate[0]), float(plate[1]), float(plate[2]) + approach_height + 0.12)
-    plate_result = _best_ik(
-        arm,
-        [_tcp_target(plate_position, 90.0), _tcp_target(plate_position, 270.0)],
-        home,
-    )
-    results["plate_center"] = ReachabilityTarget(
-        name="plate_center",
-        **{key: value for key, value in plate_result.__dict__.items() if key != "name"},
-    )
+        results["plate_center"] = ReachabilityTarget(
+            name="plate_center",
+            **{key: value for key, value in plate_result.__dict__.items() if key != "name"},
+        )
+        robot_reports[robot_name] = RobotReachability(
+            targets=results,
+            lower_limits=tuple(float(value) for value in arm.lo),
+            upper_limits=tuple(float(value) for value in arm.hi),
+        )
     return ReachabilityReport(
-        targets=results,
-        lower_limits=tuple(float(value) for value in arm.lo),
-        upper_limits=tuple(float(value) for value in arm.hi),
+        robots=robot_reports,
         probe_path=str(config.resolve_repo_path("probe_json")),
     )
 
 
 def freeze_layout(config_path: Path) -> ReachabilityReport:
-    """Choose the best reachable configured base yaw and persist stable poses."""
+    """Validate and persist reachability for the approved demo-exact poses."""
 
     source = SceneConfig.load(config_path)
-    extents = load_piece_extents(source)
-    poses = compute_staging_poses(
-        extents,
-        table_bounds(source),
-        scene_exclusions(source),
-        float(source.data["environment"]["staging_gap"]),
-    )
-    candidates: list[tuple[float, SceneConfig, ReachabilityReport]] = []
-    for yaw_degrees in source.data["placement"]["robot_yaw_candidates_degrees"]:
-        data = deepcopy(source.data)
-        half_angle = math.radians(float(yaw_degrees)) / 2
-        data["robot"]["base_orientation_wxyz"] = [
-            math.cos(half_angle),
-            0.0,
-            0.0,
-            math.sin(half_angle),
-        ]
-        candidate_config = SceneConfig(source.config_path, source.repo_root, data)
-        report = check_reachability(candidate_config, poses)
-        if report.all_reachable:
-            minimum_margin = min(target.joint_margin for target in report.targets.values())
-            candidates.append((minimum_margin, candidate_config, report))
-    if not candidates:
-        raise RuntimeError("no configured robot base yaw reaches all fragment and plate targets")
-    _, selected, report = max(candidates, key=lambda candidate: candidate[0])
-    output = deepcopy(selected.data)
-    output["fragments"]["initial_poses"] = {
-        name: {
-            "position": list(poses[name].position),
-            "orientation_wxyz": list(poses[name].orientation_wxyz),
-        }
-        for name in selected.fragment_names
+    poses = {
+        name: Pose(
+            tuple(source.data["fragments"]["initial_poses"][name]["position"]),
+            tuple(source.data["fragments"]["initial_poses"][name]["orientation_wxyz"]),
+        )
+        for name in source.fragment_names
     }
+    report = check_reachability(source, poses)
+    if not report.all_reachable:
+        raise RuntimeError("one or more demo layout targets are unreachable by both robots")
+    output = deepcopy(source.data)
     output["placement"]["reachability"] = {
         "all_reachable": report.all_reachable,
-        "targets": {
-            name: {
-                "position_error": target.position_error,
-                "rotation_error": target.rotation_error,
-                "joint_margin": target.joint_margin,
-                "joints": list(target.joints),
+        "robots": {
+            robot_name: {
+                "targets": {
+                    name: {
+                        "reachable": target.reachable,
+                        "position_error": target.position_error,
+                        "rotation_error": target.rotation_error,
+                        "joint_margin": target.joint_margin,
+                        "joints": list(target.joints),
+                    }
+                    for name, target in robot.targets.items()
+                }
             }
-            for name, target in report.targets.items()
+            for robot_name, robot in report.robots.items()
         },
     }
     source.config_path.write_text(json.dumps(output, indent=2) + "\n", encoding="utf-8")
@@ -386,14 +399,19 @@ if __name__ == "__main__":
         json.dumps(
             {
                 "all_reachable": final_report.all_reachable,
-                "targets": {
-                    name: {
-                        "reachable": target.reachable,
-                        "position_error": target.position_error,
-                        "rotation_error": target.rotation_error,
-                        "joint_margin": target.joint_margin,
+                "robots": {
+                    robot_name: {
+                        "targets": {
+                            name: {
+                                "reachable": target.reachable,
+                                "position_error": target.position_error,
+                                "rotation_error": target.rotation_error,
+                                "joint_margin": target.joint_margin,
+                            }
+                            for name, target in robot.targets.items()
+                        }
                     }
-                    for name, target in final_report.targets.items()
+                    for robot_name, robot in final_report.robots.items()
                 },
             },
             indent=2,
