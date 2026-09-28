@@ -211,10 +211,9 @@ def main() -> int:
             if arguments.capture:
                 if handles.cameras is None:
                     raise RuntimeError("scene has no camera handles")
-                for name, camera_path, key in (
-                    ("agent", handles.cameras.agent_path, "agent_image"),
-                    ("wrist", handles.cameras.wrist_path, "wrist_image"),
-                ):
+                from run_scene import capture_requests
+
+                for name, camera_path, key in capture_requests(handles.cameras):
                     capture = capture_rgb(
                         camera_path,
                         validated_scene_output(config, key),
@@ -232,7 +231,7 @@ def main() -> int:
                     and stability.ok
                     and not missing_after_reopen
                     and (not arguments.save_stage or saved is not None)
-                    and (not arguments.capture or len(captures) == 2)
+                    and (not arguments.capture or len(captures) == 3)
                 ),
                 "fragment_count": manifest.fragment_count,
                 "collision_geometry": collision_geometry,

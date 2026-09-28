@@ -80,6 +80,18 @@ def validated_scene_output(config: SceneConfig, key: str) -> Path:
     return output
 
 
+def validate_wrist_parents(
+    specs: Mapping[str, CameraSpec], robots: Mapping[str, Any]
+) -> None:
+    for robot_name in ("left", "right"):
+        camera_name = f"{robot_name}_wrist"
+        if specs[camera_name].parent != robots[robot_name].flange_path:
+            raise ValueError(
+                f"{camera_name} camera parent {specs[camera_name].parent} does not match "
+                f"{robot_name} robot flange {robots[robot_name].flange_path}"
+            )
+
+
 def _look_at_quaternion(eye, look_vector, up=(0.0, 0.0, 1.0)):
     import numpy as np
 
@@ -133,15 +145,9 @@ def author_cameras(stage: Any, config: SceneConfig, robots: Mapping[str, Any]) -
     from pxr import Gf, UsdGeom
 
     specs = camera_specs(config)
+    validate_wrist_parents(specs, robots)
     UsdGeom.Xform.Define(stage, "/World/Cameras")
     for spec in specs.values():
-        if spec.name.endswith("_wrist"):
-            robot_name = spec.name.removesuffix("_wrist")
-            if spec.parent != robots[robot_name].flange_path:
-                raise ValueError(
-                    f"{spec.name} camera parent {spec.parent} does not match "
-                    f"{robot_name} robot flange {robots[robot_name].flange_path}"
-                )
         if not stage.GetPrimAtPath(spec.parent).IsValid():
             raise RuntimeError(f"camera parent prim does not exist: {spec.parent}")
         camera = UsdGeom.Camera.Define(stage, spec.prim_path)

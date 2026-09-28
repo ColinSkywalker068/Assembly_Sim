@@ -36,7 +36,24 @@ ACTION_KEYS = {
     "I",
     "F7",
     "F8",
+    "F9",
 }
+
+
+def camera_action_paths(cameras: Any) -> dict[str, str]:
+    return {
+        "camera_agent": cameras.agent_path,
+        "camera_left_wrist": cameras.left_wrist_path,
+        "camera_right_wrist": cameras.right_wrist_path,
+    }
+
+
+def capture_requests(cameras: Any) -> tuple[tuple[str, str, str], ...]:
+    return (
+        ("agent", cameras.agent_path, "agent_image"),
+        ("left_wrist", cameras.left_wrist_path, "left_wrist_image"),
+        ("right_wrist", cameras.right_wrist_path, "right_wrist_image"),
+    )
 
 
 def _event_key(event: Any) -> str:
@@ -62,9 +79,10 @@ def key_action(event: Any) -> Optional[ControlAction]:
         "TAB": "toggle_robot",
         "R": "reset",
         "P": "save",
-        "I": "capture_both",
+        "I": "capture_all",
         "F7": "camera_agent",
-        "F8": "camera_wrist",
+        "F8": "camera_left_wrist",
+        "F9": "camera_right_wrist",
     }
     return ControlAction(kinds[key]) if key in kinds else None
 
@@ -138,25 +156,18 @@ class SceneActionDispatcher:
             output = validated_scene_output(config, "generated_usd")
             save_portable_stage(self.handles.stage, output)
             print(f"Saved {output}", flush=True)
-        elif action.kind == "capture_both":
-            for camera_path, key in (
-                (self.handles.cameras.agent_path, "agent_image"),
-                (self.handles.cameras.wrist_path, "wrist_image"),
-            ):
+        elif action.kind == "capture_all":
+            for _, camera_path, key in capture_requests(self.handles.cameras):
                 result = capture_rgb(
                     camera_path,
                     validated_scene_output(config, key),
                     resolution=config.camera_resolution,
                 )
                 print(f"Captured {result.path}", flush=True)
-        elif action.kind in {"camera_agent", "camera_wrist"}:
+        elif action.kind in camera_action_paths(self.handles.cameras):
             from omni.kit.viewport.utility import get_active_viewport
 
-            path = (
-                self.handles.cameras.agent_path
-                if action.kind == "camera_agent"
-                else self.handles.cameras.wrist_path
-            )
+            path = camera_action_paths(self.handles.cameras)[action.kind]
             get_active_viewport().set_active_camera(path)
             print(f"Viewport camera: {path}", flush=True)
 

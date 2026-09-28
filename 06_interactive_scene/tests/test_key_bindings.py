@@ -6,7 +6,13 @@ from pathlib import Path
 SCENE_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SCENE_ROOT / "scripts"))
 
-from run_scene import ACTION_KEYS, KeyboardController, key_action
+from run_scene import (
+    ACTION_KEYS,
+    KeyboardController,
+    camera_action_paths,
+    capture_requests,
+    key_action,
+)
 
 
 @dataclass
@@ -41,9 +47,10 @@ def test_jog_and_operator_actions():
         "TAB": "toggle_robot",
         "R": "reset",
         "P": "save",
-        "I": "capture_both",
+        "I": "capture_all",
         "F7": "camera_agent",
-        "F8": "camera_wrist",
+        "F8": "camera_left_wrist",
+        "F9": "camera_right_wrist",
     }
     for key, kind in expected.items():
         assert key_action(event(key)).kind == kind
@@ -83,3 +90,39 @@ def test_keyboard_controller_subscribes_and_closes_once():
     controller.close()
     controller.close()
     assert interface.unsubscribe_calls == [(keyboard, 42)]
+
+
+def test_f7_f8_f9_select_distinct_views():
+    cameras = type(
+        "Cameras",
+        (),
+        {
+            "agent_path": "/Agent",
+            "left_wrist_path": "/LeftWrist",
+            "right_wrist_path": "/RightWrist",
+        },
+    )()
+
+    assert camera_action_paths(cameras) == {
+        "camera_agent": "/Agent",
+        "camera_left_wrist": "/LeftWrist",
+        "camera_right_wrist": "/RightWrist",
+    }
+
+
+def test_capture_mapping_has_three_unambiguous_outputs():
+    cameras = type(
+        "Cameras",
+        (),
+        {
+            "agent_path": "/Agent",
+            "left_wrist_path": "/LeftWrist",
+            "right_wrist_path": "/RightWrist",
+        },
+    )()
+
+    assert capture_requests(cameras) == (
+        ("agent", "/Agent", "agent_image"),
+        ("left_wrist", "/LeftWrist", "left_wrist_image"),
+        ("right_wrist", "/RightWrist", "right_wrist_image"),
+    )

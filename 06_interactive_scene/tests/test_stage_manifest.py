@@ -11,7 +11,7 @@ from scene_assets import expected_stage_manifest
 from scene_config import SceneConfig
 
 
-def test_expected_stage_manifest_pins_scene_prim_contract():
+def test_manifest_requires_two_robot_roots_and_three_cameras():
     config = SceneConfig.load(SCENE_ROOT / "config" / "scene.json")
 
     manifest = expected_stage_manifest(config)
