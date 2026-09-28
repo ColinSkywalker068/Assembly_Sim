@@ -8,6 +8,7 @@ from typing import Any
 from scene_assets import FragmentHandle, StageManifest, author_environment, author_fragment, expected_stage_manifest
 from scene_config import SceneConfig
 from scene_controls import RobotHandle, SceneController, compose_robot
+from scene_cameras import CameraHandles, author_cameras
 
 
 @dataclass
@@ -19,6 +20,7 @@ class SceneHandles:
     manifest: StageManifest
     fragments: tuple[FragmentHandle, ...]
     robot: RobotHandle | None = None
+    cameras: CameraHandles | None = None
 
 
 @dataclass(frozen=True)
@@ -71,10 +73,11 @@ def build_stage(config: SceneConfig, headless: bool = True) -> SceneHandles:
     author_environment(stage, config)
     fragments = tuple(author_fragment(stage, config, name) for name in config.fragment_names)
     robot = compose_robot(stage, world, config)
+    cameras = author_cameras(stage, config, robot)
     world.reset()
     robot.initialize_dofs()
     handles = SceneHandles(
-        config, app, world, stage, expected_stage_manifest(config), fragments, robot
+        config, app, world, stage, expected_stage_manifest(config), fragments, robot, cameras
     )
     SceneController(handles).reset()
     for _ in range(4):
@@ -89,6 +92,7 @@ def validate_manifest(handles: SceneHandles) -> ValidationReport:
         handles.manifest.plate_path,
         handles.manifest.robot_path,
         *handles.manifest.fragment_paths,
+        *handles.manifest.camera_paths,
     )
     missing = tuple(path for path in required if not handles.stage.GetPrimAtPath(path).IsValid())
     fragment_root = handles.stage.GetPrimAtPath("/World/Fragments")

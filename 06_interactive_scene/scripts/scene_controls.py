@@ -177,6 +177,35 @@ class SceneController:
         import numpy as np
         from isaacsim.core.prims import XFormPrim
 
+        arm_targets = np.asarray(
+            self.handles.config.data["robot"]["home_joint_positions"], dtype=float
+        )
+        gripper_settings = self.handles.config.data["robot"]
+        gripper_targets_by_name = gripper_dof_targets(
+            self.handles.robot.gripper_dof_names,
+            1.0,
+            gripper_settings["gripper_open_radians"],
+            gripper_settings["gripper_closed_radians"],
+            self.gripper.mimic,
+        )
+        gripper_targets = np.asarray(
+            [gripper_targets_by_name[name] for name in self.handles.robot.gripper_dof_names],
+            dtype=float,
+        )
+        self.handles.robot.robot.set_joint_positions(
+            arm_targets, joint_indices=np.asarray(self.handles.robot.arm_dof_indices, dtype=int)
+        )
+        self.handles.robot.robot.set_joint_positions(
+            gripper_targets,
+            joint_indices=np.asarray(self.handles.robot.gripper_dof_indices, dtype=int),
+        )
+        all_indices = np.asarray(
+            self.handles.robot.arm_dof_indices + self.handles.robot.gripper_dof_indices,
+            dtype=int,
+        )
+        self.handles.robot.robot.set_joint_velocities(
+            np.zeros(len(all_indices), dtype=float), joint_indices=all_indices
+        )
         self.arm.home()
         self.gripper.command(1.0)
         poses = self.handles.config.data["fragments"]["initial_poses"]

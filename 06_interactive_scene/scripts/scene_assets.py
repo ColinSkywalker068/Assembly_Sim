@@ -109,7 +109,7 @@ def _author_static_box(stage, path: str, position, size, color, visual_material,
 
 
 def author_environment(stage, config: SceneConfig) -> None:
-    from pxr import UsdGeom, UsdPhysics, Vt
+    from pxr import Gf, UsdGeom, UsdLux, UsdPhysics, Vt
 
     manifest = expected_stage_manifest(config)
     UsdGeom.Xform.Define(stage, "/World/Environment")
@@ -127,6 +127,11 @@ def author_environment(stage, config: SceneConfig) -> None:
         support_visual,
         physics_material,
     )
+    dome = UsdLux.DomeLight.Define(stage, "/World/Environment/DomeLight")
+    dome.CreateIntensityAttr(700.0)
+    distant = UsdLux.DistantLight.Define(stage, "/World/Environment/KeyLight")
+    distant.CreateIntensityAttr(2500.0)
+    UsdGeom.Xformable(distant).AddRotateXYZOp().Set(Gf.Vec3f(315.0, 35.0, 0.0))
     _author_static_box(
         stage,
         manifest.table_path,
@@ -172,7 +177,7 @@ def _collider_local_geometry(box: VoxelBox, pitch: float, fp_cell) -> tuple[tupl
 
 
 def author_fragment(stage, config: SceneConfig, name: str) -> FragmentHandle:
-    from pxr import PhysxSchema, UsdGeom, UsdPhysics, UsdShade, Vt
+    from pxr import Gf, PhysxSchema, UsdGeom, UsdPhysics, UsdShade, Vt
 
     if name not in config.fragment_names:
         raise ValueError(f"unknown fragment: {name}")
@@ -216,10 +221,56 @@ def author_fragment(stage, config: SceneConfig, name: str) -> FragmentHandle:
         _bind_physics(collider.GetPrim(), physics_material)
         collider_paths.append(collider_path)
 
+    # Several skull fragments have a sparse voxel contact patch and topple
+    # before an operator can inspect the scene.  A thin footprint proxy keeps
+    # their authored upright staging pose stable while leaving every visible
+    # voxel and the manipulation volume above the table unchanged.
+    cells_array = np.asarray(piece["cells"], dtype=float)
+    cell_min = np.min(cells_array, axis=0)
+    cell_max = np.max(cells_array, axis=0) + 1.0
+    local_min = np.asarray(
+        [
+            (cell_min[0] - float(piece["fp_cell"][0])) * pitch,
+            (cell_min[1] - float(piece["fp_cell"][1])) * pitch,
+            cell_min[2] * pitch,
+        ]
+    )
+    local_max = np.asarray(
+        [
+            (cell_max[0] - float(piece["fp_cell"][0])) * pitch,
+            (cell_max[1] - float(piece["fp_cell"][1])) * pitch,
+            cell_max[2] * pitch,
+        ]
+    )
+    footprint_path = f"{root_path}/Colliders/SupportFootprint"
+    footprint = UsdGeom.Cube.Define(stage, footprint_path)
+    footprint.CreateSizeAttr(1.0)
+    footprint_thickness = min(0.004, pitch * 0.25)
+    _set_transform(
+        footprint,
+        (
+            float((local_min[0] + local_max[0]) / 2.0),
+            float((local_min[1] + local_max[1]) / 2.0),
+            float(local_min[2] + footprint_thickness / 2.0),
+        ),
+        scale=(
+            float(local_max[0] - local_min[0]),
+            float(local_max[1] - local_min[1]),
+            footprint_thickness,
+        ),
+    )
+    footprint.GetVisibilityAttr().Set(UsdGeom.Tokens.invisible)
+    UsdPhysics.CollisionAPI.Apply(footprint.GetPrim()).CreateCollisionEnabledAttr(True)
+    _bind_physics(footprint.GetPrim(), physics_material)
+    collider_paths.append(footprint_path)
+
     rigid_body = UsdPhysics.RigidBodyAPI.Apply(root.GetPrim())
     rigid_body.CreateRigidBodyEnabledAttr(True)
     mass = UsdPhysics.MassAPI.Apply(root.GetPrim())
     mass.CreateDensityAttr(float(config.data["physics"]["fragment_density"]))
+    center_of_mass = (local_min + local_max) / 2.0
+    center_of_mass[2] = local_min[2] + min(0.012, (local_max[2] - local_min[2]) * 0.15)
+    mass.CreateCenterOfMassAttr(Gf.Vec3f(*[float(value) for value in center_of_mass]))
     physx_body = PhysxSchema.PhysxRigidBodyAPI.Apply(root.GetPrim())
     physx_body.CreateLinearDampingAttr(float(config.data["physics"]["linear_damping"]))
     physx_body.CreateAngularDampingAttr(float(config.data["physics"]["angular_damping"]))
