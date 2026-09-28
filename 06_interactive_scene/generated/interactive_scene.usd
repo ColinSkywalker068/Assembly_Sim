@@ -16,7 +16,6 @@ over "Render" (
 )
 {
 }
-
 def PhysicsScene "physicsScene" (
     prepend apiSchemas = ["PhysxSceneAPI"]
 )
@@ -11065,4 +11064,3 @@ def Xform "World"
         }
     }
 }
-

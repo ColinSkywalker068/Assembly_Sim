@@ -88,4 +88,3 @@ class SceneConfig:
             mesh = bricks_dir / f"{name}.npz"
             if not mesh.is_file():
                 raise FileNotFoundError(f"missing fragment mesh '{name}': {mesh.resolve()}")
-
