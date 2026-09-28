@@ -19,12 +19,16 @@ def test_expected_stage_manifest_pins_scene_prim_contract():
     assert manifest.floor_path == "/World/Environment/Floor"
     assert manifest.table_path == "/World/Environment/Table"
     assert manifest.plate_path == "/World/Environment/Plate"
-    assert manifest.robot_path == "/World/Robot"
+    assert manifest.robot_paths == (
+        "/World/Robots/Left",
+        "/World/Robots/Right",
+    )
     assert manifest.fragment_paths == tuple(
         f"/World/Fragments/piece_{index}" for index in range(8)
     )
     assert len(set(manifest.fragment_paths)) == 8
     assert manifest.camera_paths == (
         "/World/Cameras/Agent",
-        "/World/Robot/flange/WristCamera",
+        "/World/Robots/Left/flange/WristCamera",
+        "/World/Robots/Right/flange/WristCamera",
     )

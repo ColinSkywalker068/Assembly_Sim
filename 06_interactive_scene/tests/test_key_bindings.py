@@ -38,6 +38,7 @@ def test_jog_and_operator_actions():
         "H": "home",
         "O": "gripper_open",
         "K": "gripper_close",
+        "TAB": "toggle_robot",
         "R": "reset",
         "P": "save",
         "I": "capture_both",

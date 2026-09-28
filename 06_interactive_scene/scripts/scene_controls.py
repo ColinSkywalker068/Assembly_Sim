@@ -21,8 +21,37 @@ class CommandResult:
     message: str
 
 
+@dataclass(frozen=True)
+class RobotPrimPaths:
+    root: str
+    flange: str
+    gripper_container: str
+    gripper_root: str
+    gripper_base: str
+    mount_joint: str
+
+    def __iter__(self):
+        return iter(
+            (
+                self.root,
+                self.flange,
+                self.gripper_container,
+                self.gripper_root,
+                self.gripper_base,
+                self.mount_joint,
+            )
+        )
+
+
+@dataclass(frozen=True)
+class RobotResetTargets:
+    arm: tuple[float, ...]
+    gripper: tuple[float, ...]
+
+
 @dataclass
 class RobotHandle:
+    name: str
     robot: Any
     root_path: str
     flange_path: str
@@ -43,6 +72,42 @@ class RobotHandle:
             )
         self.arm_dof_indices = tuple(names.index(name) for name in self.arm_dof_names)
         self.gripper_dof_indices = tuple(names.index(name) for name in self.gripper_dof_names)
+
+
+def robot_prim_paths(config: SceneConfig, name: str) -> RobotPrimPaths:
+    settings = config.robot_spec(name)
+    root = str(settings["prim_path"])
+    gripper_root = str(settings["gripper_path"])
+    gripper_container = gripper_root.rsplit("/", 1)[0]
+    flange = f"{root}/flange"
+    return RobotPrimPaths(
+        root=root,
+        flange=flange,
+        gripper_container=gripper_container,
+        gripper_root=gripper_root,
+        gripper_base=f"{gripper_root}/base_link",
+        mount_joint=f"{flange}/GripperMountJoint",
+    )
+
+
+def robot_reset_targets(
+    config: SceneConfig, mimic: Mapping[str, float]
+) -> Mapping[str, RobotResetTargets]:
+    result = {}
+    for name in config.robot_names:
+        settings = config.robot_spec(name)
+        gripper = gripper_dof_targets(
+            settings["gripper_dof_names"],
+            1.0,
+            settings["gripper_open_radians"],
+            settings["gripper_closed_radians"],
+            mimic,
+        )
+        result[name] = RobotResetTargets(
+            arm=tuple(float(value) for value in settings["home_joint_positions"]),
+            gripper=tuple(float(gripper[dof]) for dof in settings["gripper_dof_names"]),
+        )
+    return result
 
 
 def clamped_joint_target(
@@ -130,7 +195,10 @@ class ArmController:
         return CommandResult(True, was_clamped, f"jogged {self.robot.arm_dof_names[joint_index]}{suffix}")
 
     def home(self) -> CommandResult:
-        targets = tuple(float(value) for value in self.config.data["robot"]["home_joint_positions"])
+        targets = tuple(
+            float(value)
+            for value in self.config.robot_spec(self.robot.name)["home_joint_positions"]
+        )
         if len(targets) != len(self.robot.arm_dof_names):
             return CommandResult(False, False, "home target count does not match arm DOFs")
         bounded = [min(max(value, low), high) for value, low, high in zip(targets, self.lower, self.upper)]
@@ -146,7 +214,7 @@ class GripperController:
         self.mimic = _mimic_2f85()
 
     def command(self, open_fraction: float) -> CommandResult:
-        settings = self.config.data["robot"]
+        settings = self.config.robot_spec(self.robot.name)
         try:
             targets = gripper_dof_targets(
                 self.robot.gripper_dof_names,
@@ -166,12 +234,47 @@ class GripperController:
 
 
 class SceneController:
-    def __init__(self, handles: Any):
-        if handles.robot is None:
-            raise ValueError("scene has no robot handle")
+    def __init__(self, handles: Any, arm_factory=ArmController, gripper_factory=GripperController):
+        if not handles.robots:
+            raise ValueError("scene has no robot handles")
         self.handles = handles
-        self.arm = ArmController(handles.robot, handles.config)
-        self.gripper = GripperController(handles.robot, handles.config)
+        self.arms = {
+            name: arm_factory(handles.robots[name], handles.config)
+            for name in handles.config.robot_names
+        }
+        self.grippers = {
+            name: gripper_factory(handles.robots[name], handles.config)
+            for name in handles.config.robot_names
+        }
+        self.active_robot_name = handles.config.robot_names[0]
+
+    @property
+    def arm(self):
+        return self.arms[self.active_robot_name]
+
+    @property
+    def gripper(self):
+        return self.grippers[self.active_robot_name]
+
+    def select_robot(self, name: str) -> str:
+        if name not in self.handles.config.robot_names:
+            raise KeyError(f"unknown robot: {name}")
+        self.active_robot_name = name
+        return name
+
+    def toggle_robot(self) -> str:
+        names = self.handles.config.robot_names
+        index = (names.index(self.active_robot_name) + 1) % len(names)
+        return self.select_robot(names[index])
+
+    def jog(self, joint_index: int, delta_rad: float):
+        return self.arm.jog(joint_index, delta_rad)
+
+    def home(self):
+        return self.arm.home()
+
+    def command_gripper(self, open_fraction: float):
+        return self.gripper.command(open_fraction)
 
     def reset(self) -> None:
         import numpy as np
@@ -179,37 +282,27 @@ class SceneController:
         from pxr import PhysicsSchemaTools, UsdUtils
         from isaacsim.core.prims import RigidPrim
 
-        arm_targets = np.asarray(
-            self.handles.config.data["robot"]["home_joint_positions"], dtype=float
-        )
-        gripper_settings = self.handles.config.data["robot"]
-        gripper_targets_by_name = gripper_dof_targets(
-            self.handles.robot.gripper_dof_names,
-            1.0,
-            gripper_settings["gripper_open_radians"],
-            gripper_settings["gripper_closed_radians"],
-            self.gripper.mimic,
-        )
-        gripper_targets = np.asarray(
-            [gripper_targets_by_name[name] for name in self.handles.robot.gripper_dof_names],
-            dtype=float,
-        )
-        self.handles.robot.robot.set_joint_positions(
-            arm_targets, joint_indices=np.asarray(self.handles.robot.arm_dof_indices, dtype=int)
-        )
-        self.handles.robot.robot.set_joint_positions(
-            gripper_targets,
-            joint_indices=np.asarray(self.handles.robot.gripper_dof_indices, dtype=int),
-        )
-        all_indices = np.asarray(
-            self.handles.robot.arm_dof_indices + self.handles.robot.gripper_dof_indices,
-            dtype=int,
-        )
-        self.handles.robot.robot.set_joint_velocities(
-            np.zeros(len(all_indices), dtype=float), joint_indices=all_indices
-        )
-        self.arm.home()
-        self.gripper.command(1.0)
+        mimic = next(iter(self.grippers.values())).mimic
+        targets = robot_reset_targets(self.handles.config, mimic)
+        for name in self.handles.config.robot_names:
+            handle = self.handles.robots[name]
+            target = targets[name]
+            handle.robot.set_joint_positions(
+                np.asarray(target.arm, dtype=float),
+                joint_indices=np.asarray(handle.arm_dof_indices, dtype=int),
+            )
+            handle.robot.set_joint_positions(
+                np.asarray(target.gripper, dtype=float),
+                joint_indices=np.asarray(handle.gripper_dof_indices, dtype=int),
+            )
+            all_indices = np.asarray(
+                handle.arm_dof_indices + handle.gripper_dof_indices, dtype=int
+            )
+            handle.robot.set_joint_velocities(
+                np.zeros(len(all_indices), dtype=float), joint_indices=all_indices
+            )
+            self.arms[name].home()
+            self.grippers[name].command(1.0)
         poses = self.handles.config.data["fragments"]["initial_poses"]
         fragment_paths = [fragment.root_path for fragment in self.handles.fragments]
         rigid_fragments = RigidPrim(fragment_paths, reset_xform_properties=False)
@@ -231,7 +324,7 @@ class SceneController:
             simulation.put_to_sleep(stage_id, PhysicsSchemaTools.sdfPathToInt(path))
 
 
-def compose_robot(stage: Any, world: Any, config: SceneConfig) -> RobotHandle:
+def compose_robot(stage: Any, world: Any, config: SceneConfig, name: str) -> RobotHandle:
     """Reference and join the arm and gripper into one articulation."""
     import numpy as np
     from pxr import Gf, PhysxSchema, Sdf, Usd, UsdPhysics
@@ -239,14 +332,15 @@ def compose_robot(stage: Any, world: Any, config: SceneConfig) -> RobotHandle:
     from isaacsim.core.prims import XFormPrim
     from isaacsim.core.utils.stage import add_reference_to_stage
 
-    settings = config.data["robot"]
-    root_path = str(settings["prim_path"])
-    flange_path = f"{root_path}/flange"
+    settings = config.robot_spec(name)
+    paths = robot_prim_paths(config, name)
+    root_path = paths.root
+    flange_path = paths.flange
     # Rigid bodies may not be nested beneath the rigid flange prim.  Keep the
     # gripper as a sibling in the USD namespace and connect it physically with
     # the fixed joint below.
-    gripper_container_path = "/World/Gripper"
-    gripper_path = f"{gripper_container_path}/Robotiq_2F_85"
+    gripper_container_path = paths.gripper_container
+    gripper_path = paths.gripper_root
     add_reference_to_stage(str(config.resolve_repo_path("arm_usd")), root_path)
     XFormPrim(root_path).set_world_poses(
         positions=np.asarray([settings["base_position"]], dtype=float),
@@ -257,7 +351,7 @@ def compose_robot(stage: Any, world: Any, config: SceneConfig) -> RobotHandle:
 
     add_reference_to_stage(str(config.resolve_repo_path("gripper_usd")), gripper_container_path)
     gripper_root = stage.GetPrimAtPath(gripper_path)
-    gripper_base_path = f"{gripper_path}/base_link"
+    gripper_base_path = paths.gripper_base
     if not gripper_root.IsValid() or not stage.GetPrimAtPath(gripper_base_path).IsValid():
         raise RuntimeError(
             f"Robotiq asset is missing expected hierarchy: {gripper_path}, {gripper_base_path}"
@@ -283,7 +377,7 @@ def compose_robot(stage: Any, world: Any, config: SceneConfig) -> RobotHandle:
     if gripper_root.HasAPI(PhysxSchema.PhysxArticulationAPI):
         gripper_root.RemoveAPI(PhysxSchema.PhysxArticulationAPI)
 
-    mount_path = f"{flange_path}/GripperMountJoint"
+    mount_path = paths.mount_joint
     mount = UsdPhysics.FixedJoint.Define(stage, mount_path)
     mount.CreateBody0Rel().SetTargets([Sdf.Path(flange_path)])
     mount.CreateBody1Rel().SetTargets([Sdf.Path(gripper_base_path)])
@@ -292,8 +386,9 @@ def compose_robot(stage: Any, world: Any, config: SceneConfig) -> RobotHandle:
     mount.CreateLocalRot0Attr(Gf.Quatf(1.0, 0.0, 0.0, 0.0))
     mount.CreateLocalRot1Attr(Gf.Quatf(1.0, 0.0, 0.0, 0.0))
 
-    robot = world.scene.add(Robot(prim_path=root_path, name="fanuc_robotiq"))
+    robot = world.scene.add(Robot(prim_path=root_path, name=f"fanuc_robotiq_{name}"))
     return RobotHandle(
+        name=name,
         robot=robot,
         root_path=root_path,
         flange_path=flange_path,

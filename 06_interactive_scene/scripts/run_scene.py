@@ -30,6 +30,7 @@ ACTION_KEYS = {
     "H",
     "O",
     "K",
+    "TAB",
     "R",
     "P",
     "I",
@@ -58,6 +59,7 @@ def key_action(event: Any) -> Optional[ControlAction]:
         "H": "home",
         "O": "gripper_open",
         "K": "gripper_close",
+        "TAB": "toggle_robot",
         "R": "reset",
         "P": "save",
         "I": "capture_both",
@@ -100,29 +102,35 @@ class SceneActionDispatcher:
 
         self.handles = handles
         self.controller = SceneController(handles)
-        self.selected_joint = 0
+        self.selected_joints = {name: 0 for name in handles.config.robot_names}
 
     def __call__(self, action: ControlAction) -> None:
         from scene_cameras import capture_rgb, save_portable_stage, validated_scene_output
 
         config = self.handles.config
+        active = self.controller.active_robot_name
         if action.kind == "select_joint":
-            self.selected_joint = int(action.joint_index)
-            print(f"Selected arm joint {self.selected_joint + 1}", flush=True)
+            self.selected_joints[active] = int(action.joint_index)
+            print(f"Selected {active} arm joint {self.selected_joints[active] + 1}", flush=True)
+            return
+        if action.kind == "toggle_robot":
+            active = self.controller.toggle_robot()
+            print(f"Active robot: {active}", flush=True)
             return
         if action.kind == "jog":
-            result = self.controller.arm.jog(
-                self.selected_joint,
-                action.direction * float(config.data["robot"]["joint_jog_radians"]),
+            result = self.controller.jog(
+                self.selected_joints[active],
+                action.direction
+                * float(config.robot_spec(active)["joint_jog_radians"]),
             )
-            print(result.message, flush=True)
+            print(f"{active}: {result.message}", flush=True)
             return
         if action.kind == "home":
-            print(self.controller.arm.home().message, flush=True)
+            print(f"{active}: {self.controller.home().message}", flush=True)
         elif action.kind == "gripper_open":
-            print(self.controller.gripper.command(1.0).message, flush=True)
+            print(f"{active}: {self.controller.command_gripper(1.0).message}", flush=True)
         elif action.kind == "gripper_close":
-            print(self.controller.gripper.command(0.0).message, flush=True)
+            print(f"{active}: {self.controller.command_gripper(0.0).message}", flush=True)
         elif action.kind == "reset":
             self.controller.reset()
             print("Scene reset", flush=True)

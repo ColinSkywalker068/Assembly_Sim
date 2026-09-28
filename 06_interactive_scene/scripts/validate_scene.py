@@ -28,34 +28,61 @@ def validate_robot_motion(handles) -> dict:
     from pxr import UsdGeom
     from isaacsim.core.prims import RigidPrim
 
-    robot = handles.robot
-    if robot is None:
-        return {"ok": False, "error": "scene has no robot"}
+    if not handles.robots:
+        return {"ok": False, "error": "scene has no robots"}
     controller = SceneController(handles)
     controller.reset()
     _step(handles.world, 30)
-    before = np.asarray(robot.robot.get_joint_positions(), dtype=float)
-    arm_before = before[list(robot.arm_dof_indices)]
-    jog = controller.arm.jog(0, float(handles.config.data["robot"]["joint_jog_radians"]))
-    _step(handles.world, 60)
-    after = np.asarray(robot.robot.get_joint_positions(), dtype=float)
-    arm_motion = float(abs(after[robot.arm_dof_indices[0]] - arm_before[0]))
+    robot_results = {}
+    for name in handles.config.robot_names:
+        controller.select_robot(name)
+        robot = handles.robots[name]
+        other_name = next(value for value in handles.config.robot_names if value != name)
+        other = handles.robots[other_name]
+        before = np.asarray(robot.robot.get_joint_positions(), dtype=float)
+        other_before = np.asarray(other.robot.get_joint_positions(), dtype=float)
+        jog = controller.jog(
+            0, float(handles.config.robot_spec(name)["joint_jog_radians"])
+        )
+        _step(handles.world, 60)
+        after = np.asarray(robot.robot.get_joint_positions(), dtype=float)
+        other_after = np.asarray(other.robot.get_joint_positions(), dtype=float)
+        arm_motion = float(abs(after[robot.arm_dof_indices[0]] - before[robot.arm_dof_indices[0]]))
+        other_drift = float(
+            np.max(
+                np.abs(
+                    other_after[list(other.arm_dof_indices)]
+                    - other_before[list(other.arm_dof_indices)]
+                )
+            )
+        )
 
-    finger_path = f"{robot.gripper_path}/left_inner_finger"
-    finger_prim = handles.stage.GetPrimAtPath(finger_path)
-    if not finger_prim.IsValid():
-        return {"ok": False, "error": f"missing gripper finger prim: {finger_path}"}
-    controller.gripper.command(1.0)
-    _step(handles.world, 45)
-    open_position = np.asarray(
-        UsdGeom.XformCache().GetLocalToWorldTransform(finger_prim).ExtractTranslation(), dtype=float
-    )
-    close = controller.gripper.command(0.0)
-    _step(handles.world, 90)
-    closed_position = np.asarray(
-        UsdGeom.XformCache().GetLocalToWorldTransform(finger_prim).ExtractTranslation(), dtype=float
-    )
-    finger_motion = float(np.linalg.norm(closed_position - open_position))
+        finger_path = f"{robot.gripper_path}/left_inner_finger"
+        finger_prim = handles.stage.GetPrimAtPath(finger_path)
+        if not finger_prim.IsValid():
+            return {"ok": False, "error": f"missing gripper finger prim: {finger_path}"}
+        controller.command_gripper(1.0)
+        _step(handles.world, 45)
+        open_position = np.asarray(
+            UsdGeom.XformCache().GetLocalToWorldTransform(finger_prim).ExtractTranslation(),
+            dtype=float,
+        )
+        close = controller.command_gripper(0.0)
+        _step(handles.world, 90)
+        closed_position = np.asarray(
+            UsdGeom.XformCache().GetLocalToWorldTransform(finger_prim).ExtractTranslation(),
+            dtype=float,
+        )
+        finger_motion = float(np.linalg.norm(closed_position - open_position))
+        robot_results[name] = {
+            "jog_accepted": jog.accepted,
+            "close_accepted": close.accepted,
+            "arm_dof_names": tuple(robot.arm_dof_names),
+            "gripper_dof_names": tuple(robot.gripper_dof_names),
+            "arm_motion_radians": arm_motion,
+            "inactive_arm_drift_radians": other_drift,
+            "finger_motion_meters": finger_motion,
+        }
 
     fragment = handles.fragments[0]
     fragment_body = RigidPrim(fragment.root_path, reset_xform_properties=False)
@@ -63,16 +90,14 @@ def validate_robot_motion(handles) -> dict:
     _step(handles.world, 8)
     controller.reset()
     _step(handles.world, 30)
-    reset_positions = np.asarray(robot.robot.get_joint_positions(), dtype=float)
-    reset_arm = reset_positions[list(robot.arm_dof_indices)]
-    expected_home = np.asarray(handles.config.data["robot"]["home_joint_positions"], dtype=float)
-    reset_error = float(np.max(np.abs(reset_arm - expected_home)))
-    arm_names = tuple(robot.arm_dof_names)
-    gripper_names = tuple(robot.gripper_dof_names)
-    expected_arm = tuple(str(name) for name in handles.config.data["robot"]["arm_dof_names"])
-    expected_gripper = tuple(
-        str(name) for name in handles.config.data["robot"]["gripper_dof_names"]
-    )
+    reset_errors = {}
+    for name, robot in handles.robots.items():
+        reset_positions = np.asarray(robot.robot.get_joint_positions(), dtype=float)
+        reset_arm = reset_positions[list(robot.arm_dof_indices)]
+        expected_home = np.asarray(
+            handles.config.robot_spec(name)["home_joint_positions"], dtype=float
+        )
+        reset_errors[name] = float(np.max(np.abs(reset_arm - expected_home)))
     fragment_position, fragment_orientation = fragment_body.get_world_poses()
     fragment_velocity = np.asarray(fragment_body.get_velocities(), dtype=float)
     expected_fragment_pose = handles.config.data["fragments"]["initial_poses"][fragment.name]
@@ -93,25 +118,29 @@ def validate_robot_motion(handles) -> dict:
         )
     )
     fragment_speed = float(np.max(np.abs(fragment_velocity)))
+    robots_ok = all(
+        result["jog_accepted"]
+        and result["close_accepted"]
+        and result["arm_dof_names"]
+        == tuple(handles.config.robot_spec(name)["arm_dof_names"])
+        and result["gripper_dof_names"]
+        == tuple(handles.config.robot_spec(name)["gripper_dof_names"])
+        and result["arm_motion_radians"] > 1e-4
+        and result["inactive_arm_drift_radians"] < 0.01
+        and result["finger_motion_meters"] > 1e-5
+        and reset_errors[name] < 0.03
+        for name, result in robot_results.items()
+    )
     ok = (
-        jog.accepted
-        and close.accepted
-        and arm_names == expected_arm
-        and gripper_names == expected_gripper
-        and arm_motion > 1e-4
-        and finger_motion > 1e-5
-        and reset_error < 0.03
+        robots_ok
         and fragment_position_error < 1e-4
         and fragment_orientation_error < 1e-4
         and fragment_speed < 1e-4
     )
     return {
         "ok": bool(ok),
-        "arm_dof_names": arm_names,
-        "gripper_dof_names": gripper_names,
-        "arm_motion_radians": arm_motion,
-        "finger_motion_meters": finger_motion,
-        "reset_max_error_radians": reset_error,
+        "robots": robot_results,
+        "reset_max_error_radians": reset_errors,
         "fragment_reset_position_error_meters": fragment_position_error,
         "fragment_reset_orientation_error": fragment_orientation_error,
         "fragment_reset_max_speed": fragment_speed,
@@ -170,7 +199,7 @@ def main() -> int:
                     handles.manifest.floor_path,
                     handles.manifest.table_path,
                     handles.manifest.plate_path,
-                    handles.manifest.robot_path,
+                    *handles.manifest.robot_paths,
                     *handles.manifest.fragment_paths,
                     *handles.manifest.camera_paths,
                 )

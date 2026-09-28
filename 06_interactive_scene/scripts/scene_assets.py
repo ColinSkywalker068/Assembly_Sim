@@ -22,9 +22,9 @@ class StageManifest:
     floor_path: str
     table_path: str
     plate_path: str
-    robot_path: str
+    robot_paths: tuple[str, str]
     fragment_paths: tuple[str, ...]
-    camera_paths: tuple[str, str]
+    camera_paths: tuple[str, str, str]
 
 
 @dataclass(frozen=True)
@@ -41,9 +41,14 @@ def expected_stage_manifest(config: SceneConfig) -> StageManifest:
         floor_path="/World/Environment/Floor",
         table_path="/World/Environment/Table",
         plate_path="/World/Environment/Plate",
-        robot_path=str(config.data["robot"]["prim_path"]),
+        robot_paths=tuple(
+            str(config.robot_spec(name)["prim_path"]) for name in config.robot_names
+        ),
         fragment_paths=tuple(f"/World/Fragments/{name}" for name in config.fragment_names),
-        camera_paths=(str(cameras["agent"]["prim_path"]), str(cameras["wrist"]["prim_path"])),
+        camera_paths=tuple(
+            str(cameras[name]["prim_path"])
+            for name in ("agent", "left_wrist", "right_wrist")
+        ),
     )
 
 

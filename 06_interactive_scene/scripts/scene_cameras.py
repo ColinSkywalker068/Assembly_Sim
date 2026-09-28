@@ -26,7 +26,8 @@ class CameraSpec:
 @dataclass(frozen=True)
 class CameraHandles:
     agent_path: str
-    wrist_path: str
+    left_wrist_path: str
+    right_wrist_path: str
 
 
 @dataclass(frozen=True)
@@ -128,16 +129,19 @@ def _look_at_quaternion(eye, look_vector, up=(0.0, 0.0, 1.0)):
     return quat
 
 
-def author_cameras(stage: Any, config: SceneConfig, robot: Any) -> CameraHandles:
+def author_cameras(stage: Any, config: SceneConfig, robots: Mapping[str, Any]) -> CameraHandles:
     from pxr import Gf, UsdGeom
 
     specs = camera_specs(config)
     UsdGeom.Xform.Define(stage, "/World/Cameras")
     for spec in specs.values():
-        if spec.name == "wrist" and spec.parent != robot.flange_path:
-            raise ValueError(
-                f"wrist camera parent {spec.parent} does not match robot flange {robot.flange_path}"
-            )
+        if spec.name.endswith("_wrist"):
+            robot_name = spec.name.removesuffix("_wrist")
+            if spec.parent != robots[robot_name].flange_path:
+                raise ValueError(
+                    f"{spec.name} camera parent {spec.parent} does not match "
+                    f"{robot_name} robot flange {robots[robot_name].flange_path}"
+                )
         if not stage.GetPrimAtPath(spec.parent).IsValid():
             raise RuntimeError(f"camera parent prim does not exist: {spec.parent}")
         camera = UsdGeom.Camera.Define(stage, spec.prim_path)
@@ -148,7 +152,11 @@ def author_cameras(stage: Any, config: SceneConfig, robot: Any) -> CameraHandles
         xform.AddTranslateOp().Set(Gf.Vec3d(*spec.position))
         quaternion = _look_at_quaternion(spec.position, spec.look_vector)
         xform.AddOrientOp().Set(Gf.Quatf(quaternion[0], *quaternion[1:]))
-    return CameraHandles(specs["agent"].prim_path, specs["wrist"].prim_path)
+    return CameraHandles(
+        specs["agent"].prim_path,
+        specs["left_wrist"].prim_path,
+        specs["right_wrist"].prim_path,
+    )
 
 
 def capture_rgb(

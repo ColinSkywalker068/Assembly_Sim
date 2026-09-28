@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Mapping
 
 from scene_assets import FragmentHandle, StageManifest, author_environment, author_fragment, expected_stage_manifest
 from scene_config import SceneConfig
@@ -19,7 +19,7 @@ class SceneHandles:
     stage: Any
     manifest: StageManifest
     fragments: tuple[FragmentHandle, ...]
-    robot: RobotHandle | None = None
+    robots: Mapping[str, RobotHandle] | None = None
     cameras: CameraHandles | None = None
 
 
@@ -72,12 +72,22 @@ def build_stage(config: SceneConfig, headless: bool = True) -> SceneHandles:
     UsdGeom.Xform.Define(stage, "/World/Fragments")
     author_environment(stage, config)
     fragments = tuple(author_fragment(stage, config, name) for name in config.fragment_names)
-    robot = compose_robot(stage, world, config)
-    cameras = author_cameras(stage, config, robot)
+    robots = {
+        name: compose_robot(stage, world, config, name) for name in config.robot_names
+    }
+    cameras = author_cameras(stage, config, robots)
     world.reset()
-    robot.initialize_dofs()
+    for robot in robots.values():
+        robot.initialize_dofs()
     handles = SceneHandles(
-        config, app, world, stage, expected_stage_manifest(config), fragments, robot, cameras
+        config=config,
+        app=app,
+        world=world,
+        stage=stage,
+        manifest=expected_stage_manifest(config),
+        fragments=fragments,
+        robots=robots,
+        cameras=cameras,
     )
     SceneController(handles).reset()
     for _ in range(4):
@@ -90,7 +100,7 @@ def validate_manifest(handles: SceneHandles) -> ValidationReport:
         handles.manifest.floor_path,
         handles.manifest.table_path,
         handles.manifest.plate_path,
-        handles.manifest.robot_path,
+        *handles.manifest.robot_paths,
         *handles.manifest.fragment_paths,
         *handles.manifest.camera_paths,
     )
