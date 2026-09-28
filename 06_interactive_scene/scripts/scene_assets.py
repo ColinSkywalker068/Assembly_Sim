@@ -1,0 +1,226 @@
+"""USD asset authoring for the interactive assembly scene.
+
+Isaac Sim imports stay inside authoring functions so pure contract tests can
+run in an ordinary Python environment.
+"""
+
+from __future__ import annotations
+
+import json
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+import numpy as np
+
+from scene_config import SceneConfig
+from scene_geometry import VoxelBox, merge_voxel_cells
+
+
+@dataclass(frozen=True)
+class StageManifest:
+    floor_path: str
+    table_path: str
+    plate_path: str
+    robot_path: str
+    fragment_paths: tuple[str, ...]
+    camera_paths: tuple[str, str]
+
+
+@dataclass(frozen=True)
+class FragmentHandle:
+    name: str
+    root_path: str
+    visual_path: str
+    collider_paths: tuple[str, ...]
+
+
+def expected_stage_manifest(config: SceneConfig) -> StageManifest:
+    cameras = config.data["cameras"]
+    return StageManifest(
+        floor_path="/World/Environment/Floor",
+        table_path="/World/Environment/Table",
+        plate_path="/World/Environment/Plate",
+        robot_path=str(config.data["robot"]["prim_path"]),
+        fragment_paths=tuple(f"/World/Fragments/{name}" for name in config.fragment_names),
+        camera_paths=(str(cameras["agent"]["prim_path"]), str(cameras["wrist"]["prim_path"])),
+    )
+
+
+def _set_transform(xformable: Any, position, orientation_wxyz=(1.0, 0.0, 0.0, 0.0), scale=None):
+    from pxr import Gf, UsdGeom
+
+    xformable.ClearXformOpOrder()
+    xformable.AddTranslateOp().Set(Gf.Vec3d(*[float(value) for value in position]))
+    xformable.AddOrientOp().Set(Gf.Quatf(float(orientation_wxyz[0]), *[float(v) for v in orientation_wxyz[1:]]))
+    if scale is not None:
+        xformable.AddScaleOp().Set(Gf.Vec3d(*[float(value) for value in scale]))
+
+
+def _visual_material(stage, path: str, color):
+    from pxr import Gf, Sdf, UsdShade
+
+    material = UsdShade.Material.Define(stage, path)
+    shader = UsdShade.Shader.Define(stage, f"{path}/Shader")
+    shader.CreateIdAttr("UsdPreviewSurface")
+    shader.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(*color))
+    shader.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(0.48)
+    material.CreateSurfaceOutput().ConnectToSource(shader.ConnectableAPI(), "surface")
+    return material
+
+
+def _physics_material(stage, path: str, config: SceneConfig):
+    from pxr import UsdPhysics, UsdShade
+
+    material = UsdShade.Material.Define(stage, path)
+    api = UsdPhysics.MaterialAPI.Apply(material.GetPrim())
+    physics = config.data["physics"]
+    api.CreateStaticFrictionAttr(float(physics["static_friction"]))
+    api.CreateDynamicFrictionAttr(float(physics["dynamic_friction"]))
+    api.CreateRestitutionAttr(float(physics["restitution"]))
+    return material
+
+
+def _bind_visual(prim, material) -> None:
+    from pxr import UsdShade
+
+    UsdShade.MaterialBindingAPI.Apply(prim).Bind(material)
+
+
+def _bind_physics(prim, material) -> None:
+    from pxr import UsdShade
+
+    UsdShade.MaterialBindingAPI.Apply(prim).Bind(
+        material, UsdShade.Tokens.weakerThanDescendants, "physics"
+    )
+
+
+def _author_static_box(stage, path: str, position, size, color, visual_material, physics_material):
+    from pxr import UsdGeom, UsdPhysics
+
+    cube = UsdGeom.Cube.Define(stage, path)
+    cube.CreateSizeAttr(1.0)
+    _set_transform(cube, position, scale=size)
+    _bind_visual(cube.GetPrim(), visual_material)
+    collision = UsdPhysics.CollisionAPI.Apply(cube.GetPrim())
+    collision.CreateCollisionEnabledAttr(True)
+    _bind_physics(cube.GetPrim(), physics_material)
+    return cube
+
+
+def author_environment(stage, config: SceneConfig) -> None:
+    from pxr import UsdGeom, UsdPhysics, Vt
+
+    manifest = expected_stage_manifest(config)
+    UsdGeom.Xform.Define(stage, "/World/Environment")
+    UsdGeom.Xform.Define(stage, "/World/Looks")
+    support_visual = _visual_material(stage, "/World/Looks/Support", (0.72, 0.72, 0.76))
+    plate_visual = _visual_material(stage, "/World/Looks/Plate", (0.78, 0.79, 0.82))
+    physics_material = _physics_material(stage, "/World/Looks/ContactMaterial", config)
+    environment = config.data["environment"]
+    _author_static_box(
+        stage,
+        manifest.floor_path,
+        environment["floor_position"],
+        environment["floor_size"],
+        (0.72, 0.72, 0.76),
+        support_visual,
+        physics_material,
+    )
+    _author_static_box(
+        stage,
+        manifest.table_path,
+        environment["table_position"],
+        environment["table_size"],
+        (0.88, 0.87, 0.90),
+        support_visual,
+        physics_material,
+    )
+
+    plate_data = np.load(config.resolve_repo_path("bricks_dir") / "plate.npz")
+    if not {"v", "f"}.issubset(plate_data.files) or not len(plate_data["v"]) or not len(plate_data["f"]):
+        raise ValueError("malformed or empty plate mesh")
+    plate_root = UsdGeom.Xform.Define(stage, manifest.plate_path)
+    _set_transform(plate_root, environment["plate_position"])
+    mesh = UsdGeom.Mesh.Define(stage, f"{manifest.plate_path}/Visual")
+    vertices = plate_data["v"].astype(np.float32)
+    faces = plate_data["f"].astype(np.int32)
+    mesh.CreatePointsAttr(Vt.Vec3fArray.FromNumpy(vertices))
+    mesh.CreateFaceVertexCountsAttr(Vt.IntArray.FromNumpy(np.full(len(faces), 3, dtype=np.int32)))
+    mesh.CreateFaceVertexIndicesAttr(Vt.IntArray.FromNumpy(faces.reshape(-1)))
+    mesh.CreateSubdivisionSchemeAttr("none")
+    _bind_visual(mesh.GetPrim(), plate_visual)
+    layout = json.loads(config.resolve_repo_path("layout_json").read_text(encoding="utf-8"))
+    plate_size = layout["plate"]["size"]
+    collider = UsdGeom.Cube.Define(stage, f"{manifest.plate_path}/Collider")
+    collider.CreateSizeAttr(1.0)
+    _set_transform(collider, (0.0, 0.0, -float(plate_size[2]) / 2), scale=plate_size)
+    collider.GetVisibilityAttr().Set(UsdGeom.Tokens.invisible)
+    UsdPhysics.CollisionAPI.Apply(collider.GetPrim()).CreateCollisionEnabledAttr(True)
+    _bind_physics(collider.GetPrim(), physics_material)
+
+
+def _collider_local_geometry(box: VoxelBox, pitch: float, fp_cell) -> tuple[tuple[float, ...], tuple[float, ...]]:
+    local_min = (
+        (box.min_cell[0] - float(fp_cell[0])) * pitch,
+        (box.min_cell[1] - float(fp_cell[1])) * pitch,
+        box.min_cell[2] * pitch,
+    )
+    size = tuple(float(cells) * pitch for cells in box.size_cells)
+    center = tuple(low + length / 2 for low, length in zip(local_min, size))
+    return center, size
+
+
+def author_fragment(stage, config: SceneConfig, name: str) -> FragmentHandle:
+    from pxr import PhysxSchema, UsdGeom, UsdPhysics, UsdShade, Vt
+
+    if name not in config.fragment_names:
+        raise ValueError(f"unknown fragment: {name}")
+    layout = json.loads(config.resolve_repo_path("layout_json").read_text(encoding="utf-8"))
+    pieces = {piece["name"]: piece for piece in layout["pieces"]}
+    piece = pieces[name]
+    mesh_path = config.resolve_repo_path("bricks_dir") / f"{name}.npz"
+    mesh_data = np.load(mesh_path)
+    if not {"v", "f"}.issubset(mesh_data.files) or not len(mesh_data["v"]) or not len(mesh_data["f"]):
+        raise ValueError(f"malformed or empty fragment mesh: {name} ({mesh_path})")
+    root_path = f"/World/Fragments/{name}"
+    root = UsdGeom.Xform.Define(stage, root_path)
+    pose = config.data["fragments"]["initial_poses"].get(name)
+    if not pose:
+        raise ValueError(f"fragment has no frozen initial pose: {name}")
+    _set_transform(root, pose["position"], pose["orientation_wxyz"])
+
+    visual_path = f"{root_path}/Visual"
+    visual = UsdGeom.Mesh.Define(stage, visual_path)
+    vertices = mesh_data["v"].astype(np.float32)
+    faces = mesh_data["f"].astype(np.int32)
+    visual.CreatePointsAttr(Vt.Vec3fArray.FromNumpy(vertices))
+    visual.CreateFaceVertexCountsAttr(Vt.IntArray.FromNumpy(np.full(len(faces), 3, dtype=np.int32)))
+    visual.CreateFaceVertexIndicesAttr(Vt.IntArray.FromNumpy(faces.reshape(-1)))
+    visual.CreateSubdivisionSchemeAttr("none")
+    material = _visual_material(stage, f"/World/Looks/{name}", tuple(piece["color"]))
+    _bind_visual(visual.GetPrim(), material)
+
+    physics_material = stage.GetPrimAtPath("/World/Looks/ContactMaterial")
+    physics_material = UsdShade.Material(physics_material)
+    collider_paths = []
+    pitch = float(layout["pitch"])
+    for index, box in enumerate(merge_voxel_cells(piece["cells"])):
+        collider_path = f"{root_path}/Colliders/Box_{index:03d}"
+        collider = UsdGeom.Cube.Define(stage, collider_path)
+        collider.CreateSizeAttr(1.0)
+        center, size = _collider_local_geometry(box, pitch, piece["fp_cell"])
+        _set_transform(collider, center, scale=size)
+        collider.GetVisibilityAttr().Set(UsdGeom.Tokens.invisible)
+        UsdPhysics.CollisionAPI.Apply(collider.GetPrim()).CreateCollisionEnabledAttr(True)
+        _bind_physics(collider.GetPrim(), physics_material)
+        collider_paths.append(collider_path)
+
+    rigid_body = UsdPhysics.RigidBodyAPI.Apply(root.GetPrim())
+    rigid_body.CreateRigidBodyEnabledAttr(True)
+    mass = UsdPhysics.MassAPI.Apply(root.GetPrim())
+    mass.CreateDensityAttr(float(config.data["physics"]["fragment_density"]))
+    physx_body = PhysxSchema.PhysxRigidBodyAPI.Apply(root.GetPrim())
+    physx_body.CreateLinearDampingAttr(float(config.data["physics"]["linear_damping"]))
+    physx_body.CreateAngularDampingAttr(float(config.data["physics"]["angular_damping"]))
+    return FragmentHandle(name, root_path, visual_path, tuple(collider_paths))
