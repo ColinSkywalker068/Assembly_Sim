@@ -1,5 +1,6 @@
 import inspect
 import sys
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -80,8 +81,28 @@ def test_each_wrist_parent_matches_named_flange(config):
         validate_wrist_parents(specs, robots)
 
 
+def test_wrist_prim_path_must_be_nested_under_declared_parent(config):
+    specs = dict(camera_specs(config))
+    specs["left_wrist"] = replace(
+        specs["left_wrist"],
+        prim_path="/World/Robots/Right/flange/IncorrectLeftCamera",
+    )
+    robots = {
+        name: type("Robot", (), {"flange_path": f"/World/Robots/{name.title()}/flange"})()
+        for name in config.robot_names
+    }
+
+    with pytest.raises(ValueError, match="prim path"):
+        validate_wrist_parents(specs, robots)
+
+
 def test_wrist_cameras_clear_the_gripper_mount(config):
     for name in ("left_wrist", "right_wrist"):
         position = camera_specs(config)[name].position
         assert position[2] >= 0.16
         assert abs(position[1]) >= 0.12
+
+
+def test_wrist_camera_optical_rays_reach_forward_workspace(config):
+    for name in ("left_wrist", "right_wrist"):
+        assert camera_specs(config)[name].look_vector[0] >= 0.35

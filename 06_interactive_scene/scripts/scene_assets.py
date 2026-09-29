@@ -37,18 +37,24 @@ class FragmentHandle:
 
 def expected_stage_manifest(config: SceneConfig) -> StageManifest:
     cameras = config.data["cameras"]
+    robot_paths = tuple(
+        str(config.robot_spec(name)["prim_path"]) for name in config.robot_names
+    )
+    camera_paths = tuple(
+        str(cameras[name]["prim_path"])
+        for name in ("agent", "left_wrist", "right_wrist")
+    )
+    if len(set(robot_paths)) != len(robot_paths):
+        raise ValueError("robot root paths must be unique")
+    if len(set(camera_paths)) != len(camera_paths):
+        raise ValueError("camera paths must be unique")
     return StageManifest(
         floor_path="/World/Environment/Floor",
         table_path="/World/Environment/Table",
         plate_path="/World/Environment/Plate",
-        robot_paths=tuple(
-            str(config.robot_spec(name)["prim_path"]) for name in config.robot_names
-        ),
+        robot_paths=robot_paths,
         fragment_paths=tuple(f"/World/Fragments/{name}" for name in config.fragment_names),
-        camera_paths=tuple(
-            str(cameras[name]["prim_path"])
-            for name in ("agent", "left_wrist", "right_wrist")
-        ),
+        camera_paths=camera_paths,
     )
 
 

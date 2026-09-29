@@ -85,9 +85,16 @@ def validate_wrist_parents(
 ) -> None:
     for robot_name in ("left", "right"):
         camera_name = f"{robot_name}_wrist"
-        if specs[camera_name].parent != robots[robot_name].flange_path:
+        spec = specs[camera_name]
+        prim_parent = spec.prim_path.rsplit("/", 1)[0]
+        if prim_parent != spec.parent:
             raise ValueError(
-                f"{camera_name} camera parent {specs[camera_name].parent} does not match "
+                f"{camera_name} camera prim path {spec.prim_path} is not nested under "
+                f"declared parent {spec.parent}"
+            )
+        if spec.parent != robots[robot_name].flange_path:
+            raise ValueError(
+                f"{camera_name} camera parent {spec.parent} does not match "
                 f"{robot_name} robot flange {robots[robot_name].flange_path}"
             )
 
@@ -294,6 +301,7 @@ def save_portable_stage(stage: Any, output: Path) -> None:
     text = re.sub(r"@([^@\r\n]+)@", relative_asset, text)
     if str(repo_root).lower() in text.lower() or "D:/i45" in text or "D:\\i45" in text:
         raise ValueError("portable stage still contains a machine-specific absolute path")
+    text = text.rstrip() + "\n"
     temporary.write_text(text, encoding="utf-8", newline="\n")
     reopened = Usd.Stage.Open(str(temporary))
     if reopened is None or not reopened.GetPrimAtPath("/World").IsValid():

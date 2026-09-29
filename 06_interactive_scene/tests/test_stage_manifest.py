@@ -1,6 +1,8 @@
 import sys
 from pathlib import Path
 
+import pytest
+
 
 SCENE_ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = SCENE_ROOT / "scripts"
@@ -32,3 +34,19 @@ def test_manifest_requires_two_robot_roots_and_three_cameras():
         "/World/Robots/Left/flange/WristCamera",
         "/World/Robots/Right/flange/WristCamera",
     )
+
+
+def test_manifest_rejects_duplicate_robot_roots():
+    config = SceneConfig.load(SCENE_ROOT / "config" / "scene.json")
+    config.data["robots"]["right"]["prim_path"] = config.data["robots"]["left"]["prim_path"]
+
+    with pytest.raises(ValueError, match="robot root paths must be unique"):
+        expected_stage_manifest(config)
+
+
+def test_manifest_rejects_duplicate_camera_paths():
+    config = SceneConfig.load(SCENE_ROOT / "config" / "scene.json")
+    config.data["cameras"]["right_wrist"]["prim_path"] = config.data["cameras"]["left_wrist"]["prim_path"]
+
+    with pytest.raises(ValueError, match="camera paths must be unique"):
+        expected_stage_manifest(config)

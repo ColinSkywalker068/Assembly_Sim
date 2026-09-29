@@ -16,6 +16,7 @@ over "Render" (
 )
 {
 }
+
 def PhysicsScene "physicsScene" (
     prepend apiSchemas = ["PhysxSceneAPI"]
 )
@@ -10681,8 +10682,8 @@ def Xform "World"
                 {
                     float2 clippingRange = (0.01, 10)
                     float focalLength = 18
-                    quatf xformOp:orient = (0.84562474, 0.31187555, -0.14989513, -0.40642825)
-                    double3 xformOp:translate = (0.08, -0.16, 0.18)
+                    quatf xformOp:orient = (0.6784768, 0.46264037, -0.32148427, -0.47146687)
+                    double3 xformOp:translate = (0.12, -0.16, 0.18)
                     uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
                 }
             }
@@ -10825,8 +10826,8 @@ def Xform "World"
                 {
                     float2 clippingRange = (0.01, 10)
                     float focalLength = 18
-                    quatf xformOp:orient = (0.84562474, 0.31187555, -0.14989513, -0.40642825)
-                    double3 xformOp:translate = (0.08, -0.16, 0.18)
+                    quatf xformOp:orient = (0.6784768, 0.46264037, -0.32148427, -0.47146687)
+                    double3 xformOp:translate = (0.12, -0.16, 0.18)
                     uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
                 }
             }
