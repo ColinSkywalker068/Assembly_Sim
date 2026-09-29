@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from numbers import Integral
-from typing import Iterable, Sequence
+from typing import Iterable, Mapping, Sequence
 
 
 Cell = tuple[int, int, int]
@@ -19,6 +19,38 @@ class VoxelBox:
     def cell_count(self) -> int:
         x, y, z = self.size_cells
         return x * y * z
+
+
+@dataclass(frozen=True)
+class PlateGeometry:
+    offset_xy: tuple[float, float]
+    size: tuple[float, float, float]
+
+    @property
+    def local_surface_center(self) -> tuple[float, float, float]:
+        return (
+            self.offset_xy[0] + self.size[0] / 2,
+            self.offset_xy[1] + self.size[1] / 2,
+            0.0,
+        )
+
+    @property
+    def collider_local_center(self) -> tuple[float, float, float]:
+        x, y, _ = self.local_surface_center
+        return (x, y, -self.size[2] / 2)
+
+    def world_surface_center(
+        self, origin: Sequence[float]
+    ) -> tuple[float, float, float]:
+        local = self.local_surface_center
+        return tuple(float(origin[index]) + local[index] for index in range(3))
+
+
+def plate_geometry(spec: Mapping[str, Sequence[float]]) -> PlateGeometry:
+    return PlateGeometry(
+        offset_xy=tuple(float(value) for value in spec["offset"]),
+        size=tuple(float(value) for value in spec["size"]),
+    )
 
 
 def _validated_cells(cells: Sequence[Sequence[int]]) -> set[Cell]:

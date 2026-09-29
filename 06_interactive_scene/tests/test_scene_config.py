@@ -61,6 +61,19 @@ def test_demo_arm_and_fragment_transforms_are_exact():
     )
 
 
+def test_plate_origin_matches_demo_assembly_frame():
+    config = SceneConfig.load(CONFIG_PATH)
+    layout = json.loads(config.resolve_repo_path("layout_json").read_text(encoding="utf-8"))
+    extent_x, extent_y, _ = layout["assembly_extent"]
+    table_position = config.data["environment"]["table_position"]
+    table_size = config.data["environment"]["table_size"]
+    table_top = table_position[2] + table_size[2] / 2
+
+    assert config.data["environment"]["plate_position"] == pytest.approx(
+        [-extent_x / 2, 0.10 - extent_y / 2, table_top]
+    )
+
+
 @pytest.mark.parametrize("robot_names", [("left",), ("left", "right", "spare")])
 def test_rejects_missing_or_extra_robot_names(tmp_path, robot_names):
     source = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))

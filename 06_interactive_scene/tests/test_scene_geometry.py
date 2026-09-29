@@ -9,7 +9,7 @@ SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
 if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
-from scene_geometry import boxes_volume, merge_voxel_cells, occupied_volume
+from scene_geometry import boxes_volume, merge_voxel_cells, occupied_volume, plate_geometry
 
 
 def covered_cells(box):
@@ -68,3 +68,14 @@ def test_merged_boxes_preserve_occupied_volume():
 
     assert boxes_volume(boxes, pitch) == pytest.approx(occupied_volume(cells, pitch))
     assert all(all(length > 0 for length in box.size_cells) for box in boxes)
+
+
+def test_plate_geometry_maps_demo_origin_to_surface_and_collider_centers():
+    geometry = plate_geometry(
+        {"size": [0.512, 0.416, 0.0096], "offset": [-0.032, -0.032]}
+    )
+
+    assert geometry.world_surface_center((-0.224, -0.076, 0.75)) == pytest.approx(
+        (0.0, 0.1, 0.75)
+    )
+    assert geometry.collider_local_center == pytest.approx((0.224, 0.176, -0.0048))

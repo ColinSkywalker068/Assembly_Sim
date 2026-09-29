@@ -14,7 +14,7 @@ from typing import Any
 import numpy as np
 
 from scene_config import SceneConfig
-from scene_geometry import VoxelBox, merge_voxel_cells
+from scene_geometry import VoxelBox, merge_voxel_cells, plate_geometry
 
 
 @dataclass(frozen=True)
@@ -167,10 +167,10 @@ def author_environment(stage, config: SceneConfig) -> None:
     mesh.CreateSubdivisionSchemeAttr("none")
     _bind_visual(mesh.GetPrim(), plate_visual)
     layout = json.loads(config.resolve_repo_path("layout_json").read_text(encoding="utf-8"))
-    plate_size = layout["plate"]["size"]
+    geometry = plate_geometry(layout["plate"])
     collider = UsdGeom.Cube.Define(stage, f"{manifest.plate_path}/Collider")
     collider.CreateSizeAttr(1.0)
-    _set_transform(collider, (0.0, 0.0, -float(plate_size[2]) / 2), scale=plate_size)
+    _set_transform(collider, geometry.collider_local_center, scale=geometry.size)
     collider.GetVisibilityAttr().Set(UsdGeom.Tokens.invisible)
     UsdPhysics.CollisionAPI.Apply(collider.GetPrim()).CreateCollisionEnabledAttr(True)
     _bind_physics(collider.GetPrim(), physics_material)

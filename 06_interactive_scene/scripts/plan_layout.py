@@ -12,6 +12,7 @@ from typing import Mapping, Sequence
 import numpy as np
 
 from scene_config import SceneConfig
+from scene_geometry import plate_geometry
 
 
 @dataclass(frozen=True)
@@ -173,8 +174,11 @@ def scene_exclusions(config: SceneConfig) -> list[AABB2D]:
         for name in config.robot_names
     ]
     layout = _layout(config)
-    plate_position = config.data["environment"]["plate_position"]
-    plate = AABB2D.from_center_extent(plate_position[:2], layout["plate"]["size"][:2])
+    geometry = plate_geometry(layout["plate"])
+    plate_center = geometry.world_surface_center(
+        config.data["environment"]["plate_position"]
+    )
+    plate = AABB2D.from_center_extent(plate_center[:2], geometry.size[:2])
     return [*robots, plate]
 
 
@@ -325,7 +329,9 @@ def check_reachability(config: SceneConfig, poses: Mapping[str, Pose]) -> Reacha
                 **{key: value for key, value in result.__dict__.items() if key != "name"},
             )
 
-        plate = config.data["environment"]["plate_position"]
+        plate = plate_geometry(layout["plate"]).world_surface_center(
+            config.data["environment"]["plate_position"]
+        )
         plate_position = (
             float(plate[0]),
             float(plate[1]),

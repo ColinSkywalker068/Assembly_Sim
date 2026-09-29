@@ -87,6 +87,14 @@ def test_plate_center_is_reachable_by_both_arms():
     assert report.reachable_robots("plate_center") == config.robot_names
 
 
+def test_plate_exclusion_uses_visual_geometry_center():
+    config = SceneConfig.load(CONFIG_PATH)
+
+    plate = scene_exclusions(config)[-1]
+
+    assert plate.center == pytest.approx((0.0, 0.1))
+
+
 def test_reachability_works_from_repository_path_with_spaces(tmp_path):
     original = SceneConfig.load(CONFIG_PATH)
     relocated = tmp_path / "repository with spaces"

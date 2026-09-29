@@ -10477,7 +10477,7 @@ def Xform "World"
         def Xform "Plate"
         {
             quatf xformOp:orient = (1, 0, 0, 0)
-            double3 xformOp:translate = (0.05, 0.15, 0.7548)
+            double3 xformOp:translate = (-0.224, -0.076, 0.75)
             uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
 
             def Mesh "Visual" (
@@ -10503,7 +10503,7 @@ def Xform "World"
                 token visibility = "invisible"
                 quatf xformOp:orient = (1, 0, 0, 0)
                 float3 xformOp:scale = (0.512, 0.416, 0.0096)
-                double3 xformOp:translate = (0, 0, -0.0048)
+                double3 xformOp:translate = (0.224, 0.17600000000000002, -0.0048)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
             }
         }
