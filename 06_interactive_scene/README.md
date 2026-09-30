@@ -1,5 +1,7 @@
 # Interactive Isaac Sim Assembly Scene
 
+**Because this is developed on a Windows 10 computer, a lot of info below might not be suitable on your device. Please make educated adjustments for your situation.**
+
 This directory is a separate, physics-enabled version of the skull-assembly scene. It reproduces the demo arrangement with two FANUC CRX-10iA/L arms, two Robotiq 2F-85 grippers, the eight existing voxelized fragments in their demo lineup, one fixed agent camera, and one wrist camera per arm. The original storyboard under `01_crag_case` through `05_outputs` is not modified.
 
 ## Prerequisites
