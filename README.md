@@ -1,3 +1,6 @@
+***#UPDATE: THE INTERACTION SCENE SOURCE CODE NOW EXISTS IN 06_.../***
+***New README can be found inside 06_.../, and the README below is the legacy one for the demo storyboard***
+
 # FANUC dual-arm skull assembly: data bundle
 
 **中文概要**：这是研究陈述网页里 "Physical assembly" 演示（两台 FANUC CRX-10iA/L 机械臂加 Robotiq 2F-85 夹爪，把 CRAG 的长臂猿颅骨 8 块碎片拼回去）用到的全部数据：CRAG 原始结果、机器人模型、脚本、中间文件和成片。演示是运动学故事板：碎片位姿来自 CRAG，机械臂走逆运动学，没有物理仿真，Isaac Sim 只负责渲染。
