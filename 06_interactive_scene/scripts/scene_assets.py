@@ -6,9 +6,7 @@ run in an ordinary Python environment.
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -21,7 +19,7 @@ from scene_geometry import VoxelBox, merge_voxel_cells, plate_geometry
 class StageManifest:
     floor_path: str
     table_path: str
-    plate_path: str
+    plate_path: str | None
     robot_paths: tuple[str, str]
     fragment_paths: tuple[str, ...]
     camera_paths: tuple[str, str, str]
@@ -51,7 +49,7 @@ def expected_stage_manifest(config: SceneConfig) -> StageManifest:
     return StageManifest(
         floor_path="/World/Environment/Floor",
         table_path="/World/Environment/Table",
-        plate_path="/World/Environment/Plate",
+        plate_path="/World/Environment/Plate" if config.has_support_surface else None,
         robot_paths=robot_paths,
         fragment_paths=tuple(f"/World/Fragments/{name}" for name in config.fragment_names),
         camera_paths=camera_paths,
@@ -126,7 +124,6 @@ def author_environment(stage, config: SceneConfig) -> None:
     UsdGeom.Xform.Define(stage, "/World/Environment")
     UsdGeom.Xform.Define(stage, "/World/Looks")
     support_visual = _visual_material(stage, "/World/Looks/Support", (0.72, 0.72, 0.76))
-    plate_visual = _visual_material(stage, "/World/Looks/Plate", (0.78, 0.79, 0.82))
     physics_material = _physics_material(stage, "/World/Looks/ContactMaterial", config)
     environment = config.data["environment"]
     _author_static_box(
@@ -153,6 +150,9 @@ def author_environment(stage, config: SceneConfig) -> None:
         physics_material,
     )
 
+    if manifest.plate_path is None:
+        return
+    plate_visual = _visual_material(stage, "/World/Looks/Plate", (0.78, 0.79, 0.82))
     plate_data = np.load(config.resolve_repo_path("bricks_dir") / "plate.npz")
     if not {"v", "f"}.issubset(plate_data.files) or not len(plate_data["v"]) or not len(plate_data["f"]):
         raise ValueError("malformed or empty plate mesh")
@@ -166,8 +166,7 @@ def author_environment(stage, config: SceneConfig) -> None:
     mesh.CreateFaceVertexIndicesAttr(Vt.IntArray.FromNumpy(faces.reshape(-1)))
     mesh.CreateSubdivisionSchemeAttr("none")
     _bind_visual(mesh.GetPrim(), plate_visual)
-    layout = json.loads(config.resolve_repo_path("layout_json").read_text(encoding="utf-8"))
-    geometry = plate_geometry(layout["plate"])
+    geometry = plate_geometry(config.assembly.data["plate"])
     collider = UsdGeom.Cube.Define(stage, f"{manifest.plate_path}/Collider")
     collider.CreateSizeAttr(1.0)
     _set_transform(collider, geometry.collider_local_center, scale=geometry.size)
@@ -192,16 +191,14 @@ def author_fragment(stage, config: SceneConfig, name: str) -> FragmentHandle:
 
     if name not in config.fragment_names:
         raise ValueError(f"unknown fragment: {name}")
-    layout = json.loads(config.resolve_repo_path("layout_json").read_text(encoding="utf-8"))
-    pieces = {piece["name"]: piece for piece in layout["pieces"]}
-    piece = pieces[name]
-    mesh_path = config.resolve_repo_path("bricks_dir") / f"{name}.npz"
+    piece = config.fragment_spec(name)
+    mesh_path = config.fragment_mesh_path(name)
     mesh_data = np.load(mesh_path)
     if not {"v", "f"}.issubset(mesh_data.files) or not len(mesh_data["v"]) or not len(mesh_data["f"]):
         raise ValueError(f"malformed or empty fragment mesh: {name} ({mesh_path})")
     root_path = f"/World/Fragments/{name}"
     root = UsdGeom.Xform.Define(stage, root_path)
-    pose = config.data["fragments"]["initial_poses"].get(name)
+    pose = config.fragment_initial_pose(name)
     if not pose:
         raise ValueError(f"fragment has no frozen initial pose: {name}")
     _set_transform(root, pose["position"], pose["orientation_wxyz"])
@@ -220,12 +217,15 @@ def author_fragment(stage, config: SceneConfig, name: str) -> FragmentHandle:
     physics_material = stage.GetPrimAtPath("/World/Looks/ContactMaterial")
     physics_material = UsdShade.Material(physics_material)
     collider_paths = []
-    pitch = float(layout["pitch"])
+    pitch = float(config.assembly.pitch)
+    pivot_cells = piece.get("local_pivot_cells", piece.get("fp_cell"))
+    if pivot_cells is None:
+        raise ValueError(f"fragment has no local voxel pivot: {name}")
     for index, box in enumerate(merge_voxel_cells(piece["cells"])):
         collider_path = f"{root_path}/Colliders/Box_{index:03d}"
         collider = UsdGeom.Cube.Define(stage, collider_path)
         collider.CreateSizeAttr(1.0)
-        center, size = _collider_local_geometry(box, pitch, piece["fp_cell"])
+        center, size = _collider_local_geometry(box, pitch, pivot_cells)
         _set_transform(collider, center, scale=size)
         collider.GetVisibilityAttr().Set(UsdGeom.Tokens.invisible)
         UsdPhysics.CollisionAPI.Apply(collider.GetPrim()).CreateCollisionEnabledAttr(True)
@@ -241,8 +241,9 @@ def author_fragment(stage, config: SceneConfig, name: str) -> FragmentHandle:
     mass = UsdPhysics.MassAPI.Apply(root.GetPrim())
     mass.CreateDensityAttr(float(config.data["physics"]["fragment_density"]))
     center_of_mass = np.mean(cells_array + 0.5, axis=0) * pitch
-    center_of_mass[0] -= float(piece["fp_cell"][0]) * pitch
-    center_of_mass[1] -= float(piece["fp_cell"][1]) * pitch
+    center_of_mass[0] -= float(pivot_cells[0]) * pitch
+    center_of_mass[1] -= float(pivot_cells[1]) * pitch
+    center_of_mass[2] -= float(pivot_cells[2]) * pitch
     mass.CreateCenterOfMassAttr(Gf.Vec3f(*[float(value) for value in center_of_mass]))
     physx_body = PhysxSchema.PhysxRigidBodyAPI.Apply(root.GetPrim())
     physx_body.CreateLinearDampingAttr(float(config.data["physics"]["linear_damping"]))

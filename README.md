@@ -2,6 +2,50 @@
 
 ***New README can be found inside 06_.../, and the README below is the legacy one for the demo storyboard***
 
+## Generic fragmented-object workflow
+
+The interactive workcell can load a generated voxel assembly instead of being limited to the checked-in skull. Breaking Bad sample directories containing `piece_<integer>.obj` meshes in a common assembled frame are supported first.
+
+Prepare one sample with the installed Isaac Sim 4.5 Python interpreter:
+
+```bash
+/local_data/yz11445/tools/bin/isaacsim-4.5-python assembly_pipeline.py prepare \
+  --dataset breaking-bad \
+  --input /path/to/object/fractured_0
+```
+
+The default output is `04_intermediate/assemblies/<parent>_<sample>/`. Optional flags include `--output`, `--pitch`, `--target-length`, `--seed`, `--object-id`, `--scene-config`, and `--overwrite`. Defaults are a 16 mm pitch, 0.40 m assembled X length, and seed zero.
+
+Validate the generated object without consulting the raw dataset, then launch it under the Isaac Sim Python interpreter:
+
+```bash
+/local_data/yz11445/tools/bin/isaacsim-4.5-python assembly_pipeline.py validate \
+  --assembly 04_intermediate/assemblies/<object-id>/layout.json
+
+/local_data/yz11445/tools/bin/isaacsim-4.5-python assembly_pipeline.py launch \
+  --assembly 04_intermediate/assemblies/<object-id>/layout.json
+```
+
+For the SSH-only Maxwell workflow, launch the same scene with its full UI over
+WebRTC:
+
+```bash
+CUDA_VISIBLE_DEVICES=<one-free-gpu> \
+  /local_data/yz11445/tools/bin/isaacsim-4.5-python assembly_pipeline.py launch \
+  --assembly 04_intermediate/assemblies/<object-id>/layout.json \
+  --stream
+```
+
+Connect the Windows Isaac Sim WebRTC Streaming Client to
+`128.238.176.100`. The host must permit TCP `49100` and UDP `47998` from the
+client network. WebRTC is unencrypted and unauthenticated, so use it only over
+the university network or VPN and do not expose those ports broadly to the
+Internet. The first launch compiles RTX shaders and can take several minutes.
+
+Schema-version-2 `layout.json` records provenance, normalization, one common voxel grid, occupied cells, relative NPZ paths, canonical GT/goal poses, and separate world-space staging poses. Visuals are plain voxel cubes without studs. Isaac creates exact merged-box colliders from the same cells. Generic scenes use the table directly and create no baseplate or prediction ghost.
+
+The original skull scene remains available through the existing no-override command. `03_scripts/asm_bricks.py` remains a CRAG ground-truth GLB compatibility entry point; predicted-pose input is intentionally outside the generalized pipeline.
+
 # FANUC dual-arm skull assembly: data bundle
 
 **中文概要**：这是研究陈述网页里 "Physical assembly" 演示（两台 FANUC CRX-10iA/L 机械臂加 Robotiq 2F-85 夹爪，把 CRAG 的长臂猿颅骨 8 块碎片拼回去）用到的全部数据：CRAG 原始结果、机器人模型、脚本、中间文件和成片。演示是运动学故事板：碎片位姿来自 CRAG，机械臂走逆运动学，没有物理仿真，Isaac Sim 只负责渲染。

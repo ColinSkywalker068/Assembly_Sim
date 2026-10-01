@@ -303,18 +303,15 @@ class SceneController:
             )
             self.arms[name].home()
             self.grippers[name].command(1.0)
-        poses = self.handles.config.data["fragments"]["initial_poses"]
         fragment_paths = [fragment.root_path for fragment in self.handles.fragments]
+        positions, orientations = fragment_reset_poses(
+            self.handles.config,
+            tuple(fragment.name for fragment in self.handles.fragments),
+        )
         rigid_fragments = RigidPrim(fragment_paths, reset_xform_properties=False)
         rigid_fragments.set_world_poses(
-            positions=np.asarray(
-                [poses[fragment.name]["position"] for fragment in self.handles.fragments],
-                dtype=float,
-            ),
-            orientations=np.asarray(
-                [poses[fragment.name]["orientation_wxyz"] for fragment in self.handles.fragments],
-                dtype=float,
-            ),
+            positions=np.asarray(positions, dtype=float),
+            orientations=np.asarray(orientations, dtype=float),
         )
         rigid_fragments.set_velocities(np.zeros((len(fragment_paths), 6), dtype=float))
 
@@ -322,6 +319,16 @@ class SceneController:
         simulation = get_physx_simulation_interface()
         for path in fragment_paths:
             simulation.put_to_sleep(stage_id, PhysicsSchemaTools.sdfPathToInt(path))
+
+
+def fragment_reset_poses(config: SceneConfig, fragment_names):
+    """Return staging positions and orientations in fragment iteration order."""
+
+    poses = tuple(config.fragment_initial_pose(name) for name in fragment_names)
+    return (
+        tuple(pose["position"] for pose in poses),
+        tuple(pose["orientation_wxyz"] for pose in poses),
+    )
 
 
 def compose_robot(stage: Any, world: Any, config: SceneConfig, name: str) -> RobotHandle:

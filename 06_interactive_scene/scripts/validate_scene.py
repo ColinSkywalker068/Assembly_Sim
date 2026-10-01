@@ -100,7 +100,7 @@ def validate_robot_motion(handles) -> dict:
         reset_errors[name] = float(np.max(np.abs(reset_arm - expected_home)))
     fragment_position, fragment_orientation = fragment_body.get_world_poses()
     fragment_velocity = np.asarray(fragment_body.get_velocities(), dtype=float)
-    expected_fragment_pose = handles.config.data["fragments"]["initial_poses"][fragment.name]
+    expected_fragment_pose = handles.config.fragment_initial_pose(fragment.name)
     fragment_position_error = float(
         np.max(
             np.abs(
@@ -148,12 +148,10 @@ def validate_robot_motion(handles) -> dict:
 
 
 def validate_fragment_collision_contract(handles) -> dict:
-    with handles.config.resolve_repo_path("layout_json").open("r", encoding="utf-8") as stream:
-        layout = json.load(stream)
-    pieces = {piece["name"]: piece for piece in layout["pieces"]}
     failures = []
     for fragment in handles.fragments:
-        expected_count = len(merge_voxel_cells(pieces[fragment.name]["cells"]))
+        piece = handles.config.fragment_spec(fragment.name)
+        expected_count = len(merge_voxel_cells(piece["cells"]))
         expected_paths = tuple(
             f"{fragment.root_path}/Colliders/Box_{index:03d}" for index in range(expected_count)
         )
@@ -168,17 +166,22 @@ def validate_fragment_collision_contract(handles) -> dict:
     return {"ok": not failures, "failures": failures}
 
 
-def main() -> int:
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, required=True)
+    parser.add_argument("--assembly", type=Path)
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--manifest-only", action="store_true")
     mode.add_argument("--robot-motion", action="store_true")
     mode.add_argument("--full", action="store_true")
     parser.add_argument("--save-stage", action="store_true")
     parser.add_argument("--capture", action="store_true")
-    arguments = parser.parse_args()
-    config = SceneConfig.load(arguments.config)
+    return parser
+
+
+def main() -> int:
+    arguments = build_parser().parse_args()
+    config = SceneConfig.load(arguments.config, assembly_path=arguments.assembly)
     handles = build_stage(config, headless=True)
     try:
         if arguments.robot_motion:
@@ -195,14 +198,14 @@ def main() -> int:
                 from pxr import Usd
 
                 reopened = Usd.Stage.Open(str(saved))
-                expected = (
+                expected = tuple(path for path in (
                     handles.manifest.floor_path,
                     handles.manifest.table_path,
                     handles.manifest.plate_path,
                     *handles.manifest.robot_paths,
                     *handles.manifest.fragment_paths,
                     *handles.manifest.camera_paths,
-                )
+                ) if path is not None)
                 missing_after_reopen = tuple(
                     path for path in expected if not reopened.GetPrimAtPath(path).IsValid()
                 )

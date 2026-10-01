@@ -8,6 +8,10 @@ class _Config:
     def __init__(self, layout_path):
         self.layout_path = layout_path
 
+    def fragment_spec(self, name):
+        data = json.loads(self.layout_path.read_text(encoding="utf-8"))
+        return next(piece for piece in data["pieces"] if piece["name"] == name)
+
     def resolve_repo_path(self, key):
         assert key == "layout_json"
         return self.layout_path

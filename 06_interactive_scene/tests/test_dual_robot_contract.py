@@ -7,7 +7,12 @@ SCENE_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SCENE_ROOT / "scripts"))
 
 from scene_config import SceneConfig
-from scene_controls import SceneController, robot_prim_paths, robot_reset_targets
+from scene_controls import (
+    SceneController,
+    fragment_reset_poses,
+    robot_prim_paths,
+    robot_reset_targets,
+)
 
 
 CONFIG_PATH = SCENE_ROOT / "config" / "scene.json"
@@ -89,3 +94,31 @@ def test_robot_prim_namespaces_are_disjoint():
     assert left.gripper_root == "/World/Grippers/Left/Robotiq_2F_85"
     assert right.gripper_root == "/World/Grippers/Right/Robotiq_2F_85"
     assert not set(left).intersection(right)
+
+
+def test_reset_targets_every_loaded_fragment():
+    poses = {
+        "alpha": {"position": [0.1, 0.2, 0.75], "orientation_wxyz": [1, 0, 0, 0]},
+        "beta": {"position": [-0.1, 0.3, 0.75], "orientation_wxyz": [1, 0, 0, 0]},
+        "gamma": {"position": [0.4, -0.2, 0.75], "orientation_wxyz": [1, 0, 0, 0]},
+    }
+    config = SimpleNamespace(fragment_initial_pose=lambda name: poses[name])
+
+    positions, orientations = fragment_reset_poses(config, ("alpha", "beta", "gamma"))
+
+    assert positions == ([0.1, 0.2, 0.75], [-0.1, 0.3, 0.75], [0.4, -0.2, 0.75])
+    assert orientations == ([1, 0, 0, 0], [1, 0, 0, 0], [1, 0, 0, 0])
+
+
+def test_reset_uses_staging_not_goal_pose():
+    staging = {"position": [0.4, 0.3, 0.75], "orientation_wxyz": [1, 0, 0, 0]}
+    goal = {"position": [0.0, 0.0, 0.0], "orientation_wxyz": [1, 0, 0, 0]}
+    config = SimpleNamespace(
+        fragment_initial_pose=lambda name: staging,
+        assembly=SimpleNamespace(goal_pose=lambda name: goal),
+    )
+
+    positions, _ = fragment_reset_poses(config, ("fragment",))
+
+    assert positions == ([0.4, 0.3, 0.75],)
+    assert positions != (goal["position"],)

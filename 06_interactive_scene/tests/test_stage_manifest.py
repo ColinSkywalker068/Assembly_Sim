@@ -36,6 +36,38 @@ def test_manifest_requires_two_robot_roots_and_three_cameras():
     )
 
 
+def test_generic_manifest_has_three_fragment_paths_and_no_plate():
+    class GenericConfig:
+        fragment_names = ("alpha", "beta", "gamma")
+        robot_names = ("left", "right")
+        has_support_surface = False
+        data = {
+            "cameras": {
+                "agent": {"prim_path": "/World/Cameras/Agent"},
+                "left_wrist": {"prim_path": "/World/Left/WristCamera"},
+                "right_wrist": {"prim_path": "/World/Right/WristCamera"},
+            }
+        }
+
+        def robot_spec(self, name):
+            return {"prim_path": f"/World/Robots/{name.title()}"}
+
+    manifest = expected_stage_manifest(GenericConfig())
+
+    assert manifest.fragment_paths == (
+        "/World/Fragments/alpha",
+        "/World/Fragments/beta",
+        "/World/Fragments/gamma",
+    )
+    assert manifest.plate_path is None
+
+
+def test_legacy_manifest_keeps_plate():
+    config = SceneConfig.load(SCENE_ROOT / "config" / "scene.json")
+
+    assert expected_stage_manifest(config).plate_path == "/World/Environment/Plate"
+
+
 def test_manifest_rejects_duplicate_robot_roots():
     config = SceneConfig.load(SCENE_ROOT / "config" / "scene.json")
     config.data["robots"]["right"]["prim_path"] = config.data["robots"]["left"]["prim_path"]

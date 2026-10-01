@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import math
+import sys
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
@@ -14,80 +15,19 @@ import numpy as np
 from scene_config import SceneConfig
 from scene_geometry import plate_geometry
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
+SHARED_SCRIPTS = REPO_ROOT / "03_scripts"
+if str(SHARED_SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(SHARED_SCRIPTS))
 
-@dataclass(frozen=True)
-class Pose:
-    position: tuple[float, float, float]
-    orientation_wxyz: tuple[float, float, float, float] = (1.0, 0.0, 0.0, 0.0)
-
-
-@dataclass(frozen=True)
-class AABB2D:
-    min_x: float
-    max_x: float
-    min_y: float
-    max_y: float
-
-    @classmethod
-    def from_center_extent(cls, center: Sequence[float], extent: Sequence[float]) -> "AABB2D":
-        return cls(
-            float(center[0]) - float(extent[0]) / 2,
-            float(center[0]) + float(extent[0]) / 2,
-            float(center[1]) - float(extent[1]) / 2,
-            float(center[1]) + float(extent[1]) / 2,
-        )
-
-    @property
-    def center(self) -> tuple[float, float]:
-        return ((self.min_x + self.max_x) / 2, (self.min_y + self.max_y) / 2)
-
-    def expanded(self, amount: float) -> "AABB2D":
-        return AABB2D(
-            self.min_x - amount,
-            self.max_x + amount,
-            self.min_y - amount,
-            self.max_y + amount,
-        )
-
-    def overlaps(self, other: "AABB2D") -> bool:
-        return not (
-            self.max_x <= other.min_x
-            or other.max_x <= self.min_x
-            or self.max_y <= other.min_y
-            or other.max_y <= self.min_y
-        )
-
-
-@dataclass(frozen=True)
-class TableBounds(AABB2D):
-    table_top_z: float
-
-    def contains(self, other: AABB2D) -> bool:
-        return (
-            self.min_x <= other.min_x
-            and other.max_x <= self.max_x
-            and self.min_y <= other.min_y
-            and other.max_y <= self.max_y
-        )
-
-
-@dataclass(frozen=True)
-class PieceExtent:
-    local_min: tuple[float, float, float]
-    local_max: tuple[float, float, float]
-
-    @property
-    def size(self) -> tuple[float, float, float]:
-        return tuple(high - low for low, high in zip(self.local_min, self.local_max))
-
-    def world_aabb(self, pose: Pose) -> AABB2D:
-        x, y, _ = pose.position
-        return AABB2D(
-            x + self.local_min[0],
-            x + self.local_max[0],
-            y + self.local_min[1],
-            y + self.local_max[1],
-        )
+from fragment_assembly.staging import (  # noqa: E402
+    AABB2D,
+    PieceBounds as PieceExtent,
+    Pose,
+    StagingSpec,
+    TableBounds,
+    compute_staging_poses as _compute_staging_poses,
+)
 
 
 @dataclass(frozen=True)
@@ -182,58 +122,18 @@ def scene_exclusions(config: SceneConfig) -> list[AABB2D]:
     return [*robots, plate]
 
 
-def _positions(start: float, stop: float, step: float) -> list[float]:
-    count = max(0, int(math.floor((stop - start) / step)))
-    return [start + index * step for index in range(count + 1)]
-
-
 def compute_staging_poses(
     piece_extents: Mapping[str, PieceExtent],
     bounds: TableBounds,
     exclusions: Sequence[AABB2D],
     gap: float,
 ) -> dict[str, Pose]:
-    """Pack pieces near the robot exclusion while keeping collision-safe gaps."""
+    """Compatibility wrapper around the shared staging implementation."""
 
-    if gap < 0:
-        raise ValueError("staging gap must be non-negative")
-    anchor = exclusions[0].center if exclusions else (bounds.min_x, bounds.min_y)
-    placed: dict[str, Pose] = {}
-    occupied: list[AABB2D] = []
-    order = sorted(
+    return _compute_staging_poses(
         piece_extents,
-        key=lambda name: (
-            -(piece_extents[name].size[0] * piece_extents[name].size[1]),
-            name,
-        ),
+        StagingSpec(table=bounds, exclusions=tuple(exclusions), gap=gap, grid_step=0.01),
     )
-    step = 0.01
-    for name in order:
-        extent = piece_extents[name]
-        sx, sy, _ = extent.size
-        candidates: list[tuple[float, float, AABB2D]] = []
-        for min_y in _positions(bounds.min_y, bounds.max_y - sy, step):
-            for min_x in _positions(bounds.min_x, bounds.max_x - sx, step):
-                candidate = AABB2D(min_x, min_x + sx, min_y, min_y + sy)
-                cx, cy = candidate.center
-                candidates.append(((cx - anchor[0]) ** 2 + (cy - anchor[1]) ** 2, cy, cx, candidate))
-        candidates.sort(key=lambda item: item[:3])
-        selected = None
-        for _, _, _, candidate in candidates:
-            if any(candidate.expanded(gap).overlaps(blocked) for blocked in exclusions):
-                continue
-            if any(candidate.expanded(gap / 2).overlaps(other.expanded(gap / 2)) for other in occupied):
-                continue
-            selected = candidate
-            break
-        if selected is None:
-            raise ValueError(f"could not place {name} on table with {gap:.3f} m gap")
-        root_x = selected.min_x - extent.local_min[0]
-        root_y = selected.min_y - extent.local_min[1]
-        root_z = bounds.table_top_z - extent.local_min[2]
-        placed[name] = Pose((root_x, root_y, root_z))
-        occupied.append(selected)
-    return placed
 
 
 def _tcp_target(position: Sequence[float], closing_degrees: float) -> np.ndarray:

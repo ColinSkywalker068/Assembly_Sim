@@ -179,22 +179,36 @@ class SceneActionDispatcher:
             print(f"Viewport camera: {path}", flush=True)
 
 
-def main() -> int:
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, required=True)
+    parser.add_argument("--assembly", type=Path)
+    parser.add_argument(
+        "--stream",
+        action="store_true",
+        help="run headlessly and publish the full UI over WebRTC",
+    )
     parser.add_argument(
         "--smoke-frames",
         type=int,
         default=0,
         help=argparse.SUPPRESS,
     )
-    arguments = parser.parse_args()
+    return parser
+
+
+def main() -> int:
+    arguments = build_parser().parse_args()
 
     from build_scene import build_stage
     from scene_config import SceneConfig
 
-    config = SceneConfig.load(arguments.config)
-    handles = build_stage(config, headless=False)
+    config = SceneConfig.load(arguments.config, assembly_path=arguments.assembly)
+    handles = build_stage(
+        config,
+        headless=arguments.stream,
+        stream=arguments.stream,
+    )
     keyboard_controller = None
     try:
         import carb.input

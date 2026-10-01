@@ -2,6 +2,7 @@ import json
 import sys
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 
@@ -14,6 +15,51 @@ from scene_config import SceneConfig
 
 
 CONFIG_PATH = SCENE_ROOT / "config" / "scene.json"
+
+
+def write_v2_layout(root, names=("alpha", "beta", "gamma"), mesh_names=None):
+    root.mkdir(parents=True, exist_ok=True)
+    mesh_names = mesh_names or tuple(f"asset_{index}.npz" for index in range(len(names)))
+    pieces = []
+    for index, (name, mesh_name) in enumerate(zip(names, mesh_names)):
+        np.savez(
+            root / mesh_name,
+            v=np.asarray([[0, 0, 0], [0.1, 0, 0], [0, 0.1, 0.1]], dtype=np.float32),
+            f=np.asarray([[0, 1, 2]], dtype=np.int32),
+        )
+        pieces.append(
+            {
+                "name": name,
+                "source_name": f"piece_{index}.obj",
+                "mesh": mesh_name,
+                "color": [0.1, 0.2, 0.3],
+                "cells": [[index, 0, 0]],
+                "voxel_count": 1,
+                "local_pivot_cells": [index + 0.5, 0.5, 0.0],
+                "local_bounds": [[-0.05, -0.05, 0.0], [0.05, 0.05, 0.1]],
+                "goal_pose": {"position": [index * 0.1, 0.0, 0.0], "orientation_wxyz": [1, 0, 0, 0]},
+                "staging_pose": {"position": [index * 0.2, 0.2, 0.75], "orientation_wxyz": [1, 0, 0, 0]},
+                "grasp": None,
+            }
+        )
+    data = {
+        "schema_version": 2,
+        "object_id": "fixture",
+        "source": {"loader": "test", "path": "/raw/no-longer-needed"},
+        "processing": {"pitch": 0.1},
+        "normalization": {
+            "source_to_canonical": np.eye(4).tolist(),
+            "grid_origin": [0, 0, 0],
+            "grid_shape": [len(names), 1, 1],
+            "assembly_bounds": [[0, 0, 0], [len(names) * 0.1, 0.1, 0.1]],
+        },
+        "fragment_count": len(names),
+        "pieces": pieces,
+        "staging": {"algorithm": "test"},
+    }
+    path = root / "layout.json"
+    path.write_text(json.dumps(data), encoding="utf-8")
+    return path
 
 
 def test_loads_required_scene_contract():
@@ -124,14 +170,46 @@ def test_missing_asset_reports_field_and_resolved_path(tmp_path):
     assert expected in str(exc_info.value)
 
 
-def test_rejects_non_eight_fragment_contract(tmp_path):
-    source = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
-    source["fragments"]["names"] = source["fragments"]["names"][:-1]
-    config_path = tmp_path / "repository" / "06_interactive_scene" / "config" / "scene.json"
-    config_path.parent.mkdir(parents=True)
-    (config_path.parents[2] / "02_robot_assets").mkdir()
-    (config_path.parents[2] / "README.md").write_text("repository", encoding="utf-8")
-    config_path.write_text(json.dumps(source), encoding="utf-8")
+def test_schema_v2_override_accepts_three_arbitrary_fragments(tmp_path):
+    assembly_path = write_v2_layout(tmp_path / "assembly")
 
-    with pytest.raises(ValueError, match="exactly piece_0 through piece_7"):
-        SceneConfig.load(config_path)
+    config = SceneConfig.load(CONFIG_PATH, assembly_path=assembly_path)
+
+    assert config.fragment_names == ("alpha", "beta", "gamma")
+    assert config.has_support_surface is False
+
+
+def test_override_layout_is_authoritative_over_legacy_fragment_config(tmp_path):
+    assembly_path = write_v2_layout(tmp_path / "assembly", names=("only_one",))
+
+    config = SceneConfig.load(CONFIG_PATH, assembly_path=assembly_path)
+
+    assert config.fragment_names == ("only_one",)
+    assert config.fragment_initial_pose("only_one")["position"] == [0.0, 0.2, 0.75]
+
+
+def test_malformed_override_never_falls_back_to_skull(tmp_path):
+    assembly_path = write_v2_layout(tmp_path / "assembly")
+    data = json.loads(assembly_path.read_text(encoding="utf-8"))
+    del data["pieces"][0]["staging_pose"]
+    assembly_path.write_text(json.dumps(data), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="staging_pose"):
+        SceneConfig.load(CONFIG_PATH, assembly_path=assembly_path)
+
+
+def test_fragment_mesh_uses_explicit_layout_relative_path(tmp_path):
+    assembly_path = write_v2_layout(
+        tmp_path / "assembly", names=("unusual",), mesh_names=("not-the-fragment-name.npz",)
+    )
+
+    config = SceneConfig.load(CONFIG_PATH, assembly_path=assembly_path)
+
+    assert config.fragment_mesh_path("unusual") == assembly_path.parent / "not-the-fragment-name.npz"
+
+
+def test_legacy_skull_config_still_loads_eight_fragments():
+    config = SceneConfig.load(CONFIG_PATH)
+
+    assert config.fragment_names == tuple(f"piece_{index}" for index in range(8))
+    assert config.has_support_surface is True

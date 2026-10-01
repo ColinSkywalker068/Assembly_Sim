@@ -31,7 +31,29 @@ class ValidationReport:
     extra_fragment_paths: tuple[str, ...]
 
 
-def create_world(config: SceneConfig, headless: bool):
+def simulation_launch_config(
+    config: SceneConfig, headless: bool, stream: bool = False
+) -> dict[str, Any]:
+    width, height = config.camera_resolution
+    launch_config = {
+        "headless": bool(headless),
+        "width": width,
+        "height": height,
+        "renderer": config.data["render"]["renderer"],
+    }
+    if stream:
+        launch_config.update(
+            {
+                "headless": True,
+                "hide_ui": False,
+                "multi_gpu": False,
+                "max_gpu_count": 1,
+            }
+        )
+    return launch_config
+
+
+def create_world(config: SceneConfig, headless: bool, stream: bool = False):
     # The Windows pip distribution can discover torch from several extension
     # worker threads at once.  Importing it once on the main thread avoids a
     # c10.dll initialization race seen with newer torch releases.
@@ -39,15 +61,12 @@ def create_world(config: SceneConfig, headless: bool):
 
     from isaacsim import SimulationApp
 
-    width, height = config.camera_resolution
-    app = SimulationApp(
-        {
-            "headless": bool(headless),
-            "width": width,
-            "height": height,
-            "renderer": config.data["render"]["renderer"],
-        }
-    )
+    app = SimulationApp(simulation_launch_config(config, headless, stream))
+    if stream:
+        from isaacsim.core.utils.extensions import enable_extension
+
+        app.set_setting("/app/window/drawMouse", True)
+        enable_extension("omni.kit.livestream.webrtc")
     from isaacsim.core.api import World
 
     world = World(
@@ -59,9 +78,11 @@ def create_world(config: SceneConfig, headless: bool):
     return app, world
 
 
-def build_stage(config: SceneConfig, headless: bool = True) -> SceneHandles:
+def build_stage(
+    config: SceneConfig, headless: bool = True, stream: bool = False
+) -> SceneHandles:
     config.validate_inputs()
-    app, world = create_world(config, headless)
+    app, world = create_world(config, headless, stream)
     import omni.usd
     from pxr import UsdGeom
 
@@ -96,14 +117,14 @@ def build_stage(config: SceneConfig, headless: bool = True) -> SceneHandles:
 
 
 def validate_manifest(handles: SceneHandles) -> ValidationReport:
-    required = (
+    required = tuple(path for path in (
         handles.manifest.floor_path,
         handles.manifest.table_path,
         handles.manifest.plate_path,
         *handles.manifest.robot_paths,
         *handles.manifest.fragment_paths,
         *handles.manifest.camera_paths,
-    )
+    ) if path is not None)
     missing = tuple(path for path in required if not handles.stage.GetPrimAtPath(path).IsValid())
     fragment_root = handles.stage.GetPrimAtPath("/World/Fragments")
     actual_fragments = {

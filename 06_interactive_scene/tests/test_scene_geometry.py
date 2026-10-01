@@ -9,6 +9,7 @@ SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
 if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
+from scene_assets import _collider_local_geometry
 from scene_geometry import boxes_volume, merge_voxel_cells, occupied_volume, plate_geometry
 
 
@@ -68,6 +69,24 @@ def test_merged_boxes_preserve_occupied_volume():
 
     assert boxes_volume(boxes, pitch) == pytest.approx(occupied_volume(cells, pitch))
     assert all(all(length > 0 for length in box.size_cells) for box in boxes)
+
+
+def test_merged_boxes_cover_every_cell_once():
+    cells = [(0, 0, 0), (1, 0, 0), (0, 1, 0), (2, 2, 1)]
+    boxes = merge_voxel_cells(cells)
+    covered = [cell for box in boxes for cell in covered_cells(box)]
+
+    assert sorted(covered) == sorted(cells)
+    assert len(covered) == len(set(covered))
+
+
+def test_fragment_collider_local_coordinates_match_visual_pivot():
+    box = merge_voxel_cells([(2, 3, 1), (2, 3, 2)])[0]
+
+    center, size = _collider_local_geometry(box, 0.1, (2.5, 3.5, 0.0))
+
+    assert center == pytest.approx((0.0, 0.0, 0.2))
+    assert size == pytest.approx((0.1, 0.1, 0.2))
 
 
 def test_plate_geometry_maps_demo_origin_to_surface_and_collider_centers():

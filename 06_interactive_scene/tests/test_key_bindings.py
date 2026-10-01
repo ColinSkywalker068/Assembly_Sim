@@ -13,7 +13,10 @@ from run_scene import (
     capture_requests,
     key_action,
     ready_message,
+    build_parser as build_run_parser,
 )
+from build_scene import simulation_launch_config
+from validate_scene import build_parser as build_validation_parser
 
 
 @dataclass
@@ -131,3 +134,51 @@ def test_capture_mapping_has_three_unambiguous_outputs():
 
 def test_ready_message_names_initial_active_robot():
     assert "Active robot: left" in ready_message("left")
+
+
+def test_run_options_accept_assembly_override():
+    arguments = build_run_parser().parse_args(
+        ["--config", "scene.json", "--assembly", "generated/layout.json"]
+    )
+
+    assert arguments.assembly == Path("generated/layout.json")
+
+
+def test_run_options_accept_webrtc_streaming():
+    arguments = build_run_parser().parse_args(
+        ["--config", "scene.json", "--stream"]
+    )
+
+    assert arguments.stream is True
+
+
+def test_streaming_launch_is_headless_with_visible_ui_and_one_gpu():
+    config = type(
+        "Config",
+        (),
+        {
+            "camera_resolution": (640, 480),
+            "data": {"render": {"renderer": "RaytracedLighting"}},
+        },
+    )()
+
+    launch = simulation_launch_config(config, headless=True, stream=True)
+
+    assert launch["headless"] is True
+    assert launch["hide_ui"] is False
+    assert launch["multi_gpu"] is False
+    assert launch["max_gpu_count"] == 1
+
+
+def test_validation_options_accept_assembly_override():
+    arguments = build_validation_parser().parse_args(
+        [
+            "--config",
+            "scene.json",
+            "--assembly",
+            "generated/layout.json",
+            "--manifest-only",
+        ]
+    )
+
+    assert arguments.assembly == Path("generated/layout.json")
