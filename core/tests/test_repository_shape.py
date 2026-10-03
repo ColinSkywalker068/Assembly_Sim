@@ -7,7 +7,7 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-ALLOWED_ROOT_FILES = {".gitattributes", ".gitignore", "README.md"}
+ALLOWED_ROOT_FILES = {".gitattributes", ".gitignore", "README.md", "requirements.txt"}
 ALLOWED_DIRECTORIES = {"core", "tasks", "docs"}
 GENERATED_SUFFIXES = {".png", ".mp4", ".tar", ".log", ".npz"}
 
@@ -43,3 +43,18 @@ def test_tracked_tree_contains_no_generated_outputs():
             invalid.append(str(path))
 
     assert invalid == []
+
+
+def test_public_readme_documents_setup_tasks_and_further_reading():
+    readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+
+    assert "NYU Tandon" in readme
+    assert "AI4CE" in readme
+    assert "## Repository structure" in readme
+    assert "## Installation" in readme
+    assert "## Tasks" in readme
+    assert "## Documentation" in readme
+    assert "tasks.demo_render_source" in readme
+    assert "tasks.dual_arm_breakingbad" in readme
+    assert "/local_data/" not in readme
+    assert (REPO_ROOT / "requirements.txt").is_file()
