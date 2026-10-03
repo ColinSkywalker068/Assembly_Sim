@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "robots": {
+    "left": {
+      "base_position": [-0.78, 0.0, 0.75],
+      "base_orientation_wxyz": [1.0, 0.0, 0.0, 0.0]
+    },
+    "right": {
+      "base_position": [0.78, 0.0, 0.75],
+      "base_orientation_wxyz": [0.0, 0.0, 0.0, 1.0]
+    }
+  }
+}

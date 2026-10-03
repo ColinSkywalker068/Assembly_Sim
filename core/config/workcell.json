@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "assets": {
+    "arm_usd": "core/assets/robots/fanuc_crx10ial/crx10ial.usd",
+    "gripper_usd": "core/assets/robots/robotiq_2f85/Robotiq_2F_85_flattened.usd"
+  },
+  "physics": {
+    "dt": 0.008333333333333333,
+    "gravity": [0.0, 0.0, -9.81],
+    "fragment_density": 650.0,
+    "static_friction": 0.8,
+    "dynamic_friction": 0.65,
+    "restitution": 0.02,
+    "linear_damping": 0.15,
+    "angular_damping": 0.25
+  },
+  "render": {
+    "dt": 0.03333333333333333,
+    "camera_resolution": [1920, 1440],
+    "renderer": "RayTracedLighting"
+  },
+  "environment": {
+    "floor_position": [0.0, 0.0, -0.01],
+    "floor_size": [8.0, 8.0, 0.02],
+    "table_position": [0.0, 0.0, 0.725],
+    "table_size": [2.1, 1.3, 0.05],
+    "assembly_pad": {
+      "center": [0.0, 0.1, 0.75],
+      "size": [0.512, 0.416, 0.0096],
+      "grid_step": 0.04,
+      "lane_centers_x": [-0.42, 0.42]
+    },
+    "staging_gap": 0.04,
+    "workspace_margin": 0.08
+  },
+  "robot_model": {
+    "home_joint_positions": [0.42959, -0.22024, -0.68657, -0.00021, -1.10447, -0.42928],
+    "arm_lower_limits": [-3.141592653589793, -3.141592653589793, -4.71238898038469, -3.3161, -3.141592653589793, -3.3161],
+    "arm_upper_limits": [3.141592653589793, 3.141592653589793, 4.71238898038469, 3.3161, 3.141592653589793, 3.3161],
+    "joint_jog_radians": 0.08726646259971647,
+    "arm_dof_names": ["joint_1", "joint_2", "joint_3", "joint_4", "joint_5", "joint_6"],
+    "gripper_dof_names": [
+      "finger_joint",
+      "right_outer_knuckle_joint",
+      "left_outer_finger_joint",
+      "right_outer_finger_joint",
+      "left_inner_finger_joint",
+      "right_inner_finger_joint",
+      "left_inner_finger_knuckle_joint",
+      "right_inner_finger_knuckle_joint"
+    ],
+    "gripper_open_radians": 0.0,
+    "gripper_closed_radians": 0.8
+  },
+  "cameras": {
+    "agent": {
+      "prim_path": "/World/Cameras/Agent",
+      "parent": "/World",
+      "position": [1.35, -2.05, 1.72],
+      "look_at": [0.0, 0.05, 0.78],
+      "focal_length": 25.0,
+      "clipping_range": [0.01, 100.0]
+    },
+    "left_wrist": {
+      "prim_path": "/World/Robots/Left/flange/WristCamera",
+      "parent": "/World/Robots/Left/flange",
+      "position": [0.12, -0.16, 0.18],
+      "look_at_local": [0.55, 0.0, 0.0],
+      "focal_length": 18.0,
+      "clipping_range": [0.01, 10.0]
+    },
+    "right_wrist": {
+      "prim_path": "/World/Robots/Right/flange/WristCamera",
+      "parent": "/World/Robots/Right/flange",
+      "position": [0.12, -0.16, 0.18],
+      "look_at_local": [0.55, 0.0, 0.0],
+      "focal_length": 18.0,
+      "clipping_range": [0.01, 10.0]
+    }
+  }
+}
