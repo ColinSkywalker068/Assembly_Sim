@@ -64,6 +64,8 @@
       "parent": "/World",
       "position": [0.0, -2.10, 3.44],
       "look_at": [0.0, 0.0, 0.75],
+      "single_arm_horizontal_distance": 1.040404,
+      "single_arm_height": 3.880667,
       "focal_length": 25.0,
       "clipping_range": [0.01, 100.0]
     },

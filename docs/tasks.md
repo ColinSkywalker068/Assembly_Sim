@@ -1,5 +1,23 @@
 # Tasks
 
+## Stack sawtooth shulker scene
+
+`tasks.stack_sawtooth_shulker` composes the `single_arm_right` workcell with
+two complementary blue and green voxel fragments. The deterministic initial
+scene stages the upright pieces along Y between the red target and the right
+FANUC. Its CLI only builds a validated external USD or launches a view-only
+window:
+
+```text
+build  --output-usd scene.usda
+launch
+```
+
+It intentionally contains no motion, recording, randomization, inference, or
+success evaluation. See
+[`tasks/stack_sawtooth_shulker/README.md`](../tasks/stack_sawtooth_shulker/README.md)
+for the exact voxel geometry, poses, and commands.
+
 ## Demo storyboard renderer
 
 `tasks.demo_render_source` reproduces the original scripted CRAG/LEGO story.

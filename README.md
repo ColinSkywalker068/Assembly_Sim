@@ -24,7 +24,8 @@ Assembly_Sim/
 │   └── tests/                # Core contracts and repository checks
 ├── tasks/
 │   ├── demo_render_source/   # CRAG/LEGO storyboard rendering task
-│   └── dual_arm_breakingbad/ # Breaking Bad preprocessing and interactive task
+│   ├── dual_arm_breakingbad/ # Breaking Bad preprocessing and interactive task
+│   └── stack_sawtooth_shulker/ # (this task): <IN_DEVELOPMENT>
 ├── docs/                     # Architecture, workcell, and task documentation
 ├── requirements.txt          # Python dependencies outside Isaac Sim
 └── README.md
@@ -82,6 +83,10 @@ All module commands below must be run from the repository root. See NVIDIA's
 for details about `python.sh`.
 
 ## Tasks
+
+### Stack sawtooth shulker scene
+
+(this task): <IN_DEVELOPMENT>
 
 ### Dual-arm Breaking Bad scene
 
@@ -203,5 +208,6 @@ BREAKING_BAD_SAMPLE=/path/to/breaking_bad/object/fractured_0 \
 - [Architecture](docs/architecture.md)
 - [Workcell presets](docs/workcells.md)
 - [Task ownership and commands](docs/tasks.md)
+- [Stack sawtooth shulker task guide](tasks/stack_sawtooth_shulker/README.md)
 - [Dual-arm Breaking Bad task guide](tasks/dual_arm_breakingbad/README.md)
 - [Demo storyboard task guide](tasks/demo_render_source/README.md)

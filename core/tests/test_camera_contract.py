@@ -24,14 +24,31 @@ def test_dual_arm_camera_contract_preserves_agent_and_both_wrists():
 
 
 @pytest.mark.parametrize(
-    ("preset", "expected"),
+    ("preset", "expected", "agent_position", "agent_look_vector"),
     (
-        ("single_arm_left", ("agent", "left_wrist")),
-        ("single_arm_right", ("agent", "right_wrist")),
+        (
+            "single_arm_left",
+            ("agent", "left_wrist"),
+            (1.040404, 0.0, 3.880667),
+            (-1.564904, 0.0, -3.130667),
+        ),
+        (
+            "single_arm_right",
+            ("agent", "right_wrist"),
+            (-1.040404, 0.0, 3.880667),
+            (1.564904, 0.0, -3.130667),
+        ),
     ),
 )
-def test_single_arm_cameras_include_agent_and_selected_wrist_only(preset, expected):
-    assert tuple(camera_specs(load_workcell_preset(preset))) == expected
+def test_single_arm_agent_camera_faces_point_a_between_robot_and_nearest_tape(
+    preset, expected, agent_position, agent_look_vector
+):
+    specs = camera_specs(load_workcell_preset(preset))
+
+    assert tuple(specs) == expected
+    assert specs["agent"].position == agent_position
+    assert specs["agent"].look_vector == pytest.approx(agent_look_vector)
+    assert math.sqrt(sum(component**2 for component in specs["agent"].look_vector)) == pytest.approx(3.5)
 
 
 def test_wrist_parent_validation_uses_selected_robot_flange():

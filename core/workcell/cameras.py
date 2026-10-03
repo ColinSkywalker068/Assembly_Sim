@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from core.workcell.config import WorkcellConfig
+from core.workcell.geometry import assembly_tape_segments
 
 
 @dataclass(frozen=True)
@@ -40,14 +41,45 @@ class CaptureResult:
     attempts: int
 
 
+def _single_arm_point_a(config: WorkcellConfig, base_position: tuple[float, float, float]) -> tuple[float, float, float]:
+    """Return the tabletop midpoint from an arm base to its nearest tape centerline."""
+
+    base_x, base_y, base_z = base_position
+
+    def closest_point_on_centerline(segment) -> tuple[float, float]:
+        segment_x, segment_y, _ = segment.center
+        segment_x_size, segment_y_size, _ = segment.size
+        if segment_x_size >= segment_y_size:
+            half_length = segment_x_size / 2
+            return (min(max(base_x, segment_x - half_length), segment_x + half_length), segment_y)
+        half_length = segment_y_size / 2
+        return (segment_x, min(max(base_y, segment_y - half_length), segment_y + half_length))
+
+    nearest_x, nearest_y = min(
+        (closest_point_on_centerline(segment) for segment in assembly_tape_segments(config.environment["assembly_pad"])),
+        key=lambda point: (point[0] - base_x) ** 2 + (point[1] - base_y) ** 2,
+    )
+    return ((base_x + nearest_x) / 2, (base_y + nearest_y) / 2, base_z)
+
+
 def camera_specs(config: WorkcellConfig) -> Mapping[str, CameraSpec]:
     enabled = ("agent", *(f"{name}_wrist" for name in config.robot_names))
     result: dict[str, CameraSpec] = {}
     for name in enabled:
         value = config.cameras[name]
         position = tuple(float(component) for component in value["position"])
+        if name == "agent" and len(config.robot_names) == 1:
+            robot = config.robot(config.robot_names[0])
+            horizontal_distance = float(value["single_arm_horizontal_distance"])
+            position = (
+                -math.copysign(horizontal_distance, robot.base_position[0]),
+                0.0,
+                float(value["single_arm_height"]),
+            )
         target_key = "look_at" if name == "agent" else "look_at_local"
         target = tuple(float(component) for component in value[target_key])
+        if name == "agent" and len(config.robot_names) == 1:
+            target = _single_arm_point_a(config, robot.base_position)
         result[name] = CameraSpec(
             name=name,
             prim_path=str(value["prim_path"]),
