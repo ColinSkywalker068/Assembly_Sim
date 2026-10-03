@@ -48,7 +48,7 @@ the Isaac Sim 4.5 workstation package by following the
 then clone this repository.
 
 ```bash
-git clone https://github.com/ColinSkywalker068/FANUC_CRAG.git Assembly_Sim
+git clone https://github.com/ColinSkywalker068/Assembly_Sim.git
 cd Assembly_Sim
 
 export ISAAC_SIM_PATH=/path/to/isaac-sim

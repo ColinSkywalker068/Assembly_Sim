@@ -57,4 +57,5 @@ def test_public_readme_documents_setup_tasks_and_further_reading():
     assert "tasks.demo_render_source" in readme
     assert "tasks.dual_arm_breakingbad" in readme
     assert "/local_data/" not in readme
+    assert "FANUC_CRAG" not in readme
     assert (REPO_ROOT / "requirements.txt").is_file()
