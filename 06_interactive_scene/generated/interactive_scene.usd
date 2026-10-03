@@ -39,18 +39,16 @@ def Xform "World"
             prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI", "PhysxRigidBodyAPI"]
         )
         {
-            vector3f physics:angularVelocity = (0.022495482, 0.000896299, 0.027626859)
             point3f physics:centerOfMass = (0, 0, 0.07977982)
             float physics:density = 650
             bool physics:rigidBodyEnabled = 1
             uniform bool physics:startsAsleep = 1
-            vector3f physics:velocity = (-0.000007919908, -0.00006764277, 0.00017911894)
             float physxRigidBody:angularDamping = 0.25
             float physxRigidBody:linearDamping = 0.15
             float physxRigidBody:sleepThreshold = 0
-            quatf xformOp:orient = (1, 2.1046635e-7, -2.4678577e-8, 4.8891522e-8)
+            quatf xformOp:orient = (1, 0, 0, 0)
             float3 xformOp:scale = (1, 1, 1)
-            double3 xformOp:translate = (-0.758330225944519, -0.3138899803161621, 0.75)
+            double3 xformOp:translate = (-0.41233027522935783, -0.4738899082568808, 0.75)
             uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
 
             def Mesh "Visual" (
@@ -1665,7 +1663,7 @@ def Xform "World"
             float physxRigidBody:sleepThreshold = 0
             quatf xformOp:orient = (1, 0, 0, 0)
             float3 xformOp:scale = (1, 1, 1)
-            double3 xformOp:translate = (-0.4719759036144579, -0.006016064257028178, 0.75)
+            double3 xformOp:translate = (-0.4539759036144579, -0.20601606425702818, 0.75)
             uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
 
             def Mesh "Visual" (
@@ -3952,7 +3950,7 @@ def Xform "World"
             float physxRigidBody:sleepThreshold = 0
             quatf xformOp:orient = (1, 0, 0, 0)
             float3 xformOp:scale = (1, 1, 1)
-            double3 xformOp:translate = (-0.7622962962962964, 0.27474074074074073, 0.59)
+            double3 xformOp:translate = (0.4277037037037037, -0.5252592592592593, 0.59)
             uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
 
             def Mesh "Visual" (
@@ -4128,6 +4126,340 @@ def Xform "World"
             double3 xformOp:translate = (0, 0, 0.725)
             uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
         }
+
+        def Xform "AssemblyPad"
+        {
+            def Cube "Visual" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </World/Looks/AssemblyPad>
+                double size = 1
+                quatf xformOp:orient = (1, 0, 0, 0)
+                float3 xformOp:scale = (0.512, 0.416, 0.0096)
+                double3 xformOp:translate = (0, 0.1, 0.7452)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+            }
+
+            def Xform "Grid"
+            {
+                def Cube "X_00" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/AssemblyPadGrid>
+                    double size = 1
+                    quatf xformOp:orient = (1, 0, 0, 0)
+                    float3 xformOp:scale = (0.512, 0.001, 0.001)
+                    double3 xformOp:translate = (0, -0.156, 0.7505)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+                }
+
+                def Cube "X_01" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/AssemblyPadGrid>
+                    double size = 1
+                    quatf xformOp:orient = (1, 0, 0, 0)
+                    float3 xformOp:scale = (0.512, 0.001, 0.001)
+                    double3 xformOp:translate = (0, -0.11599999999999999, 0.7505)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+                }
+
+                def Cube "X_02" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/AssemblyPadGrid>
+                    double size = 1
+                    quatf xformOp:orient = (1, 0, 0, 0)
+                    float3 xformOp:scale = (0.512, 0.001, 0.001)
+                    double3 xformOp:translate = (0, -0.07599999999999998, 0.7505)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+                }
+
+                def Cube "X_03" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/AssemblyPadGrid>
+                    double size = 1
+                    quatf xformOp:orient = (1, 0, 0, 0)
+                    float3 xformOp:scale = (0.512, 0.001, 0.001)
+                    double3 xformOp:translate = (0, -0.036000000000000004, 0.7505)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+                }
+
+                def Cube "X_04" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/AssemblyPadGrid>
+                    double size = 1
+                    quatf xformOp:orient = (1, 0, 0, 0)
+                    float3 xformOp:scale = (0.512, 0.001, 0.001)
+                    double3 xformOp:translate = (0, 0.0040000000000000036, 0.7505)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+                }
+
+                def Cube "X_05" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/AssemblyPadGrid>
+                    double size = 1
+                    quatf xformOp:orient = (1, 0, 0, 0)
+                    float3 xformOp:scale = (0.512, 0.001, 0.001)
+                    double3 xformOp:translate = (0, 0.04400000000000001, 0.7505)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+                }
+
+                def Cube "X_06" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/AssemblyPadGrid>
+                    double size = 1
+                    quatf xformOp:orient = (1, 0, 0, 0)
+                    float3 xformOp:scale = (0.512, 0.001, 0.001)
+                    double3 xformOp:translate = (0, 0.08399999999999999, 0.7505)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+                }
+
+                def Cube "X_07" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/AssemblyPadGrid>
+                    double size = 1
+                    quatf xformOp:orient = (1, 0, 0, 0)
+                    float3 xformOp:scale = (0.512, 0.001, 0.001)
+                    double3 xformOp:translate = (0, 0.12400000000000003, 0.7505)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+                }
+
+                def Cube "X_08" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/AssemblyPadGrid>
+                    double size = 1
+                    quatf xformOp:orient = (1, 0, 0, 0)
+                    float3 xformOp:scale = (0.512, 0.001, 0.001)
+                    double3 xformOp:translate = (0, 0.164, 0.7505)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+                }
+
+                def Cube "X_09" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/AssemblyPadGrid>
+                    double size = 1
+                    quatf xformOp:orient = (1, 0, 0, 0)
+                    float3 xformOp:scale = (0.512, 0.001, 0.001)
+                    double3 xformOp:translate = (0, 0.204, 0.7505)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+                }
+
+                def Cube "X_10" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/AssemblyPadGrid>
+                    double size = 1
+                    quatf xformOp:orient = (1, 0, 0, 0)
+                    float3 xformOp:scale = (0.512, 0.001, 0.001)
+                    double3 xformOp:translate = (0, 0.24400000000000002, 0.7505)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+                }
+
+                def Cube "X_11" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/AssemblyPadGrid>
+                    double size = 1
+                    quatf xformOp:orient = (1, 0, 0, 0)
+                    float3 xformOp:scale = (0.512, 0.001, 0.001)
+                    double3 xformOp:translate = (0, 0.28400000000000003, 0.7505)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+                }
+
+                def Cube "X_12" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/AssemblyPadGrid>
+                    double size = 1
+                    quatf xformOp:orient = (1, 0, 0, 0)
+                    float3 xformOp:scale = (0.512, 0.001, 0.001)
+                    double3 xformOp:translate = (0, 0.32399999999999995, 0.7505)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+                }
+
+                def Cube "X_13" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/AssemblyPadGrid>
+                    double size = 1
+                    quatf xformOp:orient = (1, 0, 0, 0)
+                    float3 xformOp:scale = (0.512, 0.001, 0.001)
+                    double3 xformOp:translate = (0, 0.356, 0.7505)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+                }
+
+                def Cube "Y_00" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/AssemblyPadGrid>
+                    double size = 1
+                    quatf xformOp:orient = (1, 0, 0, 0)
+                    float3 xformOp:scale = (0.001, 0.416, 0.001)
+                    double3 xformOp:translate = (-0.208, 0.1, 0.7505)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+                }
+
+                def Cube "Y_01" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/AssemblyPadGrid>
+                    double size = 1
+                    quatf xformOp:orient = (1, 0, 0, 0)
+                    float3 xformOp:scale = (0.001, 0.416, 0.001)
+                    double3 xformOp:translate = (-0.16799999999999998, 0.1, 0.7505)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+                }
+
+                def Cube "Y_02" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/AssemblyPadGrid>
+                    double size = 1
+                    quatf xformOp:orient = (1, 0, 0, 0)
+                    float3 xformOp:scale = (0.001, 0.416, 0.001)
+                    double3 xformOp:translate = (-0.128, 0.1, 0.7505)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+                }
+
+                def Cube "Y_03" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/AssemblyPadGrid>
+                    double size = 1
+                    quatf xformOp:orient = (1, 0, 0, 0)
+                    float3 xformOp:scale = (0.001, 0.416, 0.001)
+                    double3 xformOp:translate = (-0.088, 0.1, 0.7505)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+                }
+
+                def Cube "Y_04" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/AssemblyPadGrid>
+                    double size = 1
+                    quatf xformOp:orient = (1, 0, 0, 0)
+                    float3 xformOp:scale = (0.001, 0.416, 0.001)
+                    double3 xformOp:translate = (-0.04799999999999999, 0.1, 0.7505)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+                }
+
+                def Cube "Y_05" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/AssemblyPadGrid>
+                    double size = 1
+                    quatf xformOp:orient = (1, 0, 0, 0)
+                    float3 xformOp:scale = (0.001, 0.416, 0.001)
+                    double3 xformOp:translate = (-0.00799999999999998, 0.1, 0.7505)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+                }
+
+                def Cube "Y_06" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/AssemblyPadGrid>
+                    double size = 1
+                    quatf xformOp:orient = (1, 0, 0, 0)
+                    float3 xformOp:scale = (0.001, 0.416, 0.001)
+                    double3 xformOp:translate = (0.032, 0.1, 0.7505)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+                }
+
+                def Cube "Y_07" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/AssemblyPadGrid>
+                    double size = 1
+                    quatf xformOp:orient = (1, 0, 0, 0)
+                    float3 xformOp:scale = (0.001, 0.416, 0.001)
+                    double3 xformOp:translate = (0.07200000000000004, 0.1, 0.7505)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+                }
+
+                def Cube "Y_08" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/AssemblyPadGrid>
+                    double size = 1
+                    quatf xformOp:orient = (1, 0, 0, 0)
+                    float3 xformOp:scale = (0.001, 0.416, 0.001)
+                    double3 xformOp:translate = (0.11200000000000002, 0.1, 0.7505)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+                }
+
+                def Cube "Y_09" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/AssemblyPadGrid>
+                    double size = 1
+                    quatf xformOp:orient = (1, 0, 0, 0)
+                    float3 xformOp:scale = (0.001, 0.416, 0.001)
+                    double3 xformOp:translate = (0.152, 0.1, 0.7505)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+                }
+
+                def Cube "Y_10" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    rel material:binding = </World/Looks/AssemblyPadGrid>
+                    double size = 1
+                    quatf xformOp:orient = (1, 0, 0, 0)
+                    float3 xformOp:scale = (0.001, 0.416, 0.001)
+                    double3 xformOp:translate = (0.19200000000000003, 0.1, 0.7505)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+                }
+            }
+
+            def Cube "Collider" (
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
+            )
+            {
+                rel material:binding:physics = </World/Looks/ContactMaterial> (
+                    bindMaterialAs = "weakerThanDescendants"
+                )
+                bool physics:collisionEnabled = 1
+                double size = 1
+                token visibility = "invisible"
+                quatf xformOp:orient = (1, 0, 0, 0)
+                float3 xformOp:scale = (0.512, 0.416, 0.0096)
+                double3 xformOp:translate = (0, 0.1, 0.7452)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+            }
+        }
     }
 
     def Xform "Looks"
@@ -4152,6 +4484,32 @@ def Xform "World"
             float physics:dynamicFriction = 0.65
             float physics:restitution = 0.02
             float physics:staticFriction = 0.8
+        }
+
+        def Material "AssemblyPad"
+        {
+            token outputs:surface.connect = </World/Looks/AssemblyPad/Shader.outputs:surface>
+
+            def Shader "Shader"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.68, 0.7, 0.74)
+                float inputs:roughness = 0.48
+                token outputs:surface
+            }
+        }
+
+        def Material "AssemblyPadGrid"
+        {
+            token outputs:surface.connect = </World/Looks/AssemblyPadGrid/Shader.outputs:surface>
+
+            def Shader "Shader"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.34, 0.38, 0.45)
+                float inputs:roughness = 0.48
+                token outputs:surface
+            }
         }
 
         def Material "piece_0"

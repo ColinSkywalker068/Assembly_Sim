@@ -2,7 +2,7 @@
 
 This directory contains the physics-enabled dual-FANUC assembly workcell. With no assembly override it reproduces the original eight-piece skull demo. With `--assembly` it discovers an arbitrary generated fragment set from schema-version-2 `layout.json`, places every fragment at its stored staging pose, and creates exact merged-box colliders from the same occupied voxel cells used by its visual mesh.
 
-Prepare and validate generic objects from the repository root with `assembly_pipeline.py`; see the root README for the full workflow. Generic objects use plain voxel cubes and the worktable directly—no LEGO studs or baseplate.
+Prepare and validate generic objects from the repository root with `assembly_pipeline.py`; see the root README for the full workflow. Generic objects use plain voxel cubes and a flat central grid assembly pad—no LEGO studs or baseplate. Their generated staging poses form front-to-back lanes on the two sides of the pad, one lane per arm workspace.
 
 ## Maxwell installation
 

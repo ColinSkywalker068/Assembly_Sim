@@ -104,6 +104,20 @@ class SceneConfig:
     def has_support_surface(self) -> bool:
         return self.assembly.has_support_surface if self.assembly is not None else True
 
+    @property
+    def has_generic_assembly_pad(self) -> bool:
+        return (
+            self.assembly is not None
+            and not self.assembly.has_support_surface
+            and "assembly_pad" in self.data["environment"]
+        )
+
+    @property
+    def assembly_pad_spec(self) -> Mapping[str, Any]:
+        if not self.has_generic_assembly_pad:
+            raise RuntimeError("generic assembly pad is unavailable for this scene")
+        return self.data["environment"]["assembly_pad"]
+
     def fragment_spec(self, name: str) -> Mapping[str, Any]:
         if self.assembly is None:
             raise RuntimeError("fragment layout is unavailable; validate scene inputs first")

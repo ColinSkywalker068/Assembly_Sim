@@ -149,6 +149,23 @@
       -0.076,
       0.75
     ],
+    "assembly_pad": {
+      "center": [
+        0.0,
+        0.1,
+        0.75
+      ],
+      "size": [
+        0.512,
+        0.416,
+        0.0096
+      ],
+      "grid_step": 0.04,
+      "lane_centers_x": [
+        -0.42,
+        0.42
+      ]
+    },
     "staging_gap": 0.04,
     "workspace_margin": 0.08
   },

@@ -12,7 +12,7 @@ from typing import Any
 import numpy as np
 
 from scene_config import SceneConfig
-from scene_geometry import VoxelBox, merge_voxel_cells, plate_geometry
+from scene_geometry import VoxelBox, assembly_pad_geometry, merge_voxel_cells, plate_geometry
 
 
 @dataclass(frozen=True)
@@ -20,6 +20,7 @@ class StageManifest:
     floor_path: str
     table_path: str
     plate_path: str | None
+    assembly_pad_path: str | None
     robot_paths: tuple[str, str]
     fragment_paths: tuple[str, ...]
     camera_paths: tuple[str, str, str]
@@ -50,6 +51,9 @@ def expected_stage_manifest(config: SceneConfig) -> StageManifest:
         floor_path="/World/Environment/Floor",
         table_path="/World/Environment/Table",
         plate_path="/World/Environment/Plate" if config.has_support_surface else None,
+        assembly_pad_path=(
+            "/World/Environment/AssemblyPad" if config.has_generic_assembly_pad else None
+        ),
         robot_paths=robot_paths,
         fragment_paths=tuple(f"/World/Fragments/{name}" for name in config.fragment_names),
         camera_paths=camera_paths,
@@ -149,6 +153,44 @@ def author_environment(stage, config: SceneConfig) -> None:
         support_visual,
         physics_material,
     )
+
+    if manifest.assembly_pad_path is not None:
+        geometry = assembly_pad_geometry(config.assembly_pad_spec)
+        pad_root = UsdGeom.Xform.Define(stage, manifest.assembly_pad_path)
+        pad_visual = _visual_material(stage, "/World/Looks/AssemblyPad", (0.68, 0.70, 0.74))
+        grid_visual = _visual_material(stage, "/World/Looks/AssemblyPadGrid", (0.34, 0.38, 0.45))
+        visual = UsdGeom.Cube.Define(stage, f"{manifest.assembly_pad_path}/Visual")
+        visual.CreateSizeAttr(1.0)
+        _set_transform(visual, geometry.collider_center, scale=geometry.size)
+        _bind_visual(visual.GetPrim(), pad_visual)
+        grid_step = float(config.assembly_pad_spec["grid_step"])
+        x_half, y_half = geometry.size[0] / 2, geometry.size[1] / 2
+        grid_z = geometry.top_z + 0.0005
+        grid_root = UsdGeom.Xform.Define(stage, f"{manifest.assembly_pad_path}/Grid")
+        for axis, half, other_half in (("X", x_half, y_half), ("Y", y_half, x_half)):
+            count = int(round((2 * half) / grid_step))
+            for index in range(count + 1):
+                offset = -half + min(index * grid_step, 2 * half)
+                line = UsdGeom.Cube.Define(stage, f"{grid_root.GetPath()}/{axis}_{index:02d}")
+                line.CreateSizeAttr(1.0)
+                position = (
+                    geometry.center[0],
+                    geometry.center[1] + offset,
+                    grid_z,
+                ) if axis == "X" else (
+                    geometry.center[0] + offset,
+                    geometry.center[1],
+                    grid_z,
+                )
+                scale = (2 * x_half, 0.001, 0.001) if axis == "X" else (0.001, 2 * y_half, 0.001)
+                _set_transform(line, position, scale=scale)
+                _bind_visual(line.GetPrim(), grid_visual)
+        collider = UsdGeom.Cube.Define(stage, f"{manifest.assembly_pad_path}/Collider")
+        collider.CreateSizeAttr(1.0)
+        _set_transform(collider, geometry.collider_center, scale=geometry.size)
+        collider.GetVisibilityAttr().Set(UsdGeom.Tokens.invisible)
+        UsdPhysics.CollisionAPI.Apply(collider.GetPrim()).CreateCollisionEnabledAttr(True)
+        _bind_physics(collider.GetPrim(), physics_material)
 
     if manifest.plate_path is None:
         return

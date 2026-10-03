@@ -21,6 +21,7 @@ def test_manifest_requires_two_robot_roots_and_three_cameras():
     assert manifest.floor_path == "/World/Environment/Floor"
     assert manifest.table_path == "/World/Environment/Table"
     assert manifest.plate_path == "/World/Environment/Plate"
+    assert manifest.assembly_pad_path is None
     assert manifest.robot_paths == (
         "/World/Robots/Left",
         "/World/Robots/Right",
@@ -36,11 +37,12 @@ def test_manifest_requires_two_robot_roots_and_three_cameras():
     )
 
 
-def test_generic_manifest_has_three_fragment_paths_and_no_plate():
+def test_generic_manifest_has_three_fragment_paths_and_an_assembly_pad():
     class GenericConfig:
         fragment_names = ("alpha", "beta", "gamma")
         robot_names = ("left", "right")
         has_support_surface = False
+        has_generic_assembly_pad = True
         data = {
             "cameras": {
                 "agent": {"prim_path": "/World/Cameras/Agent"},
@@ -60,12 +62,14 @@ def test_generic_manifest_has_three_fragment_paths_and_no_plate():
         "/World/Fragments/gamma",
     )
     assert manifest.plate_path is None
+    assert manifest.assembly_pad_path == "/World/Environment/AssemblyPad"
 
 
 def test_legacy_manifest_keeps_plate():
     config = SceneConfig.load(SCENE_ROOT / "config" / "scene.json")
 
     assert expected_stage_manifest(config).plate_path == "/World/Environment/Plate"
+    assert expected_stage_manifest(config).assembly_pad_path is None
 
 
 def test_manifest_rejects_duplicate_robot_roots():

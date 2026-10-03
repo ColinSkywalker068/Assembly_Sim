@@ -12,7 +12,14 @@ from typing import Any, Mapping
 import numpy as np
 
 from .layout import load_layout
-from .staging import AABB2D, PieceBounds, StagingSpec, TableBounds, compute_staging_poses
+from .staging import (
+    AABB2D,
+    PieceBounds,
+    StagingSpec,
+    TableBounds,
+    compute_staging_poses,
+    resolved_lane_centers,
+)
 from .voxelize import ProcessedAssembly
 
 
@@ -44,9 +51,21 @@ def _staging_spec(workcell: Mapping[str, Any]) -> StagingSpec:
         AABB2D.from_center_extent(robot["base_position"][:2], (0.34, 0.34))
         for robot in workcell["robots"].values()
     )
+    pad_data = environment.get("assembly_pad")
+    pad = None
+    lane_centers_x = None
+    if pad_data is not None:
+        center = [float(value) for value in pad_data["center"]]
+        size = [float(value) for value in pad_data["size"]]
+        if len(center) != 3 or len(size) != 3:
+            raise ValueError("environment assembly_pad center and size must be 3D")
+        pad = AABB2D.from_center_extent(center[:2], size[:2])
+        lane_centers_x = tuple(float(value) for value in pad_data["lane_centers_x"])
     return StagingSpec(
         table=table,
         exclusions=exclusions,
+        pad=pad,
+        lane_centers_x=lane_centers_x,
         gap=float(environment.get("staging_gap", 0.04)),
         grid_step=float(workcell.get("placement", {}).get("grid_step", 0.01)),
     )
@@ -54,6 +73,14 @@ def _staging_spec(workcell: Mapping[str, Any]) -> StagingSpec:
 
 def _layout_data(processed: ProcessedAssembly, workcell: Mapping[str, Any], staging) -> dict:
     spec = _staging_spec(workcell)
+    bilateral = spec.pad is not None
+    bounds = {fragment.name: PieceBounds(*fragment.local_bounds) for fragment in processed.fragments}
+    lane_centers = resolved_lane_centers(bounds, spec) if bilateral else None
+    names = sorted(fragment.name for fragment in processed.fragments)
+    split = (len(names) + 1) // 2
+    assignments = {
+        name: "left" if index < split else "right" for index, name in enumerate(names)
+    }
     pieces = []
     for fragment in processed.fragments:
         pose = staging[fragment.name]
@@ -96,7 +123,7 @@ def _layout_data(processed: ProcessedAssembly, workcell: Mapping[str, Any], stag
         "fragment_count": len(pieces),
         "pieces": pieces,
         "staging": {
-            "algorithm": "deterministic_aabb_grid_v1",
+            "algorithm": "bilateral_lanes_v1" if bilateral else "deterministic_aabb_grid_v1",
             "workcell_config": str(workcell.get("config_path", "")),
             "table_bounds": [spec.table.min_x, spec.table.max_x, spec.table.min_y, spec.table.max_y],
             "table_top_z": spec.table.table_top_z,
@@ -105,6 +132,20 @@ def _layout_data(processed: ProcessedAssembly, workcell: Mapping[str, Any], stag
             ],
             "gap": spec.gap,
             "grid_step": spec.grid_step,
+            **(
+                {
+                    "pad_bounds": [
+                        round(spec.pad.min_x, 12),
+                        round(spec.pad.max_x, 12),
+                        round(spec.pad.min_y, 12),
+                        round(spec.pad.max_y, 12),
+                    ],
+                    "lane_centers_x": list(lane_centers),
+                    "assignments": assignments,
+                }
+                if bilateral
+                else {}
+            ),
         },
     }
 

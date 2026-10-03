@@ -2294,8 +2294,8 @@
       },
       "staging_pose": {
         "position": [
-          -0.7583302752293579,
-          -0.3138899082568808,
+          -0.41233027522935783,
+          -0.14788990825688075,
           0.75
         ],
         "orientation_wxyz": [
@@ -4850,8 +4850,8 @@
       },
       "staging_pose": {
         "position": [
-          -0.4719759036144579,
-          -0.006016064257028178,
+          -0.4539759036144579,
+          0.1119839357429719,
           0.75
         ],
         "orientation_wxyz": [
@@ -5051,8 +5051,8 @@
       },
       "staging_pose": {
         "position": [
-          -0.7622962962962964,
-          0.27474074074074073,
+          0.4277037037037037,
+          -0.0032592592592592673,
           0.59
         ],
         "orientation_wxyz": [
@@ -5075,7 +5075,7 @@
     }
   ],
   "staging": {
-    "algorithm": "deterministic_aabb_grid_v1",
+    "algorithm": "bilateral_lanes_v1",
     "workcell_config": "/local_data/yz11445/projects/Assembly_Sim/06_interactive_scene/config/scene.json",
     "table_bounds": [
       -0.9700000000000001,
@@ -5099,6 +5099,21 @@
       ]
     ],
     "gap": 0.04,
-    "grid_step": 0.04
+    "grid_step": 0.04,
+    "pad_bounds": [
+      -0.256,
+      0.256,
+      -0.108,
+      0.308
+    ],
+    "lane_centers_x": [
+      -0.424,
+      0.42
+    ],
+    "assignments": {
+      "piece_0": "left",
+      "piece_1": "left",
+      "piece_2": "right"
+    }
   }
 }

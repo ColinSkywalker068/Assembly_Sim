@@ -42,7 +42,9 @@ client network. WebRTC is unencrypted and unauthenticated, so use it only over
 the university network or VPN and do not expose those ports broadly to the
 Internet. The first launch compiles RTX shaders and can take several minutes.
 
-Schema-version-2 `layout.json` records provenance, normalization, one common voxel grid, occupied cells, relative NPZ paths, canonical GT/goal poses, and separate world-space staging poses. Visuals are plain voxel cubes without studs. Isaac creates exact merged-box colliders from the same cells. Generic scenes use the table directly and create no baseplate or prediction ghost.
+Schema-version-2 `layout.json` records provenance, normalization, one common voxel grid, occupied cells, relative NPZ paths, canonical GT/goal poses, and separate world-space staging poses. Visuals are plain voxel cubes without studs. Isaac creates exact merged-box colliders from the same cells.
+
+Generic scenes include a flat central grid assembly pad, not a LEGO baseplate. Staging is bilateral: fragments occupy front-to-back (`Y`) lanes at the left and right sides of the pad, perpendicular to the arm-to-arm axis. The generated `layout.json` records the chosen lane assignment and staging poses, so Isaac needs no source-dataset access.
 
 The original skull scene remains available through the existing no-override command. `03_scripts/asm_bricks.py` remains a CRAG ground-truth GLB compatibility entry point; predicted-pose input is intentionally outside the generalized pipeline.
 

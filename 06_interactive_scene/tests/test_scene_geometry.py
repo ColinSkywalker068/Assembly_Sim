@@ -10,7 +10,13 @@ if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
 from scene_assets import _collider_local_geometry
-from scene_geometry import boxes_volume, merge_voxel_cells, occupied_volume, plate_geometry
+from scene_geometry import (
+    assembly_pad_geometry,
+    boxes_volume,
+    merge_voxel_cells,
+    occupied_volume,
+    plate_geometry,
+)
 
 
 def covered_cells(box):
@@ -98,3 +104,13 @@ def test_plate_geometry_maps_demo_origin_to_surface_and_collider_centers():
         (0.0, 0.1, 0.75)
     )
     assert geometry.collider_local_center == pytest.approx((0.224, 0.176, -0.0048))
+
+
+def test_assembly_pad_geometry_uses_the_demo_reference_surface_and_collider():
+    geometry = assembly_pad_geometry(
+        {"center": [0.0, 0.1, 0.75], "size": [0.512, 0.416, 0.0096]}
+    )
+
+    assert geometry.center == pytest.approx((0.0, 0.1, 0.75))
+    assert geometry.top_z == pytest.approx(0.75)
+    assert geometry.collider_center == pytest.approx((0.0, 0.1, 0.7452))

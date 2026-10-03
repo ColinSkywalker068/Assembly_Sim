@@ -56,11 +56,12 @@ class TableBounds(AABB2D):
     table_top_z: float
 
     def contains(self, other: AABB2D) -> bool:
+        tolerance = 1e-12
         return (
-            self.min_x <= other.min_x
-            and other.max_x <= self.max_x
-            and self.min_y <= other.min_y
-            and other.max_y <= self.max_y
+            self.min_x <= other.min_x + tolerance
+            and other.max_x <= self.max_x + tolerance
+            and self.min_y <= other.min_y + tolerance
+            and other.max_y <= self.max_y + tolerance
         )
 
 
@@ -86,6 +87,8 @@ class PieceBounds:
 class StagingSpec:
     table: TableBounds
     exclusions: tuple[AABB2D, ...] = ()
+    pad: AABB2D | None = None
+    lane_centers_x: tuple[float, float] | None = None
     gap: float = 0.04
     grid_step: float = 0.01
 
@@ -94,6 +97,15 @@ class StagingSpec:
             raise ValueError("staging gap must be non-negative")
         if self.grid_step <= 0:
             raise ValueError("staging grid_step must be positive")
+        if (self.pad is None) != (self.lane_centers_x is None):
+            raise ValueError("bilateral staging requires both pad and lane_centers_x")
+        if self.lane_centers_x is not None:
+            if len(self.lane_centers_x) != 2 or not all(
+                math.isfinite(value) for value in self.lane_centers_x
+            ):
+                raise ValueError("lane_centers_x must contain two finite values")
+            if self.lane_centers_x[0] >= self.lane_centers_x[1]:
+                raise ValueError("lane_centers_x must be ordered left then right")
 
 
 def _positions(start: float, stop: float, step: float) -> list[float]:
@@ -106,10 +118,89 @@ def _positions(start: float, stop: float, step: float) -> list[float]:
     return values
 
 
+def resolved_lane_centers(
+    piece_bounds: Mapping[str, PieceBounds], spec: StagingSpec
+) -> tuple[float, float]:
+    """Keep the demo lanes unless fragment width needs more pad clearance."""
+
+    if spec.pad is None or spec.lane_centers_x is None:
+        raise ValueError("bilateral staging is not configured")
+    names = sorted(piece_bounds)
+    split = (len(names) + 1) // 2
+    left_width = max((piece_bounds[name].size[0] for name in names[:split]), default=0.0)
+    right_width = max((piece_bounds[name].size[0] for name in names[split:]), default=0.0)
+    return (
+        min(spec.lane_centers_x[0], spec.pad.min_x - spec.gap - left_width / 2),
+        max(spec.lane_centers_x[1], spec.pad.max_x + spec.gap + right_width / 2),
+    )
+
+
+def _bilateral_staging_poses(
+    piece_bounds: Mapping[str, PieceBounds], spec: StagingSpec
+) -> dict[str, Pose]:
+    assert spec.pad is not None
+    assert spec.lane_centers_x is not None
+    names = sorted(piece_bounds)
+    split = (len(names) + 1) // 2
+    lane_centers = resolved_lane_centers(piece_bounds, spec)
+    lanes = (("left", lane_centers[0], names[:split]), ("right", lane_centers[1], names[split:]))
+    occupied: list[AABB2D] = []
+    placed: dict[str, Pose] = {}
+    exclusions = tuple((*spec.exclusions, spec.pad))
+    for side, lane_x, lane_names in lanes:
+        total_depth = sum(piece_bounds[name].size[1] for name in lane_names)
+        total_depth += spec.gap * max(0, len(lane_names) - 1)
+        centred_start = spec.table.center[1] - total_depth / 2
+        starts = _positions(spec.table.min_y, spec.table.max_y - total_depth, spec.grid_step)
+        starts = sorted(
+            {centred_start, *starts},
+            key=lambda start: (abs(start + total_depth / 2 - spec.table.center[1]), start),
+        )
+        selected_lane = None
+        for lane_start in starts:
+            cursor = lane_start
+            candidates = []
+            for name in lane_names:
+                bounds = piece_bounds[name]
+                width, depth, _ = bounds.size
+                candidate = AABB2D(lane_x - width / 2, lane_x + width / 2, cursor, cursor + depth)
+                if not spec.table.contains(candidate):
+                    break
+                if any(candidate.expanded(spec.gap).overlaps(blocked) for blocked in exclusions):
+                    break
+                if any(
+                    candidate.expanded(spec.gap / 2).overlaps(other.expanded(spec.gap / 2))
+                    for other in (*occupied, *candidates)
+                ):
+                    break
+                candidates.append(candidate)
+                cursor += depth + spec.gap
+            if len(candidates) == len(lane_names):
+                selected_lane = candidates
+                break
+        if selected_lane is None:
+            name = lane_names[-1]
+            raise ValueError(f"could not place {name}: {side} lane capacity exhausted")
+        for name, selected in zip(lane_names, selected_lane):
+            bounds = piece_bounds[name]
+            placed[name] = Pose(
+                (
+                    selected.min_x - bounds.local_min[0],
+                    selected.min_y - bounds.local_min[1],
+                    spec.table.table_top_z - bounds.local_min[2],
+                )
+            )
+            occupied.append(selected)
+    return placed
+
+
 def compute_staging_poses(
     piece_bounds: Mapping[str, PieceBounds], spec: StagingSpec
 ) -> dict[str, Pose]:
     """Pack fragment AABBs deterministically without intersections."""
+
+    if spec.pad is not None:
+        return _bilateral_staging_poses(piece_bounds, spec)
 
     anchor = spec.exclusions[0].center if spec.exclusions else spec.table.center
     occupied: list[AABB2D] = []

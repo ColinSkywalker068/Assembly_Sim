@@ -1,3 +1,5 @@
+import json
+from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
@@ -47,12 +49,35 @@ def _workcell():
             "table_size": [2.1, 1.3, 0.05],
             "workspace_margin": 0.08,
             "staging_gap": 0.04,
+            "assembly_pad": {
+                "center": [0.0, 0.1, 0.75],
+                "size": [0.512, 0.416, 0.0096],
+                "grid_step": 0.04,
+                "lane_centers_x": [-0.42, 0.42],
+            },
         },
         "robots": {
             "left": {"base_position": [-0.78, 0.0, 0.75]},
             "right": {"base_position": [0.78, 0.0, 0.75]},
         },
     }
+
+
+def _three_processed():
+    fragments = tuple(
+        replace(
+            _fragment(f"piece_{index}"),
+            cells=((index, 0, 0),),
+            local_pivot_cells=(index + 0.5, 0.5, 0.0),
+        )
+        for index in range(3)
+    )
+    return replace(
+        _processed(),
+        grid_shape=(3, 1, 1),
+        assembly_bounds=((0.0, 0.0, 0.0), (0.3, 0.1, 0.1)),
+        fragments=fragments,
+    )
 
 
 def test_export_writes_one_npz_per_fragment_without_plate_or_ghost(tmp_path):
@@ -84,3 +109,23 @@ def test_nonempty_output_requires_overwrite(tmp_path):
         write_processed_assembly(_processed(), output, _workcell())
 
     assert (output / "user-file.txt").read_text(encoding="utf-8") == "keep"
+
+
+def test_export_records_bilateral_lanes_and_a_two_plus_one_assignment(tmp_path):
+    output = tmp_path / "generated"
+
+    layout_path = write_processed_assembly(_three_processed(), output, _workcell())
+
+    layout = json.loads(layout_path.read_text(encoding="utf-8"))
+    assert layout["staging"]["algorithm"] == "bilateral_lanes_v1"
+    assert layout["staging"]["pad_bounds"] == [-0.256, 0.256, -0.108, 0.308]
+    assert layout["staging"]["lane_centers_x"] == [-0.42, 0.42]
+    assert layout["staging"]["assignments"] == {
+        "piece_0": "left",
+        "piece_1": "left",
+        "piece_2": "right",
+    }
+    poses = {piece["name"]: piece["staging_pose"]["position"] for piece in layout["pieces"]}
+    assert poses["piece_0"][0] == pytest.approx(-0.42)
+    assert poses["piece_1"][0] == pytest.approx(-0.42)
+    assert poses["piece_2"][0] == pytest.approx(0.42)

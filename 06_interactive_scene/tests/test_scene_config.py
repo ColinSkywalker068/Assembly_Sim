@@ -177,6 +177,7 @@ def test_schema_v2_override_accepts_three_arbitrary_fragments(tmp_path):
 
     assert config.fragment_names == ("alpha", "beta", "gamma")
     assert config.has_support_surface is False
+    assert config.has_generic_assembly_pad is True
 
 
 def test_override_layout_is_authoritative_over_legacy_fragment_config(tmp_path):
@@ -213,3 +214,4 @@ def test_legacy_skull_config_still_loads_eight_fragments():
 
     assert config.fragment_names == tuple(f"piece_{index}" for index in range(8))
     assert config.has_support_surface is True
+    assert config.has_generic_assembly_pad is False

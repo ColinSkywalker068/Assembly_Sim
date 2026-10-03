@@ -121,6 +121,7 @@ def validate_manifest(handles: SceneHandles) -> ValidationReport:
         handles.manifest.floor_path,
         handles.manifest.table_path,
         handles.manifest.plate_path,
+        handles.manifest.assembly_pad_path,
         *handles.manifest.robot_paths,
         *handles.manifest.fragment_paths,
         *handles.manifest.camera_paths,

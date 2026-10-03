@@ -6,6 +6,8 @@ from pathlib import Path
 import numpy as np
 
 from assembly_pipeline import (
+    DEFAULT_SCENE_CONFIG,
+    _load_workcell,
     build_launch_command,
     build_parser,
     default_object_id,
@@ -105,6 +107,15 @@ def test_prepare_exposes_pitch_length_seed_scene_and_overwrite():
     assert arguments.seed == 11
     assert arguments.scene_config == Path("/repo/scene.json")
     assert arguments.overwrite is True
+
+
+def test_stock_workcell_config_exposes_bilateral_grid_pad_staging():
+    workcell = _load_workcell(DEFAULT_SCENE_CONFIG)
+
+    pad = workcell["environment"]["assembly_pad"]
+    assert pad["center"] == [0.0, 0.1, 0.75]
+    assert pad["size"] == [0.512, 0.416, 0.0096]
+    assert pad["lane_centers_x"] == [-0.42, 0.42]
 
 
 def test_validate_succeeds_after_source_directory_is_unavailable(tmp_path):
