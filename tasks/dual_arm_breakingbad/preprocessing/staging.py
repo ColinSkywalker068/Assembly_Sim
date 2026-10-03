@@ -121,7 +121,7 @@ def _positions(start: float, stop: float, step: float) -> list[float]:
 def resolved_lane_centers(
     piece_bounds: Mapping[str, PieceBounds], spec: StagingSpec
 ) -> tuple[float, float]:
-    """Keep the demo lanes unless fragment width needs more pad clearance."""
+    """Keep the demo lanes unless fragment width would enter the marked region."""
 
     if spec.pad is None or spec.lane_centers_x is None:
         raise ValueError("bilateral staging is not configured")
@@ -130,8 +130,8 @@ def resolved_lane_centers(
     left_width = max((piece_bounds[name].size[0] for name in names[:split]), default=0.0)
     right_width = max((piece_bounds[name].size[0] for name in names[split:]), default=0.0)
     return (
-        min(spec.lane_centers_x[0], spec.pad.min_x - spec.gap - left_width / 2),
-        max(spec.lane_centers_x[1], spec.pad.max_x + spec.gap + right_width / 2),
+        min(spec.lane_centers_x[0], spec.pad.min_x - left_width / 2),
+        max(spec.lane_centers_x[1], spec.pad.max_x + right_width / 2),
     )
 
 
@@ -146,7 +146,6 @@ def _bilateral_staging_poses(
     lanes = (("left", lane_centers[0], names[:split]), ("right", lane_centers[1], names[split:]))
     occupied: list[AABB2D] = []
     placed: dict[str, Pose] = {}
-    exclusions = tuple((*spec.exclusions, spec.pad))
     for side, lane_x, lane_names in lanes:
         total_depth = sum(piece_bounds[name].size[1] for name in lane_names)
         total_depth += spec.gap * max(0, len(lane_names) - 1)
@@ -166,7 +165,12 @@ def _bilateral_staging_poses(
                 candidate = AABB2D(lane_x - width / 2, lane_x + width / 2, cursor, cursor + depth)
                 if not spec.table.contains(candidate):
                     break
-                if any(candidate.expanded(spec.gap).overlaps(blocked) for blocked in exclusions):
+                if candidate.overlaps(spec.pad):
+                    break
+                if any(
+                    candidate.expanded(spec.gap).overlaps(blocked)
+                    for blocked in spec.exclusions
+                ):
                     break
                 if any(
                     candidate.expanded(spec.gap / 2).overlaps(other.expanded(spec.gap / 2))

@@ -2,7 +2,7 @@ from itertools import product
 
 import pytest
 
-from core.workcell.geometry import assembly_pad_geometry
+from core.workcell.geometry import assembly_pad_geometry, assembly_tape_segments
 from tasks.dual_arm_breakingbad.scene.assets import _collider_local_geometry
 from tasks.dual_arm_breakingbad.scene.geometry import (
     boxes_volume,
@@ -87,11 +87,18 @@ def test_fragment_collider_local_coordinates_match_visual_pivot():
     assert size == pytest.approx((0.1, 0.1, 0.2))
 
 
-def test_assembly_pad_geometry_uses_the_demo_reference_surface_and_collider():
+def test_assembly_region_uses_the_shared_tape_outline():
+    spec = {
+        "center": [0.0, 0.0, 0.75],
+        "size": [0.55, 0.55, 0.0006],
+        "tape_width": 0.012,
+    }
     geometry = assembly_pad_geometry(
-        {"center": [0.0, 0.0, 0.75], "size": [0.512, 0.416, 0.0096]}
+        spec
     )
+    segments = assembly_tape_segments(spec)
 
     assert geometry.center == pytest.approx((0.0, 0.0, 0.75))
     assert geometry.top_z == pytest.approx(0.75)
-    assert geometry.collider_center == pytest.approx((0.0, 0.0, 0.7452))
+    assert len(segments) == 4
+    assert all(segment.center[2] > geometry.top_z for segment in segments)

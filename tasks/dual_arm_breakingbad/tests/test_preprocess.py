@@ -106,7 +106,7 @@ def test_export_records_bilateral_lanes_and_a_two_plus_one_assignment(tmp_path):
 
     layout = json.loads(layout_path.read_text(encoding="utf-8"))
     assert layout["staging"]["algorithm"] == "bilateral_lanes_v1"
-    assert layout["staging"]["pad_bounds"] == [-0.256, 0.256, -0.208, 0.208]
+    assert layout["staging"]["pad_bounds"] == [-0.275, 0.275, -0.275, 0.275]
     assert layout["staging"]["lane_centers_x"] == [-0.42, 0.42]
     assert layout["staging"]["assignments"] == {
         "piece_0": "left",

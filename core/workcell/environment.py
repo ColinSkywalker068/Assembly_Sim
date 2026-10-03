@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any, Sequence
 
 from core.workcell.config import WorkcellConfig
-from core.workcell.geometry import assembly_pad_geometry
+from core.workcell.geometry import assembly_tape_segments
 from core.workcell.physics import author_physics_material, bind_physics
 
 
@@ -59,19 +59,25 @@ def _author_static_box(stage, path, position, size, visual_material, physics_mat
 
 
 def author_environment(stage: Any, config: WorkcellConfig) -> None:
-    from pxr import Gf, UsdGeom, UsdLux, UsdPhysics
+    from pxr import Gf, UsdGeom, UsdLux
 
     environment = config.environment
+    colors = environment["colors"]
     UsdGeom.Xform.Define(stage, "/World/Environment")
     UsdGeom.Xform.Define(stage, "/World/Looks")
-    support = author_visual_material(stage, "/World/Looks/Support", (0.72, 0.72, 0.76))
+    floor_material = author_visual_material(
+        stage, "/World/Looks/Floor", colors["floor"]
+    )
+    table_material = author_visual_material(
+        stage, "/World/Looks/Table", colors["table"]
+    )
     contact = author_physics_material(stage, "/World/Looks/ContactMaterial", config)
     _author_static_box(
         stage,
         "/World/Environment/Floor",
         environment["floor_position"],
         environment["floor_size"],
-        support,
+        floor_material,
         contact,
     )
     _author_static_box(
@@ -79,7 +85,7 @@ def author_environment(stage: Any, config: WorkcellConfig) -> None:
         "/World/Environment/Table",
         environment["table_position"],
         environment["table_size"],
-        support,
+        table_material,
         contact,
     )
 
@@ -90,39 +96,12 @@ def author_environment(stage: Any, config: WorkcellConfig) -> None:
     UsdGeom.Xformable(distant).AddRotateXYZOp().Set(Gf.Vec3f(315.0, 35.0, 0.0))
 
     path = "/World/Environment/AssemblyPad"
-    geometry = assembly_pad_geometry(environment["assembly_pad"])
     UsdGeom.Xform.Define(stage, path)
-    pad_material = author_visual_material(stage, "/World/Looks/AssemblyPad", (0.68, 0.70, 0.74))
-    grid_material = author_visual_material(
-        stage, "/World/Looks/AssemblyPadGrid", (0.34, 0.38, 0.45)
+    tape_material = author_visual_material(
+        stage, "/World/Looks/AssemblyTape", colors["assembly_tape"]
     )
-    visual = UsdGeom.Cube.Define(stage, f"{path}/Visual")
-    visual.CreateSizeAttr(1.0)
-    set_transform(visual, geometry.collider_center, scale=geometry.size)
-    bind_visual(visual.GetPrim(), pad_material)
-
-    grid_step = float(environment["assembly_pad"]["grid_step"])
-    x_half, y_half = geometry.size[0] / 2, geometry.size[1] / 2
-    grid_z = geometry.top_z + 0.0005
-    grid_root = UsdGeom.Xform.Define(stage, f"{path}/Grid")
-    for axis, half in (("X", y_half), ("Y", x_half)):
-        count = int(round((2 * half) / grid_step))
-        for index in range(count + 1):
-            offset = -half + min(index * grid_step, 2 * half)
-            line = UsdGeom.Cube.Define(stage, f"{grid_root.GetPath()}/{axis}_{index:02d}")
-            line.CreateSizeAttr(1.0)
-            if axis == "X":
-                position = (geometry.center[0], geometry.center[1] + offset, grid_z)
-                scale = (2 * x_half, 0.001, 0.001)
-            else:
-                position = (geometry.center[0] + offset, geometry.center[1], grid_z)
-                scale = (0.001, 2 * y_half, 0.001)
-            set_transform(line, position, scale=scale)
-            bind_visual(line.GetPrim(), grid_material)
-
-    collider = UsdGeom.Cube.Define(stage, f"{path}/Collider")
-    collider.CreateSizeAttr(1.0)
-    set_transform(collider, geometry.collider_center, scale=geometry.size)
-    collider.GetVisibilityAttr().Set(UsdGeom.Tokens.invisible)
-    UsdPhysics.CollisionAPI.Apply(collider.GetPrim()).CreateCollisionEnabledAttr(True)
-    bind_physics(collider.GetPrim(), contact)
+    for segment in assembly_tape_segments(environment["assembly_pad"]):
+        tape = UsdGeom.Cube.Define(stage, f"{path}/{segment.name}")
+        tape.CreateSizeAttr(1.0)
+        set_transform(tape, segment.center, scale=segment.size)
+        bind_visual(tape.GetPrim(), tape_material)

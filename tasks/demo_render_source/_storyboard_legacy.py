@@ -65,10 +65,6 @@ def author_storyboard_assets(stage, choreography, base_dir):
     UsdGeom.Xform.Define(stage, "/World/Storyboard")
     UsdGeom.Xform.Define(stage, "/World/Storyboard/Bricks")
     UsdGeom.Xform.Define(stage, "/World/Storyboard/Ghosts")
-    plate_mat, _ = make_mat("/World/Looks/plate", tuple(choreography['plate']['color']), 0.55)
-    add_mesh("/World/Storyboard/Plate", os.path.join(base_dir, choreography['plate']['npz']), plate_mat).set_world_poses(
-        positions=np.array([choreography['plate']['pos']]), orientations=np.array([[1, 0, 0, 0]])
-    )
     bricks = {}
     for name, brick in choreography['bricks'].items():
         material, _ = make_mat(f"/World/Looks/{name}", tuple(brick['color']), 0.45)

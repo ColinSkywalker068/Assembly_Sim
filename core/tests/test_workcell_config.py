@@ -51,9 +51,15 @@ def test_workcell_invariants_match_the_existing_scene():
     assert config.camera_resolution == (1920, 1440)
     assert config.environment["table_position"] == [0.0, 0.0, 0.725]
     assert config.environment["table_size"] == [2.1, 1.3, 0.05]
+    assert config.environment["colors"] == {
+        "floor": [0.07, 0.045, 0.03],
+        "table": [0.22, 0.10, 0.04],
+        "assembly_tape": [0.65, 0.015, 0.01],
+    }
     assert config.environment["assembly_pad"] == {
         "center": [0.0, 0.0, 0.75],
-        "size": [0.512, 0.416, 0.0096],
+        "size": [0.55, 0.55, 0.0006],
+        "tape_width": 0.012,
         "grid_step": 0.04,
         "lane_centers_x": [-0.42, 0.42],
     }

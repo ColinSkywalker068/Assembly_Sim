@@ -20,3 +20,12 @@ def test_storyboard_worker_builds_core_before_task_owned_assets():
     assert source.index("build_workcell(") < source.index("author_storyboard_assets(")
     assert 'VisualCuboid("/World/table"' not in source
     assert 'VisualCuboid("/World/floor"' not in source
+
+
+def test_storyboard_does_not_author_a_legacy_assembly_plate():
+    source = (
+        Path(__file__).resolve().parents[1] / "_storyboard_legacy.py"
+    ).read_text(encoding="utf-8")
+
+    assert '"/World/Storyboard/Plate"' not in source
+    assert "choreography['plate']" not in source

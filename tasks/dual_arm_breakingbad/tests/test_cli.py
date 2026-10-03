@@ -92,7 +92,8 @@ def test_stock_workcell_exposes_bilateral_grid_pad_staging():
     pad = load_workcell_preset("dual_arm").environment["assembly_pad"]
 
     assert pad["center"] == [0.0, 0.0, 0.75]
-    assert pad["size"] == [0.512, 0.416, 0.0096]
+    assert pad["size"] == [0.55, 0.55, 0.0006]
+    assert pad["tape_width"] == 0.012
     assert pad["lane_centers_x"] == [-0.42, 0.42]
 
 

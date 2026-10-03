@@ -183,7 +183,6 @@ for i, sc in enumerate(rec['scene']): ranges.setdefault(sc, [i, i])[1] = i
 rel = lambda f: os.path.relpath(os.path.join(here, f), os.path.dirname(os.path.abspath(args.out)))
 out = dict(fps=fps, n=n, scenes=ranges, assets=ASSETS, arms=ARMS, tcp_offset=TCP_OFF,
            table={"pos": [0, 0, TZ - 0.025], "size": [2.1, 1.3, 0.05], "legs": [[-0.95, -0.55, (TZ - 0.05) / 2], [0.95, -0.55, (TZ - 0.05) / 2], [-0.95, 0.55, (TZ - 0.05) / 2], [0.95, 0.55, (TZ - 0.05) / 2]]},
-           plate={"npz": rel(L["plate"]["npz"]), "pos": O.round(4).tolist(), "color": L["plate"]["color"]},
            bricks={pc["name"]: {"npz": rel(pc["npz"]), "color": pc["color"]} for pc in pieces},
            ghost={"per_piece": True, "color": [0.50, 0.55, 0.92], "opacity": 0.22}, fail_scripted=FAIL_SCRIPTED,
            camera={"eye": [1.35, -2.05, 1.72], "look": [0.0, 0.05, 0.78], "focal": 25.0}, order=[pieces[k]["name"] for k in order], anchor=anchor, movable=len(movable), fail_piece=pieces[fail_k]["name"], **rec)

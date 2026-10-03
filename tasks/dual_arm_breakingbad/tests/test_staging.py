@@ -93,7 +93,7 @@ def test_bilateral_staging_uses_two_front_to_back_lanes_for_three_fragments():
     pad = AABB2D(-0.256, 0.256, -0.108, 0.308)
     spec = StagingSpec(
         table=TableBounds(-0.97, 0.97, -0.57, 0.57, 0.75),
-        exclusions=(pad,),
+        exclusions=(),
         pad=pad,
         lane_centers_x=(-0.420, 0.420),
         gap=0.04,
@@ -108,7 +108,7 @@ def test_bilateral_staging_uses_two_front_to_back_lanes_for_three_fragments():
     assert world["piece_2"].center[0] == pytest.approx(0.420)
     assert world["piece_0"].center[1] != world["piece_1"].center[1]
     assert all(spec.table.contains(aabb) for aabb in world.values())
-    assert all(not aabb.expanded(spec.gap).overlaps(pad) for aabb in world.values())
+    assert all(not aabb.overlaps(pad) for aabb in world.values())
     assert all(
         pose.position[2] + pieces[name].local_min[2] == pytest.approx(0.75)
         for name, pose in poses.items()
@@ -124,7 +124,7 @@ def test_bilateral_staging_reports_the_first_piece_that_exceeds_lane_capacity():
     pad = AABB2D(-0.05, 0.05, -0.05, 0.05)
     spec = StagingSpec(
         table=TableBounds(-0.50, 0.50, -0.14, 0.14, 0.75),
-        exclusions=(pad,),
+        exclusions=(),
         pad=pad,
         lane_centers_x=(-0.30, 0.30),
         gap=0.04,
@@ -135,14 +135,14 @@ def test_bilateral_staging_reports_the_first_piece_that_exceeds_lane_capacity():
         compute_staging_poses(pieces, spec)
 
 
-def test_bilateral_staging_moves_a_wide_lane_outward_to_preserve_pad_clearance():
+def test_bilateral_staging_moves_a_wide_lane_only_enough_to_avoid_tape_region():
     pieces = {
-        "piece_0": PieceBounds((-0.128, -0.05, 0.00), (0.128, 0.05, 0.10)),
+        "piece_0": PieceBounds((-0.18, -0.05, 0.00), (0.18, 0.05, 0.10)),
     }
     pad = AABB2D(-0.256, 0.256, -0.108, 0.308)
     spec = StagingSpec(
         table=TableBounds(-0.97, 0.97, -0.57, 0.57, 0.75),
-        exclusions=(pad,),
+        exclusions=(),
         pad=pad,
         lane_centers_x=(-0.420, 0.420),
         gap=0.04,
@@ -152,20 +152,23 @@ def test_bilateral_staging_moves_a_wide_lane_outward_to_preserve_pad_clearance()
     pose = compute_staging_poses(pieces, spec)["piece_0"]
     world = pieces["piece_0"].world_aabb(pose)
 
-    assert world.center[0] == pytest.approx(-0.424)
-    assert not world.expanded(spec.gap).overlaps(pad)
+    assert world.center[0] == pytest.approx(-0.436)
+    assert not world.overlaps(pad)
 
 
 def test_bilateral_staging_centers_each_lane_aggregate_on_the_table_y_axis():
     pieces = {
-        "piece_0": PieceBounds((-0.10, -0.08, 0.00), (0.10, 0.08, 0.10)),
-        "piece_1": PieceBounds((-0.08, -0.12, 0.00), (0.08, 0.12, 0.10)),
-        "piece_2": PieceBounds((-0.05, -0.05, 0.00), (0.05, 0.05, 0.10)),
+        "piece_0": PieceBounds((-0.132, -0.096, 0.00), (0.108, 0.096, 0.208)),
+        "piece_1": PieceBounds((-0.098, -0.124, 0.00), (0.158, 0.132, 0.240)),
+        "piece_2": PieceBounds((-0.048, -0.045, 0.16), (0.032, 0.051, 0.208)),
     }
-    pad = AABB2D(-0.256, 0.256, -0.108, 0.308)
+    pad = AABB2D(-0.275, 0.275, -0.275, 0.275)
     spec = StagingSpec(
         table=TableBounds(-0.97, 0.97, -0.57, 0.57, 0.75),
-        exclusions=(pad,),
+        exclusions=(
+            AABB2D(-0.95, -0.61, -0.17, 0.17),
+            AABB2D(0.61, 0.95, -0.17, 0.17),
+        ),
         pad=pad,
         lane_centers_x=(-0.420, 0.420),
         gap=0.04,
@@ -179,3 +182,5 @@ def test_bilateral_staging_centers_each_lane_aggregate_on_the_table_y_axis():
 
     assert (left_min + left_max) / 2 == pytest.approx(spec.table.center[1])
     assert world["piece_2"].center[1] == pytest.approx(spec.table.center[1])
+    assert world["piece_0"].center[0] == pytest.approx(-0.42)
+    assert world["piece_1"].center[0] == pytest.approx(-0.42)

@@ -210,36 +210,6 @@ for index, source_name in enumerate(source_names):
 ghost_vertices, ghost_faces = build_mesh(occupied, False)
 np.savez(os.path.join(args.out, "ghost.npz"), v=ghost_vertices, f=ghost_faces)
 
-margin = 2
-nx, ny = int(shape[0] + 2 * margin), int(shape[1] + 2 * margin)
-thickness = 0.6 * pitch
-plate = trimesh.creation.box((nx * pitch, ny * pitch, thickness))
-plate.apply_translation((nx * pitch / 2 - margin * pitch, ny * pitch / 2 - margin * pitch, -thickness / 2))
-plate_vertices = plate.vertices.tolist()
-plate_faces = plate.faces.tolist()
-offset = len(plate_vertices)
-for i in range(nx):
-    for j in range(ny):
-        sv, sf = stud(
-            (i + 0.5 - margin) * pitch,
-            (j + 0.5 - margin) * pitch,
-            0.0,
-            10,
-        )
-        plate_vertices.extend(sv.tolist())
-        plate_faces.extend((sf + offset).tolist())
-        offset += len(sv)
-np.savez(
-    os.path.join(args.out, "plate.npz"),
-    v=np.asarray(plate_vertices, dtype=np.float32),
-    f=np.asarray(plate_faces, dtype=np.int32),
-)
-layout["plate"] = {
-    "npz": "plate.npz",
-    "size": [nx * pitch, ny * pitch, thickness],
-    "offset": [-margin * pitch, -margin * pitch],
-    "color": [0.78, 0.79, 0.82],
-}
 layout["ghost"] = {"npz": "ghost.npz"}
 layout["assembly_extent"] = (shape * pitch).tolist()
 with open(os.path.join(args.out, "layout.json"), "w", encoding="utf-8") as stream:
