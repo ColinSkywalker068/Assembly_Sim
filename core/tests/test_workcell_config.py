@@ -52,11 +52,13 @@ def test_workcell_invariants_match_the_existing_scene():
     assert config.environment["table_position"] == [0.0, 0.0, 0.725]
     assert config.environment["table_size"] == [2.1, 1.3, 0.05]
     assert config.environment["assembly_pad"] == {
-        "center": [0.0, 0.1, 0.75],
+        "center": [0.0, 0.0, 0.75],
         "size": [0.512, 0.416, 0.0096],
         "grid_step": 0.04,
         "lane_centers_x": [-0.42, 0.42],
     }
+    assert config.cameras["agent"]["position"] == [0.0, -2.10, 3.44]
+    assert config.cameras["agent"]["look_at"] == [0.0, 0.0, 0.75]
     assert config.physics == {
         "dt": pytest.approx(1.0 / 120.0),
         "gravity": [0.0, 0.0, -9.81],

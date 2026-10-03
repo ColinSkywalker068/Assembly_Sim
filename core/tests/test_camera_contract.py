@@ -1,3 +1,5 @@
+import math
+
 import pytest
 
 from core.workcell.cameras import camera_specs, validate_wrist_parents
@@ -10,8 +12,13 @@ def test_dual_arm_camera_contract_preserves_agent_and_both_wrists():
 
     assert tuple(specs) == ("agent", "left_wrist", "right_wrist")
     assert specs["agent"].parent == "/World"
-    assert specs["agent"].position == (1.35, -2.05, 1.72)
-    assert specs["agent"].look_vector == pytest.approx((-1.35, 2.10, -0.94))
+    assert specs["agent"].position == (0.0, -2.10, 3.44)
+    assert specs["agent"].look_vector == pytest.approx((0.0, 2.10, -2.69))
+    horizontal = math.hypot(*specs["agent"].look_vector[:2])
+    depression = math.degrees(
+        math.atan2(-specs["agent"].look_vector[2], horizontal)
+    )
+    assert 40.0 <= depression <= 65.0
     assert specs["left_wrist"].parent == "/World/Robots/Left/flange"
     assert specs["right_wrist"].parent == "/World/Robots/Right/flange"
 

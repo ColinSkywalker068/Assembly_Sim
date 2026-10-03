@@ -91,7 +91,7 @@ def test_prepare_exposes_processing_parameters():
 def test_stock_workcell_exposes_bilateral_grid_pad_staging():
     pad = load_workcell_preset("dual_arm").environment["assembly_pad"]
 
-    assert pad["center"] == [0.0, 0.1, 0.75]
+    assert pad["center"] == [0.0, 0.0, 0.75]
     assert pad["size"] == [0.512, 0.416, 0.0096]
     assert pad["lane_centers_x"] == [-0.42, 0.42]
 

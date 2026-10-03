@@ -25,7 +25,7 @@
     "table_position": [0.0, 0.0, 0.725],
     "table_size": [2.1, 1.3, 0.05],
     "assembly_pad": {
-      "center": [0.0, 0.1, 0.75],
+      "center": [0.0, 0.0, 0.75],
       "size": [0.512, 0.416, 0.0096],
       "grid_step": 0.04,
       "lane_centers_x": [-0.42, 0.42]
@@ -56,8 +56,8 @@
     "agent": {
       "prim_path": "/World/Cameras/Agent",
       "parent": "/World",
-      "position": [1.35, -2.05, 1.72],
-      "look_at": [0.0, 0.05, 0.78],
+      "position": [0.0, -2.10, 3.44],
+      "look_at": [0.0, 0.0, 0.75],
       "focal_length": 25.0,
       "clipping_range": [0.01, 100.0]
     },

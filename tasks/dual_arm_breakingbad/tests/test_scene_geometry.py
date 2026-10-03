@@ -89,9 +89,9 @@ def test_fragment_collider_local_coordinates_match_visual_pivot():
 
 def test_assembly_pad_geometry_uses_the_demo_reference_surface_and_collider():
     geometry = assembly_pad_geometry(
-        {"center": [0.0, 0.1, 0.75], "size": [0.512, 0.416, 0.0096]}
+        {"center": [0.0, 0.0, 0.75], "size": [0.512, 0.416, 0.0096]}
     )
 
-    assert geometry.center == pytest.approx((0.0, 0.1, 0.75))
+    assert geometry.center == pytest.approx((0.0, 0.0, 0.75))
     assert geometry.top_z == pytest.approx(0.75)
-    assert geometry.collider_center == pytest.approx((0.0, 0.1, 0.7452))
+    assert geometry.collider_center == pytest.approx((0.0, 0.0, 0.7452))
