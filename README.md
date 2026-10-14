@@ -1,5 +1,14 @@
 # Assembly Sim
 
+## Jing branch: dual-arm CRAG skull assembly
+
+The `jing` branch adds a configuration and architecture scaffold for dual FANUC CRX-10iA/L arms, YAM grippers, three cameras, printable CRAG skull fragments, and an S2/S1/S0 stack (Claude Opus 5.5 requested model / Diffusion Policy / deterministic motion control). Hardware parameters and runtime integrations remain pending.
+
+- [Jing task README](tasks/dual_arm_crag_skull/README.md)
+- [Implementation TODO](tasks/dual_arm_crag_skull/TODO.md)
+- [Observation/action interfaces](tasks/dual_arm_crag_skull/INTERFACES.md)
+
+
 Assembly Sim is the simulation environment for the robot assembly project at
 the NYU Tandon AI4CE Lab. It provides a reusable NVIDIA Isaac Sim workcell and
 task-specific simulation pipelines for robotic assembly research.
