@@ -42,10 +42,11 @@
     "conditioning": ["three_rgb_views", "tcp_poses", "gripper_widths", "inter_tcp_pose", "skill_id", "observable_target"]
   },
   "s0": {
-    "controller": "constrained_differential_ik_qp",
+    "controller": "fanuc_native_servo_with_external_motion_adapter",
+    "motion_adapter": "constrained_differential_ik_qp",
     "fallback_baseline": "damped_least_squares_ik_with_rejection",
     "simulation_backend": "physx_joint_position_drives",
-    "real_backend_candidate": "fanuc_ros2_driver",
+    "real_backend_candidate": "fanuc_ros2_driver_scaled_joint_trajectory_controller",
     "physics_hz": 240,
     "servo_hz": 60,
     "camera_hz": 10,
