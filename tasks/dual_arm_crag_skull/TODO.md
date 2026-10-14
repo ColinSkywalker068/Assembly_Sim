@@ -70,3 +70,22 @@
 - [ ] 若插合需柔顺，基于实际传感器与控制能力实现并验证导纳控制。
 
 验收：先无接触回放，再单片抓放，再多片装配；每阶段有日志与独立结果评估。
+
+## 本轮进展与 GARF 工具集成
+
+- [x] 推送 jing 分支；保留上游基线 df03da2fc26a47d0dbf25782ec04fb6fc2ffc776。
+- [x] 实现 assembled-GT GLB 入口、稳定节点 ID、至少六片校验。
+- [x] 接通共同体素网格；增加保留全部组件选项、六连通与闭合检查。
+- [x] 导出 NPZ、毫米 STL、来源哈希和变换 manifest；合成输入 CPU 回归测试。
+- [x] 接通现有双臂三相机场景 launch，要求显式允许 Robotiq proxy。
+- [ ] 使用真实 CRAG 头骨样本验证；当前未得到该样本文件，不能用合成方块替代验收。
+- [ ] 在 Linux/NVIDIA Isaac Sim 环境完成 launch 与物理抓放验收；本机 CPU 测试不代表通过。
+- [ ] 解决表面体素非流形案例、实体填充/薄壁、装配间隙与制造试样；禁止静默丢片。
+- [x] 核对用户 GARF.ckpt 的 Drive 文件名/大小，写明工具与 S2/S1/S0 的职责。
+- [ ] 下载权重到仓库外，记录 SHA256、适用许可证、上游代码 commit、模型配置。
+- [ ] 核实 GARF checkpoint 参数键与网络结构，使用独立 GPU 环境跑官方推理基线。
+- [ ] 实现 propose_assembly 服务：固定 ID、点云预处理、反归一化、候选、失败/超时、缓存和版本。
+- [ ] 实现结果 schema、SE(3) 校验、工作台坐标恢复、重叠/接触/可达性检查；评分未经校准不当概率。
+- [ ] 实现三相机到已知扫描片身份与位姿估计，或有尺度 3D 重建；标记模拟 oracle 模式。
+- [ ] 接入 S2 tool-calling：observe → GARF → geometry validation → skill → S1 → S0 → verify/recover。
+- [ ] 数据记录 GARF 候选与 S2 决策；比较 GT/GARF/GARF+恢复，评估分布偏移。

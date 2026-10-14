@@ -6,7 +6,7 @@
 
 ## 当前状态
 
-**本次交付是配置与架构脚手架，不是可运行的完整装配系统。** 已创建独立任务目录、配置、无 Isaac 依赖的检查入口、接口文档和实施 TODO。上游演示保持独立；没有宣称完成 YAM 适配、头骨导入、训练、物理成功验证或真实机器人部署。
+**当前包含 CPU 几何准备与仿真启动入口，尚不是完整装配系统。** 已创建独立任务目录、配置、无 Isaac 依赖的检查入口、接口文档和实施 TODO。上游演示保持独立；没有宣称完成 YAM 适配、头骨导入、训练、物理成功验证或真实机器人部署。
 
 CRX-10iA/L 是用户批准的临时型号，尚未核实捐赠实机。YAM 具体夹爪型号、资产、TCP、相机标定、真实控制选项均待确认。原始 CRAG 数据不随本次交付下载，生成数据存放于仓库外。
 
@@ -106,3 +106,49 @@ UMI 是离线手持示范来源，不是 FANUC 控制驱动。使用 UMI SLAM/�
 - [I2RT 夹爪与驱动](https://github.com/i2rt-robotics/i2rt)
 - [FANUC 官方驱动](https://github.com/FANUC-CORPORATION/fanuc_driver)
 - [CRAG](https://github.com/ai4ce/CRAG)
+
+## GARF 作为 S2 的装配推理工具
+
+用户指定权重：[GARF.ckpt](https://drive.google.com/file/d/1ZN0-Y2HaVe6zI7q4xUVVvhbSqKGbORfg/view)，Drive 元数据大小 573,313,422 bytes。已确认文件名与大小，尚未下载或验证 checkpoint 架构兼容性。配套代码参考 [ai4ce/GARF](https://github.com/ai4ce/GARF)，其官方评估使用 `denoiser_flow_matching` 和 `ckpt_path`。GARF 与 CRAG 是不同模型，不能把该权重直接加载到 CRAG 网络。
+
+权重由独立 GPU 推理服务加载一次。S2 调用 `propose_assembly` 工具，不接收权重张量，也不直接调用电机。以下是本项目拟定的服务接口，并非声称 GARF 原生已有 API 或置信度输出；当前尚未实现推理服务。
+
+```mermaid
+flowchart TD
+  O[三相机与机器人状态] --> P[分割、碎片身份关联、3D 几何与位姿估计]
+  P --> S2[S2: Claude 任务编排]
+  S2 --> G[GARF 工具: 候选装配位姿]
+  G --> V[坐标恢复、重叠、接触、可达性检查]
+  V --> S2
+  S2 --> S1[S1: 技能与目标条件 Diffusion Policy]
+  S1 --> S0[S0: 运动适配与 FANUC 原生伺服]
+  S0 --> E[观察释放后结果、更新状态]
+  E --> S2
+```
+
+1. 感知输出稳定 fragment ID 和各碎片局部点云。三路 RGB 不会自动产生有尺度的完整 3D：第一阶段采用已知扫描模型 + 视觉位姿估计，或另行实现标定多视角重建。禁止把仿真 GT 偷渡为部署感知输入。
+2. S2 在初始装配、身份/几何更新、装配失败时调用 GARF。请求包含 `observation_id`、输入几何哈希、fragment IDs、点云引用、米制单位、归一化变换、anchor ID、随机种子。相同输入可以缓存，视频每帧无需重复运行。
+3. 工具负责官方采样/归一化与模型推理，返回候选 `assembly_T_fragment`、模型版本、checkpoint SHA256、输入哈希、延迟与失败状态。评分由明确的几何评估器计算；未经校准的评分不称为成功概率。多候选需要显式多次采样和记录 seed。
+4. 固定锚点将模型装配坐标转换为工作台坐标。约定 `A_T_B` 把 B 坐标映射到 A，则 `world_T_assembly = world_T_anchor @ inverse(assembly_T_anchor)`，且 `world_T_fragment_goal = world_T_assembly @ assembly_T_fragment`。模型归一化尺度需先恢复，不能直接把归一化平移当米。
+5. 几何检查器拒绝不合理穿透、ID 缺失和无效变换；规划器检查双臂可达性、抓取与插入路径。GARF 给出目标装配形状，不负责机器人路径或先后顺序。
+6. S2 选择 `pick/place/align`、操作者手臂、支撑片和目标相对位姿。S1 根据技能/目标、图像与本体状态生成双手短动作块，S0 完成限位/碰撞检查与执行。S1 必须训练这些条件，不能把新技能名称直接塞入未经相应训练的策略。
+7. 每次放下后重新感知，检查相对位姿与稳定性。通过则继续；失败则重观察、重调 GARF 或安排恢复动作。超时、异常、过期 observation ID 不产生运动命令。
+
+训练时可用 GT 生成专家动作，但 S2/GARF 的预测与 GT 必须分开记录。数据记录 GARF 输入版本、候选、检查结果、S2 技能、S1 请求动作、S0 接受动作及执行后状态。分别评估 GT 目标、GARF 目标和 GARF+S2 恢复，才能区分几何误差与控制误差。
+
+## 当前可执行的 CPU 准备和仿真入口
+
+安装 `requirements-cpu.txt` 到独立 Python 3.12 环境。输入必须是各节点已经处于装配 GT 坐标的 GLB，至少六个节点。下面尺寸只是调用示例，不能视为已批准的打印参数：
+
+```bash
+python -m tasks.dual_arm_crag_skull prepare \
+  --input /data/skull_assembled_gt.glb --output /data/jing_prepared \
+  --pitch 0.005 --target-length 0.20 --source-is-assembled-gt
+# 在具备项目所需 Isaac Sim 的环境内运行：
+python -m tasks.dual_arm_crag_skull launch \
+  --assembly /data/jing_prepared/layout.json --allow-robotiq-proxy
+```
+
+准备步骤保留节点变换与稳定 ID，复用共同网格和唯一体素归属，保留所有占据体素，拒绝非六邻域连通/非闭合/绕向不一致的碎片；输出布局、米制 NPZ 与毫米 STL，以及源文件哈希、坐标变换和单位 manifest。当前仍为表面采样体素，不是实体体素填充；间隙为零，薄壁、插入路径和制造试样尚未验证，STL 是几何候选。
+
+`launch` 复用双 CRX、三相机、PhysX 碎片场景，显式要求允许 Robotiq 临时代替；不声称 YAM 已实现。当前只有人工交互入口，无自动六片装配专家。CPU 合成 GLB 测试不能代替真实头骨样本与 GPU 物理抓取验证。此前 Arm(dict) 风险描述属于历史待复核项，不能认定当前重构后的代码仍存在该错误。

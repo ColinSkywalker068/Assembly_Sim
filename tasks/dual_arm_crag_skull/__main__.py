@@ -43,15 +43,41 @@ def readiness(config):
         "simulator_ready": False,
         "hardware_ready": False,
         "missing_configuration": missing,
-        "pending_implementation": ["CRAG loader and printable mesh export", "YAM model and calibration", "dual-arm scene runner", "S0 constrained controller", "S1 training and inference", "S2 provider adapter", "UMI import and synchronized collection"],
+        "pending_implementation": ["real CRAG sample and manufacturing validation", "YAM model and calibration", "YAM scene and GPU physics validation", "S0 constrained controller", "S1 training and inference", "S2 provider and GARF service adapters", "UMI import and synchronized collection"],
     }
 
 
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("inspect", "validate"))
+    parser.add_argument("command", choices=("inspect", "validate", "prepare", "launch"))
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
-    args = parser.parse_args()
+    parser.add_argument("--input", type=Path)
+    parser.add_argument("--output", type=Path)
+    parser.add_argument("--pitch", type=float)
+    parser.add_argument("--target-length", type=float)
+    parser.add_argument("--source-is-assembled-gt", action="store_true")
+    parser.add_argument("--allow-robotiq-proxy", action="store_true")
+    parser.add_argument("--assembly", type=Path)
+    parser.add_argument("--stream", action="store_true")
+    parser.add_argument("--smoke-frames", type=int, default=0)
+    args = parser.parse_args(argv)
+    if args.command == "prepare":
+        if not args.source_is_assembled_gt or any(v is None for v in (args.input, args.output, args.pitch, args.target_length)):
+            parser.error("prepare requires input, output, pitch, target-length and explicit assembled-GT declaration")
+        from .preparation import prepare
+        print(prepare(args.input, args.output, pitch=args.pitch, target_length=args.target_length))
+        return
+    if args.command == "launch":
+        if not args.allow_robotiq_proxy or args.assembly is None:
+            parser.error("launch currently requires --assembly and --allow-robotiq-proxy; YAM is not implemented")
+        from tasks.dual_arm_breakingbad.domain.layout import load_layout
+        layout = load_layout(args.assembly)
+        if len(layout.fragment_names) < 6:
+            parser.error("at least six fragments required")
+        from tasks.dual_arm_breakingbad.scene.runtime import run_interactive
+        return run_interactive(args.assembly, stream=args.stream, smoke_frames=args.smoke_frames,
+                               output_directory=args.output)
+
     config = json.loads(args.config.read_text())
     validate(config)
     print(json.dumps(config if args.command == "inspect" else readiness(config), indent=2))

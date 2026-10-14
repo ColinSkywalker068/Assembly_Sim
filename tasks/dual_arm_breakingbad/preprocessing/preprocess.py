@@ -115,7 +115,8 @@ def _layout_data(processed: ProcessedAssembly, workcell: WorkcellConfig, staging
             "seed": processed.config.seed,
             "min_surface_samples": processed.config.min_surface_samples,
             "samples_per_pitch_area": processed.config.samples_per_pitch_area,
-            "cleanup_connectivity": 26,
+            "cleanup_connectivity": None if processed.config.preserve_all_components else 26,
+            "preserve_all_components": processed.config.preserve_all_components,
         },
         "normalization": {
             "source_to_canonical": processed.source_to_canonical.tolist(),

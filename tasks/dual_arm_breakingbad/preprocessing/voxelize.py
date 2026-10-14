@@ -38,6 +38,7 @@ class VoxelizationConfig:
     min_surface_samples: int = 20000
     samples_per_pitch_area: float = 12.0
     max_grip: float = 0.076
+    preserve_all_components: bool = False
 
     def __post_init__(self) -> None:
         if self.pitch <= 0 or self.target_length <= 0:
@@ -253,7 +254,7 @@ def process_assembly(
     owned: list[list[Cell]] = [[] for _ in canonical]
     for cell, cell_votes in sorted(votes.items()):
         owned[choose_vote_owner(cell_votes)].append(cell)
-    cleaned = [keep_largest_component(cells) for cells in owned]
+    cleaned = [tuple(sorted(cells)) if config.preserve_all_components else keep_largest_component(cells) for cells in owned]
     for fragment, cells in zip(assembly.fragments, cleaned):
         if not cells:
             raise ValueError(f"fragment {fragment.name} has no occupied voxels")

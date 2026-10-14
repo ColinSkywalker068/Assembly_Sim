@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "implementation_status": "configuration_scaffold",
+  "implementation_status": "cpu_preparation_and_proxy_scene_entry",
   "workcell": {
     "preset": "dual_arm",
     "arm_model": "FANUC CRX-10iA/L",
@@ -10,7 +10,11 @@
     "gripper_asset": null,
     "calibration_file": null
   },
-  "cameras": ["left_wrist", "right_wrist", "agent"],
+  "cameras": [
+    "left_wrist",
+    "right_wrist",
+    "agent"
+  ],
   "dataset": {
     "source": "CRAG",
     "candidate_object": "Hoolock-hoolock-f-AMNH-83425-cranium-einscan",
@@ -27,7 +31,10 @@
     "requested_model": "Claude Opus 5.5",
     "api_model_id": null,
     "trigger": "subtask_completion_or_failure",
-    "output": "validated_skill_request"
+    "output": "validated_skill_request",
+    "tools": [
+      "propose_assembly"
+    ]
   },
   "s1": {
     "architecture": "conditional_unet1d_diffusion_policy",
@@ -39,7 +46,14 @@
     "action_dim": 20,
     "rotation_representation": "rotation_6d_first_two_columns",
     "action_frame": "each_tcp_at_chunk_observation_time",
-    "conditioning": ["three_rgb_views", "tcp_poses", "gripper_widths", "inter_tcp_pose", "skill_id", "observable_target"]
+    "conditioning": [
+      "three_rgb_views",
+      "tcp_poses",
+      "gripper_widths",
+      "inter_tcp_pose",
+      "skill_id",
+      "observable_target"
+    ]
   },
   "s0": {
     "controller": "fanuc_native_servo_with_external_motion_adapter",
@@ -52,5 +66,15 @@
     "camera_hz": 10,
     "force_control_enabled": false,
     "hardware_execution_enabled": false
+  },
+  "garf": {
+    "repository": "https://github.com/ai4ce/GARF",
+    "checkpoint_filename": "GARF.ckpt",
+    "checkpoint_size_bytes": 573313422,
+    "checkpoint_path": null,
+    "checkpoint_sha256": null,
+    "upstream_commit": null,
+    "service_implemented": false,
+    "tool_name": "propose_assembly"
   }
 }
