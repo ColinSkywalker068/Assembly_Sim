@@ -5,3 +5,4 @@ trimesh==4.12.2
 networkx==3.4.2
 pytest==8.4.2
 Pillow==11.0.0
+rtree==1.4.1

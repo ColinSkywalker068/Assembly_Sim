@@ -1,0 +1,20 @@
+{
+  "source_sha256": "0eb9c886c3b45301f6c1602a3f94ca470be6270f3f63d79b91e6c3c26cd60ecc",
+  "checkpoint_sha256": "cc6512ab48818b902bc1a7a0b4c569e049dbd6633c62cfff3de0890715825e02",
+  "garf_commit": "2d489c0b7b58de8af774aa1657c86c638e4744c2",
+  "source": "CRAG wo_img morphosource_v2 Hoolock-hoolock-f-AMNH-83425-cranium-einscan/view_gt.glb",
+  "assumed_longest_extent_m": 0.2,
+  "actual_physical_size_known": false,
+  "sampler_seed": 42,
+  "model_noise_seed_official_audit": 42,
+  "model_noise_seeds_adapter": [
+    41,
+    42,
+    43,
+    44
+  ],
+  "torch": "2.8.0+cu128",
+  "python": "3.12.3",
+  "official_control": "GARF/gallery/BreakingBad/Bottle/776502db6e2e680e5e4f0d37557f3953/mode_17",
+  "physics_assembly_success": false
+}

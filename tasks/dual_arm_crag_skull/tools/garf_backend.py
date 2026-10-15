@@ -44,6 +44,7 @@ class GarfBackend:
         self.model.to(device).eval()
         self.device, self.steps, self.points_per_part = device, steps, points_per_part
         self.iterations = iterations
+        self._feature_cache = None  # bounded: only the most recent geometry batch
         if not 1 <= steps <= 100 or not 32 <= points_per_part <= 2048 or not 1 <= iterations <= 6:
             raise ValueError('inference limits exceeded')
         digest = hashlib.sha256()
@@ -52,13 +53,13 @@ class GarfBackend:
                 digest.update(block)
         self.checkpoint_sha256 = digest.hexdigest()
         self.metadata = {"upstream_commit":UPSTREAM_COMMIT,"steps":steps,"iterations":iterations,
-                         "geometry_seed":42,"nominal_points_per_part":points_per_part,"sampling":"input_density_weighted"}
+                         "geometry_seed":42,"encoder_seed":42,"nominal_points_per_part":points_per_part,"sampling":"input_density_weighted"}
 
     def predict(self, parts, anchor_index, seed):
         import torch
         rng = np.random.default_rng(seed)
         geometry_rng = np.random.default_rng(42)
-        torch.manual_seed(seed)
+        noise_generator = torch.Generator(device=self.device).manual_seed(seed)
         cloud, normals, centers, scales = [], [], [], []
         common_scale = max(float(np.ptp(p, axis=0).max()) for p, _ in parts)
         counts = [max(32, int(self.points_per_part*len(parts)*len(p)/sum(len(v[0]) for v in parts))) for p,_ in parts]
@@ -82,14 +83,36 @@ class GarfBackend:
         valid = batch['points_per_part'] != 0
         ref = torch.zeros(count, dtype=torch.bool, device=self.device); ref[anchor_index] = True
         scale_tensor = tensor(scales)[:,None]
-        x = torch.randn((count,7), device=self.device)
+        x = torch.randn((count,7), device=self.device, generator=noise_generator)
         x[:,3:] = tensor(Rotation.random(count, random_state=rng).as_quat()[:,[3,0,1,2]])
         anchor = tensor([0,0,0,1,0,0,0]); x[anchor_index] = anchor
         scheduler = copy.deepcopy(self.model.val_noise_scheduler)
         scheduler.set_timesteps(self.steps)
         with torch.inference_mode(), torch.autocast(device_type='cuda', dtype=torch.float16):
-            latent = self.model.feature_extractor(batch)['point']
-            latent['batch'] = latent['batch'].clone()
+            # Cache exactly one feature batch: GPU kernels need not be bitwise
+            # deterministic even with fixed RNG. Multi-noise must share features.
+            digest = hashlib.sha256()
+            for key in ('pointclouds', 'pointclouds_normals', 'points_per_part'):
+                digest.update(batch[key].detach().cpu().contiguous().numpy().tobytes())
+            cache_key = digest.hexdigest()
+            cache_hit = self._feature_cache is not None and self._feature_cache[0] == cache_key
+            if cache_hit:
+                latent = self._feature_cache[1]
+            else:
+                # PointTransformer shuffles serialization orders even in eval.
+                device_index = torch.device(self.device).index
+                if device_index is None:
+                    device_index = torch.cuda.current_device()
+                with torch.random.fork_rng(devices=[device_index]):
+                    torch.random.default_generator.manual_seed(42)
+                    with torch.cuda.device(device_index):
+                        torch.cuda.manual_seed(42)
+                    latent = self.model.feature_extractor(batch)['point']
+                latent['batch'] = latent['batch'].clone()
+                self._feature_cache = (cache_key, latent)
+            self.metadata['encoder_cache_hit'] = cache_hit
+            self.metadata['encoder_feature_sha256'] = hashlib.sha256(
+                latent['feat'].detach().cpu().contiguous().numpy().tobytes()).hexdigest()
             for _ in range(self.iterations):
                 scheduler.set_timesteps(self.steps)
                 for t in scheduler.timesteps:

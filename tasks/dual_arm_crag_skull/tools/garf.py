@@ -65,7 +65,7 @@ class GarfTool:
             return {'status': 'candidate', 'observation_id': current_observation_id,
                     'assembly_T_fragment': dict(zip(ids, matrices)), 'units': 'm',
                     'geometry_sha256': digest.hexdigest(), 'checkpoint_sha256': self.checkpoint_sha256,
-                    'backend': getattr(self.backend, 'metadata', {}),
+                    'backend': dict(getattr(self.backend, 'metadata', {})),
                     'seed': request['seed'], 'elapsed_s': time.monotonic()-start,
                     'requires_geometric_and_motion_validation': True, 'confidence': None}
         except (ValueError, KeyError, TypeError) as exc:

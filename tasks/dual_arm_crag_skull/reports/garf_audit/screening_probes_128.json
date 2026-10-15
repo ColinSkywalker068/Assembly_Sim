@@ -1,0 +1,1188 @@
+{
+  "candidates": [
+    {
+      "seed": 41,
+      "max_penetration_fraction": 0.171875,
+      "contact_components": 2,
+      "pairs": [
+        {
+          "pair": [
+            "fragment_b4a2653675d3ae95",
+            "fragment_b99c0e66e050d6ef"
+          ],
+          "penetration_fraction": 0.0078125,
+          "contact_fraction": 0.0703125
+        },
+        {
+          "pair": [
+            "fragment_b4a2653675d3ae95",
+            "fragment_36d5ca6a07ba2b2f"
+          ],
+          "penetration_fraction": 0.0625,
+          "contact_fraction": 0.140625
+        },
+        {
+          "pair": [
+            "fragment_b4a2653675d3ae95",
+            "fragment_3c8c3298c2b4e704"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_b4a2653675d3ae95",
+            "fragment_038755611176a8c9"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_b4a2653675d3ae95",
+            "fragment_48c51df7e1148345"
+          ],
+          "penetration_fraction": 0.0859375,
+          "contact_fraction": 0.125
+        },
+        {
+          "pair": [
+            "fragment_b4a2653675d3ae95",
+            "fragment_3b11f6f1187b8b2b"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0234375
+        },
+        {
+          "pair": [
+            "fragment_b4a2653675d3ae95",
+            "fragment_45266904a743c03b"
+          ],
+          "penetration_fraction": 0.03125,
+          "contact_fraction": 0.015625
+        },
+        {
+          "pair": [
+            "fragment_b99c0e66e050d6ef",
+            "fragment_36d5ca6a07ba2b2f"
+          ],
+          "penetration_fraction": 0.171875,
+          "contact_fraction": 0.234375
+        },
+        {
+          "pair": [
+            "fragment_b99c0e66e050d6ef",
+            "fragment_3c8c3298c2b4e704"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_b99c0e66e050d6ef",
+            "fragment_038755611176a8c9"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_b99c0e66e050d6ef",
+            "fragment_48c51df7e1148345"
+          ],
+          "penetration_fraction": 0.0703125,
+          "contact_fraction": 0.140625
+        },
+        {
+          "pair": [
+            "fragment_b99c0e66e050d6ef",
+            "fragment_3b11f6f1187b8b2b"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_b99c0e66e050d6ef",
+            "fragment_45266904a743c03b"
+          ],
+          "penetration_fraction": 0.0078125,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_36d5ca6a07ba2b2f",
+            "fragment_3c8c3298c2b4e704"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_36d5ca6a07ba2b2f",
+            "fragment_038755611176a8c9"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_36d5ca6a07ba2b2f",
+            "fragment_48c51df7e1148345"
+          ],
+          "penetration_fraction": 0.0703125,
+          "contact_fraction": 0.21875
+        },
+        {
+          "pair": [
+            "fragment_36d5ca6a07ba2b2f",
+            "fragment_3b11f6f1187b8b2b"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_36d5ca6a07ba2b2f",
+            "fragment_45266904a743c03b"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_3c8c3298c2b4e704",
+            "fragment_038755611176a8c9"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_3c8c3298c2b4e704",
+            "fragment_48c51df7e1148345"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_3c8c3298c2b4e704",
+            "fragment_3b11f6f1187b8b2b"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_3c8c3298c2b4e704",
+            "fragment_45266904a743c03b"
+          ],
+          "penetration_fraction": 0.09375,
+          "contact_fraction": 0.015625
+        },
+        {
+          "pair": [
+            "fragment_038755611176a8c9",
+            "fragment_48c51df7e1148345"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_038755611176a8c9",
+            "fragment_3b11f6f1187b8b2b"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_038755611176a8c9",
+            "fragment_45266904a743c03b"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_48c51df7e1148345",
+            "fragment_3b11f6f1187b8b2b"
+          ],
+          "penetration_fraction": 0.0078125,
+          "contact_fraction": 0.03125
+        },
+        {
+          "pair": [
+            "fragment_48c51df7e1148345",
+            "fragment_45266904a743c03b"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.015625
+        },
+        {
+          "pair": [
+            "fragment_3b11f6f1187b8b2b",
+            "fragment_45266904a743c03b"
+          ],
+          "penetration_fraction": 0.1328125,
+          "contact_fraction": 0.0
+        }
+      ],
+      "rejected": true,
+      "sample_count_per_part": 128,
+      "tolerance_m": 0.001,
+      "contact_m": 0.003,
+      "motion_feasibility_checked": false,
+      "sampling_can_miss_collisions": true
+    },
+    {
+      "seed": 42,
+      "max_penetration_fraction": 0.25,
+      "contact_components": 1,
+      "pairs": [
+        {
+          "pair": [
+            "fragment_b4a2653675d3ae95",
+            "fragment_b99c0e66e050d6ef"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0078125
+        },
+        {
+          "pair": [
+            "fragment_b4a2653675d3ae95",
+            "fragment_36d5ca6a07ba2b2f"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_b4a2653675d3ae95",
+            "fragment_3c8c3298c2b4e704"
+          ],
+          "penetration_fraction": 0.1015625,
+          "contact_fraction": 0.1640625
+        },
+        {
+          "pair": [
+            "fragment_b4a2653675d3ae95",
+            "fragment_038755611176a8c9"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_b4a2653675d3ae95",
+            "fragment_48c51df7e1148345"
+          ],
+          "penetration_fraction": 0.03125,
+          "contact_fraction": 0.0859375
+        },
+        {
+          "pair": [
+            "fragment_b4a2653675d3ae95",
+            "fragment_3b11f6f1187b8b2b"
+          ],
+          "penetration_fraction": 0.078125,
+          "contact_fraction": 0.125
+        },
+        {
+          "pair": [
+            "fragment_b4a2653675d3ae95",
+            "fragment_45266904a743c03b"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_b99c0e66e050d6ef",
+            "fragment_36d5ca6a07ba2b2f"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_b99c0e66e050d6ef",
+            "fragment_3c8c3298c2b4e704"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.046875
+        },
+        {
+          "pair": [
+            "fragment_b99c0e66e050d6ef",
+            "fragment_038755611176a8c9"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_b99c0e66e050d6ef",
+            "fragment_48c51df7e1148345"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_b99c0e66e050d6ef",
+            "fragment_3b11f6f1187b8b2b"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_b99c0e66e050d6ef",
+            "fragment_45266904a743c03b"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_36d5ca6a07ba2b2f",
+            "fragment_3c8c3298c2b4e704"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_36d5ca6a07ba2b2f",
+            "fragment_038755611176a8c9"
+          ],
+          "penetration_fraction": 0.0390625,
+          "contact_fraction": 0.0625
+        },
+        {
+          "pair": [
+            "fragment_36d5ca6a07ba2b2f",
+            "fragment_48c51df7e1148345"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_36d5ca6a07ba2b2f",
+            "fragment_3b11f6f1187b8b2b"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_36d5ca6a07ba2b2f",
+            "fragment_45266904a743c03b"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_3c8c3298c2b4e704",
+            "fragment_038755611176a8c9"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_3c8c3298c2b4e704",
+            "fragment_48c51df7e1148345"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.015625
+        },
+        {
+          "pair": [
+            "fragment_3c8c3298c2b4e704",
+            "fragment_3b11f6f1187b8b2b"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_3c8c3298c2b4e704",
+            "fragment_45266904a743c03b"
+          ],
+          "penetration_fraction": 0.0234375,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_038755611176a8c9",
+            "fragment_48c51df7e1148345"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_038755611176a8c9",
+            "fragment_3b11f6f1187b8b2b"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_038755611176a8c9",
+            "fragment_45266904a743c03b"
+          ],
+          "penetration_fraction": 0.0390625,
+          "contact_fraction": 0.0234375
+        },
+        {
+          "pair": [
+            "fragment_48c51df7e1148345",
+            "fragment_3b11f6f1187b8b2b"
+          ],
+          "penetration_fraction": 0.0703125,
+          "contact_fraction": 0.109375
+        },
+        {
+          "pair": [
+            "fragment_48c51df7e1148345",
+            "fragment_45266904a743c03b"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_3b11f6f1187b8b2b",
+            "fragment_45266904a743c03b"
+          ],
+          "penetration_fraction": 0.25,
+          "contact_fraction": 0.03125
+        }
+      ],
+      "rejected": true,
+      "sample_count_per_part": 128,
+      "tolerance_m": 0.001,
+      "contact_m": 0.003,
+      "motion_feasibility_checked": false,
+      "sampling_can_miss_collisions": true
+    },
+    {
+      "seed": 43,
+      "max_penetration_fraction": 0.7890625,
+      "contact_components": 1,
+      "pairs": [
+        {
+          "pair": [
+            "fragment_b4a2653675d3ae95",
+            "fragment_b99c0e66e050d6ef"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.015625
+        },
+        {
+          "pair": [
+            "fragment_b4a2653675d3ae95",
+            "fragment_36d5ca6a07ba2b2f"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.046875
+        },
+        {
+          "pair": [
+            "fragment_b4a2653675d3ae95",
+            "fragment_3c8c3298c2b4e704"
+          ],
+          "penetration_fraction": 0.015625,
+          "contact_fraction": 0.0703125
+        },
+        {
+          "pair": [
+            "fragment_b4a2653675d3ae95",
+            "fragment_038755611176a8c9"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_b4a2653675d3ae95",
+            "fragment_48c51df7e1148345"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_b4a2653675d3ae95",
+            "fragment_3b11f6f1187b8b2b"
+          ],
+          "penetration_fraction": 0.0234375,
+          "contact_fraction": 0.0703125
+        },
+        {
+          "pair": [
+            "fragment_b4a2653675d3ae95",
+            "fragment_45266904a743c03b"
+          ],
+          "penetration_fraction": 0.0078125,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_b99c0e66e050d6ef",
+            "fragment_36d5ca6a07ba2b2f"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_b99c0e66e050d6ef",
+            "fragment_3c8c3298c2b4e704"
+          ],
+          "penetration_fraction": 0.1484375,
+          "contact_fraction": 0.1640625
+        },
+        {
+          "pair": [
+            "fragment_b99c0e66e050d6ef",
+            "fragment_038755611176a8c9"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_b99c0e66e050d6ef",
+            "fragment_48c51df7e1148345"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_b99c0e66e050d6ef",
+            "fragment_3b11f6f1187b8b2b"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_b99c0e66e050d6ef",
+            "fragment_45266904a743c03b"
+          ],
+          "penetration_fraction": 0.0234375,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_36d5ca6a07ba2b2f",
+            "fragment_3c8c3298c2b4e704"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_36d5ca6a07ba2b2f",
+            "fragment_038755611176a8c9"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_36d5ca6a07ba2b2f",
+            "fragment_48c51df7e1148345"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_36d5ca6a07ba2b2f",
+            "fragment_3b11f6f1187b8b2b"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_36d5ca6a07ba2b2f",
+            "fragment_45266904a743c03b"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_3c8c3298c2b4e704",
+            "fragment_038755611176a8c9"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_3c8c3298c2b4e704",
+            "fragment_48c51df7e1148345"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_3c8c3298c2b4e704",
+            "fragment_3b11f6f1187b8b2b"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_3c8c3298c2b4e704",
+            "fragment_45266904a743c03b"
+          ],
+          "penetration_fraction": 0.015625,
+          "contact_fraction": 0.0078125
+        },
+        {
+          "pair": [
+            "fragment_038755611176a8c9",
+            "fragment_48c51df7e1148345"
+          ],
+          "penetration_fraction": 0.015625,
+          "contact_fraction": 0.015625
+        },
+        {
+          "pair": [
+            "fragment_038755611176a8c9",
+            "fragment_3b11f6f1187b8b2b"
+          ],
+          "penetration_fraction": 0.0546875,
+          "contact_fraction": 0.0859375
+        },
+        {
+          "pair": [
+            "fragment_038755611176a8c9",
+            "fragment_45266904a743c03b"
+          ],
+          "penetration_fraction": 0.15625,
+          "contact_fraction": 0.046875
+        },
+        {
+          "pair": [
+            "fragment_48c51df7e1148345",
+            "fragment_3b11f6f1187b8b2b"
+          ],
+          "penetration_fraction": 0.015625,
+          "contact_fraction": 0.1015625
+        },
+        {
+          "pair": [
+            "fragment_48c51df7e1148345",
+            "fragment_45266904a743c03b"
+          ],
+          "penetration_fraction": 0.7890625,
+          "contact_fraction": 0.0078125
+        },
+        {
+          "pair": [
+            "fragment_3b11f6f1187b8b2b",
+            "fragment_45266904a743c03b"
+          ],
+          "penetration_fraction": 0.421875,
+          "contact_fraction": 0.03125
+        }
+      ],
+      "rejected": true,
+      "sample_count_per_part": 128,
+      "tolerance_m": 0.001,
+      "contact_m": 0.003,
+      "motion_feasibility_checked": false,
+      "sampling_can_miss_collisions": true
+    },
+    {
+      "seed": 44,
+      "max_penetration_fraction": 0.0859375,
+      "contact_components": 2,
+      "pairs": [
+        {
+          "pair": [
+            "fragment_b4a2653675d3ae95",
+            "fragment_b99c0e66e050d6ef"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_b4a2653675d3ae95",
+            "fragment_36d5ca6a07ba2b2f"
+          ],
+          "penetration_fraction": 0.03125,
+          "contact_fraction": 0.0234375
+        },
+        {
+          "pair": [
+            "fragment_b4a2653675d3ae95",
+            "fragment_3c8c3298c2b4e704"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_b4a2653675d3ae95",
+            "fragment_038755611176a8c9"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_b4a2653675d3ae95",
+            "fragment_48c51df7e1148345"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_b4a2653675d3ae95",
+            "fragment_3b11f6f1187b8b2b"
+          ],
+          "penetration_fraction": 0.0390625,
+          "contact_fraction": 0.0546875
+        },
+        {
+          "pair": [
+            "fragment_b4a2653675d3ae95",
+            "fragment_45266904a743c03b"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_b99c0e66e050d6ef",
+            "fragment_36d5ca6a07ba2b2f"
+          ],
+          "penetration_fraction": 0.03125,
+          "contact_fraction": 0.0390625
+        },
+        {
+          "pair": [
+            "fragment_b99c0e66e050d6ef",
+            "fragment_3c8c3298c2b4e704"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_b99c0e66e050d6ef",
+            "fragment_038755611176a8c9"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_b99c0e66e050d6ef",
+            "fragment_48c51df7e1148345"
+          ],
+          "penetration_fraction": 0.0859375,
+          "contact_fraction": 0.1328125
+        },
+        {
+          "pair": [
+            "fragment_b99c0e66e050d6ef",
+            "fragment_3b11f6f1187b8b2b"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_b99c0e66e050d6ef",
+            "fragment_45266904a743c03b"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_36d5ca6a07ba2b2f",
+            "fragment_3c8c3298c2b4e704"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_36d5ca6a07ba2b2f",
+            "fragment_038755611176a8c9"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_36d5ca6a07ba2b2f",
+            "fragment_48c51df7e1148345"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_36d5ca6a07ba2b2f",
+            "fragment_3b11f6f1187b8b2b"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_36d5ca6a07ba2b2f",
+            "fragment_45266904a743c03b"
+          ],
+          "penetration_fraction": 0.0078125,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_3c8c3298c2b4e704",
+            "fragment_038755611176a8c9"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_3c8c3298c2b4e704",
+            "fragment_48c51df7e1148345"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_3c8c3298c2b4e704",
+            "fragment_3b11f6f1187b8b2b"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_3c8c3298c2b4e704",
+            "fragment_45266904a743c03b"
+          ],
+          "penetration_fraction": 0.0859375,
+          "contact_fraction": 0.0078125
+        },
+        {
+          "pair": [
+            "fragment_038755611176a8c9",
+            "fragment_48c51df7e1148345"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0078125
+        },
+        {
+          "pair": [
+            "fragment_038755611176a8c9",
+            "fragment_3b11f6f1187b8b2b"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_038755611176a8c9",
+            "fragment_45266904a743c03b"
+          ],
+          "penetration_fraction": 0.0546875,
+          "contact_fraction": 0.046875
+        },
+        {
+          "pair": [
+            "fragment_48c51df7e1148345",
+            "fragment_3b11f6f1187b8b2b"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.0
+        },
+        {
+          "pair": [
+            "fragment_48c51df7e1148345",
+            "fragment_45266904a743c03b"
+          ],
+          "penetration_fraction": 0.0234375,
+          "contact_fraction": 0.0078125
+        },
+        {
+          "pair": [
+            "fragment_3b11f6f1187b8b2b",
+            "fragment_45266904a743c03b"
+          ],
+          "penetration_fraction": 0.0,
+          "contact_fraction": 0.015625
+        }
+      ],
+      "rejected": true,
+      "sample_count_per_part": 128,
+      "tolerance_m": 0.001,
+      "contact_m": 0.003,
+      "motion_feasibility_checked": false,
+      "sampling_can_miss_collisions": true
+    }
+  ],
+  "gt_calibration_only": {
+    "max_penetration_fraction": 0.0,
+    "contact_components": 1,
+    "pairs": [
+      {
+        "pair": [
+          "fragment_b4a2653675d3ae95",
+          "fragment_b99c0e66e050d6ef"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "fragment_b4a2653675d3ae95",
+          "fragment_36d5ca6a07ba2b2f"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.265625
+      },
+      {
+        "pair": [
+          "fragment_b4a2653675d3ae95",
+          "fragment_3c8c3298c2b4e704"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.03125
+      },
+      {
+        "pair": [
+          "fragment_b4a2653675d3ae95",
+          "fragment_038755611176a8c9"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0390625
+      },
+      {
+        "pair": [
+          "fragment_b4a2653675d3ae95",
+          "fragment_48c51df7e1148345"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.03125
+      },
+      {
+        "pair": [
+          "fragment_b4a2653675d3ae95",
+          "fragment_3b11f6f1187b8b2b"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "fragment_b4a2653675d3ae95",
+          "fragment_45266904a743c03b"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.046875
+      },
+      {
+        "pair": [
+          "fragment_b99c0e66e050d6ef",
+          "fragment_36d5ca6a07ba2b2f"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "fragment_b99c0e66e050d6ef",
+          "fragment_3c8c3298c2b4e704"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "fragment_b99c0e66e050d6ef",
+          "fragment_038755611176a8c9"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.125
+      },
+      {
+        "pair": [
+          "fragment_b99c0e66e050d6ef",
+          "fragment_48c51df7e1148345"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "fragment_b99c0e66e050d6ef",
+          "fragment_3b11f6f1187b8b2b"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "fragment_b99c0e66e050d6ef",
+          "fragment_45266904a743c03b"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.046875
+      },
+      {
+        "pair": [
+          "fragment_36d5ca6a07ba2b2f",
+          "fragment_3c8c3298c2b4e704"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "fragment_36d5ca6a07ba2b2f",
+          "fragment_038755611176a8c9"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.1484375
+      },
+      {
+        "pair": [
+          "fragment_36d5ca6a07ba2b2f",
+          "fragment_48c51df7e1148345"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.3671875
+      },
+      {
+        "pair": [
+          "fragment_36d5ca6a07ba2b2f",
+          "fragment_3b11f6f1187b8b2b"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0078125
+      },
+      {
+        "pair": [
+          "fragment_36d5ca6a07ba2b2f",
+          "fragment_45266904a743c03b"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0078125
+      },
+      {
+        "pair": [
+          "fragment_3c8c3298c2b4e704",
+          "fragment_038755611176a8c9"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0078125
+      },
+      {
+        "pair": [
+          "fragment_3c8c3298c2b4e704",
+          "fragment_48c51df7e1148345"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "fragment_3c8c3298c2b4e704",
+          "fragment_3b11f6f1187b8b2b"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0546875
+      },
+      {
+        "pair": [
+          "fragment_3c8c3298c2b4e704",
+          "fragment_45266904a743c03b"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.015625
+      },
+      {
+        "pair": [
+          "fragment_038755611176a8c9",
+          "fragment_48c51df7e1148345"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0078125
+      },
+      {
+        "pair": [
+          "fragment_038755611176a8c9",
+          "fragment_3b11f6f1187b8b2b"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0234375
+      },
+      {
+        "pair": [
+          "fragment_038755611176a8c9",
+          "fragment_45266904a743c03b"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0390625
+      },
+      {
+        "pair": [
+          "fragment_48c51df7e1148345",
+          "fragment_3b11f6f1187b8b2b"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "fragment_48c51df7e1148345",
+          "fragment_45266904a743c03b"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0078125
+      },
+      {
+        "pair": [
+          "fragment_3b11f6f1187b8b2b",
+          "fragment_45266904a743c03b"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0390625
+      }
+    ],
+    "rejected": false,
+    "sample_count_per_part": 128,
+    "tolerance_m": 0.001,
+    "contact_m": 0.003,
+    "motion_feasibility_checked": false,
+    "sampling_can_miss_collisions": true
+  }
+}
