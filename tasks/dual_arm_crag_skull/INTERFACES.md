@@ -40,3 +40,33 @@ S1 默认不读取 privileged 或 joint diagnostics，确保仿真/UMI 输入一
 S1 输入三视角历史 + 双 TCP/宽度 + 双手相对位姿 + 技能条件/目标；S2 使用关键帧、可观测场景图、CRAG 预测和反馈。第一版原始 DP 没有现成的语言大模型接口，采用明确 skill ID 与目标编码；语言到技能的映射由 S2 完成。
 
 UMI 外部相机缺失时显式标记，需训练对应 missing-view 模式；不生成假的同步第三视角。相机定位误差、夹爪几何差异和真实延迟属于 sim-to-real 验证项。
+
+## RGB-D、完整 part 点云与 GARF
+
+完整扫描点云定义每片的局部几何 `P_i`，需统一到米并提供一致定向法向量。没有法向量时必须估计并验证，不能填零。只有 XYZ 的点云可以先作为定位模板，但尚不满足此 GARF adapter 输入契约。
+
+RGB 与 depth 必须已对齐、去畸变。对实例掩码内像素，光学 Z 深度反投影：
+
+`p_camera = [(u-cx) z/fx, (v-cy) z/fy, z]`
+
+`p_world = world_T_camera @ [p_camera, 1]`
+
+腕相机外参随关节运动：`world_T_camera(t) = world_T_base @ base_T_flange(q(t)) @ flange_T_camera`；三路图像及关节状态必须按采样时间对齐。USD 相机轴转 OpenCV 光学轴使用 `diag(1,-1,-1,1)`，深度使用 `distance_to_image_plane`，不能把沿射线的距离当 Z。
+
+实例分割/身份匹配 → 全局粗配准 → 局部 ICP → 重叠/误差/对称性检查 → `world_T_part_current`。已实现 `depth_to_world` 和需要初始位姿的 `refine_pose`；没有实现自动分割、全局初始化或身份匹配。ICP 残差低不代表身份正确，对称碎片尤其需要多视角验证。
+
+GARF 输入完整局部几何，输出 `assembly_T_part_goal`。锚点观测恢复 `world_T_assembly` 后得到目标；当前位姿与目标之差用于规划。S1 可以继续吃 RGB+机器人状态，把 depth 用于几何工具；若 S1 直接吃 RGB-D，需要相应编码器与训练，不能把深度直接加到既有 RGB checkpoint。
+
+## 多噪声与逐步重装配
+
+`tools.garf.TOOL_SPEC` 与 `CANDIDATE_TOOL_SPEC` 可作为 Anthropic tools 定义。后者接受 `seeds`（1–8 个不重复整数），点采样固定 seed=42，噪声随 seed 改变；结果保留所有候选，无默认赢家。生产筛选必须基于观察与几何，离线 `evaluate.py` 才能读取 GT。
+
+已稳定装配集合 C 的输入可以合并为一个刚体：
+
+`P_C = union_i (cluster_T_i @ P_i)`
+
+`assembly_T_i = assembly_T_C @ cluster_T_i`
+
+`fuse_verified_cluster` 要求外部独立确认稳定性，不能用 GARF 的预测充当“已经装好”。工具返回成员映射，S2 保留原始 fragment ID；`expand_cluster_pose` 恢复每片预测。若接触松动、位姿漂移或遮挡导致不确定，应拆回独立状态并重新观察。当前融合保留内部接触面，属于分布偏移实验；表面去重/遮蔽及真实闭环融合尚未验证。
+
+建议状态机：observe → sample_candidates → validate/rank → plan_skill → execute → release_and_verify → merge_verified_cluster → reobserve。每次只执行已验证的下一步；场景变化使旧候选失效。相同已知几何的候选可缓存，但锚点位姿和可达性必须重新计算。超时/取消由调用进程管理；当前 JSON-lines runner 尚无网络服务或内部抢占式超时。

@@ -1,0 +1,326 @@
+{
+  "date": "2026-10-14",
+  "upstream_commit": "2d489c0b7b58de8af774aa1657c86c638e4744c2",
+  "checkpoint_sha256": "cc6512ab48818b902bc1a7a0b4c569e049dbd6633c62cfff3de0890715825e02",
+  "source_sha256": "0eb9c886c3b45301f6c1602a3f94ca470be6270f3f63d79b91e6c3c26cd60ecc",
+  "object": "Hoolock-hoolock-f-AMNH-83425-cranium-einscan",
+  "fragment_count": 8,
+  "geometry_seed": 42,
+  "steps": 20,
+  "iterations": 6,
+  "gpu": "RTX 6000 Ada",
+  "evaluation_mode": "GT anchor aligned; offline oracle only; not success rate",
+  "candidates": [
+    {
+      "seed": 41,
+      "elapsed_s": 3.567602097056806,
+      "anchor": "fragment_45266904a743c03b",
+      "non_anchor_errors": {
+        "fragment_b4a2653675d3ae95": {
+          "translation_error_m": 0.013858994528335675,
+          "rotation_error_deg": 139.81551513397363
+        },
+        "fragment_b99c0e66e050d6ef": {
+          "translation_error_m": 0.09290122095171624,
+          "rotation_error_deg": 91.2264973940541
+        },
+        "fragment_36d5ca6a07ba2b2f": {
+          "translation_error_m": 0.047404009175312206,
+          "rotation_error_deg": 119.60535481184517
+        },
+        "fragment_3c8c3298c2b4e704": {
+          "translation_error_m": 0.11782653718381714,
+          "rotation_error_deg": 83.92084694674473
+        },
+        "fragment_038755611176a8c9": {
+          "translation_error_m": 0.04424960909256097,
+          "rotation_error_deg": 59.70103447982176
+        },
+        "fragment_48c51df7e1148345": {
+          "translation_error_m": 0.05680855756199689,
+          "rotation_error_deg": 75.59905963052009
+        },
+        "fragment_3b11f6f1187b8b2b": {
+          "translation_error_m": 0.03908854490259146,
+          "rotation_error_deg": 139.2268296489767
+        }
+      },
+      "mean_translation_error_m": 0.05887678191376151,
+      "mean_rotation_error_deg": 101.29930543513375
+    },
+    {
+      "seed": 42,
+      "elapsed_s": 2.2750301621854305,
+      "anchor": "fragment_45266904a743c03b",
+      "non_anchor_errors": {
+        "fragment_b4a2653675d3ae95": {
+          "translation_error_m": 0.024486388924330568,
+          "rotation_error_deg": 150.85031197906414
+        },
+        "fragment_b99c0e66e050d6ef": {
+          "translation_error_m": 0.07819707896166514,
+          "rotation_error_deg": 115.06483687086435
+        },
+        "fragment_36d5ca6a07ba2b2f": {
+          "translation_error_m": 0.03940941162269418,
+          "rotation_error_deg": 105.80192150759372
+        },
+        "fragment_3c8c3298c2b4e704": {
+          "translation_error_m": 0.0642255854276394,
+          "rotation_error_deg": 151.1497202011064
+        },
+        "fragment_038755611176a8c9": {
+          "translation_error_m": 0.04698163533411739,
+          "rotation_error_deg": 93.08287107101465
+        },
+        "fragment_48c51df7e1148345": {
+          "translation_error_m": 0.029455170176339952,
+          "rotation_error_deg": 125.99486603597482
+        },
+        "fragment_3b11f6f1187b8b2b": {
+          "translation_error_m": 0.043785415401882265,
+          "rotation_error_deg": 128.97701237192072
+        }
+      },
+      "mean_translation_error_m": 0.04664866940695269,
+      "mean_rotation_error_deg": 124.41736286250556
+    },
+    {
+      "seed": 43,
+      "elapsed_s": 2.1645224299281836,
+      "anchor": "fragment_45266904a743c03b",
+      "non_anchor_errors": {
+        "fragment_b4a2653675d3ae95": {
+          "translation_error_m": 0.020708336172279088,
+          "rotation_error_deg": 143.2901427600764
+        },
+        "fragment_b99c0e66e050d6ef": {
+          "translation_error_m": 0.06611809967221437,
+          "rotation_error_deg": 93.04219557646628
+        },
+        "fragment_36d5ca6a07ba2b2f": {
+          "translation_error_m": 0.05529692091696165,
+          "rotation_error_deg": 88.01947716095506
+        },
+        "fragment_3c8c3298c2b4e704": {
+          "translation_error_m": 0.07097921423292988,
+          "rotation_error_deg": 126.48550383245615
+        },
+        "fragment_038755611176a8c9": {
+          "translation_error_m": 0.02251709360511054,
+          "rotation_error_deg": 144.91278633842379
+        },
+        "fragment_48c51df7e1148345": {
+          "translation_error_m": 0.05460798166060328,
+          "rotation_error_deg": 122.61255663605428
+        },
+        "fragment_3b11f6f1187b8b2b": {
+          "translation_error_m": 0.04438932164414341,
+          "rotation_error_deg": 113.7837220473987
+        }
+      },
+      "mean_translation_error_m": 0.04780242398632031,
+      "mean_rotation_error_deg": 118.87805490740438
+    },
+    {
+      "seed": 44,
+      "elapsed_s": 1.769236121326685,
+      "anchor": "fragment_45266904a743c03b",
+      "non_anchor_errors": {
+        "fragment_b4a2653675d3ae95": {
+          "translation_error_m": 0.016732239308048756,
+          "rotation_error_deg": 121.5269816950434
+        },
+        "fragment_b99c0e66e050d6ef": {
+          "translation_error_m": 0.052973194434513454,
+          "rotation_error_deg": 116.23044860668617
+        },
+        "fragment_36d5ca6a07ba2b2f": {
+          "translation_error_m": 0.027290169716216412,
+          "rotation_error_deg": 123.6653850675541
+        },
+        "fragment_3c8c3298c2b4e704": {
+          "translation_error_m": 0.11563189227009325,
+          "rotation_error_deg": 102.15882116292737
+        },
+        "fragment_038755611176a8c9": {
+          "translation_error_m": 0.06943779250519956,
+          "rotation_error_deg": 75.10564598839005
+        },
+        "fragment_48c51df7e1148345": {
+          "translation_error_m": 0.05009675218671336,
+          "rotation_error_deg": 172.59512323736297
+        },
+        "fragment_3b11f6f1187b8b2b": {
+          "translation_error_m": 0.0707171160309712,
+          "rotation_error_deg": 154.95189051703454
+        }
+      },
+      "mean_translation_error_m": 0.05755416520739371,
+      "mean_rotation_error_deg": 123.74775661071408
+    }
+  ],
+  "physics_smoke": {
+    "physics_frames": 120,
+    "fragment_count": 8,
+    "gripper": "robotiq_proxy",
+    "assembly_success_evaluated": false,
+    "cameras": {
+      "agent": {
+        "timestamp_s": 4.05000021122396,
+        "depth_units": "m",
+        "depth_type": "optical_z",
+        "valid_fraction": 1.0,
+        "world_T_camera_optical": [
+          [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            -0.7882464758132599,
+            0.6153596455472002,
+            -2.1
+          ],
+          [
+            0.0,
+            -0.6153596455472002,
+            -0.7882464758132599,
+            3.44
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "intrinsics": [
+          [
+            2290.6227714035144,
+            0,
+            960.0
+          ],
+          [
+            0,
+            2354.356853615721,
+            720.0
+          ],
+          [
+            0,
+            0,
+            1
+          ]
+        ]
+      },
+      "left_wrist": {
+        "timestamp_s": 4.05000021122396,
+        "depth_units": "m",
+        "depth_type": "optical_z",
+        "valid_fraction": 1.0,
+        "world_T_camera_optical": [
+          [
+            3.647916411229435e-05,
+            -0.9307787642555243,
+            -0.3655829463750051,
+            -0.24015290567213282
+          ],
+          [
+            -0.937206837891638,
+            -0.12753766889043874,
+            0.32461898592526917,
+            -0.16007802136962687
+          ],
+          [
+            -0.3487740553401698,
+            0.3426149953299652,
+            -0.8723368748921602,
+            1.164822480768896
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "intrinsics": [
+          [
+            1649.2483954105305,
+            0,
+            960.0
+          ],
+          [
+            0,
+            1695.136934603319,
+            720.0
+          ],
+          [
+            0,
+            0,
+            1
+          ]
+        ]
+      },
+      "right_wrist": {
+        "timestamp_s": 4.05000021122396,
+        "depth_units": "m",
+        "depth_type": "optical_z",
+        "valid_fraction": 1.0,
+        "world_T_camera_optical": [
+          [
+            -3.6431117662261706e-05,
+            0.930778739403152,
+            0.3655830096542412,
+            0.24015303795394433
+          ],
+          [
+            0.9372068517132891,
+            0.1275376354710925,
+            -0.32461895915073685,
+            0.16007797252090586
+          ],
+          [
+            -0.34877401820439363,
+            0.34261507528642404,
+            -0.8723368583362963,
+            1.1648223534145876
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "intrinsics": [
+          [
+            1649.2483954105305,
+            0,
+            960.0
+          ],
+          [
+            0,
+            1695.136934603319,
+            720.0
+          ],
+          [
+            0,
+            0,
+            1
+          ]
+        ]
+      }
+    },
+    "physics_dt": 0.008333333333333333
+  },
+  "limitations": [
+    "No autonomous grasp/assembly executed",
+    "Robotiq proxy; YAM not implemented",
+    "Disconnected rigid proxy and nonmanifold voxel surfaces; no STL exported",
+    "Original FANUC link mass/inertia warnings",
+    "GARF candidates require non-oracle geometry and reachability validation"
+  ]
+}

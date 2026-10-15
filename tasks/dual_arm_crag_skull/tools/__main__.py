@@ -1,0 +1,42 @@
+"""JSON-lines S2 tool process: model loads once; stdout contains tool results only."""
+import argparse
+import contextlib
+import json
+import sys
+import numpy as np
+from .garf import GarfTool, propose_candidates
+from .garf_backend import GarfBackend
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--repository', required=True)
+    parser.add_argument('--checkpoint', required=True)
+    parser.add_argument('--geometry', required=True, help='JSON mapping IDs to NPZ paths: points/normals in metres')
+    parser.add_argument('--device', default='cuda:0')
+    args = parser.parse_args()
+    geometry = {}
+    for key, path in json.load(open(args.geometry)).items():
+        with np.load(path, allow_pickle=False) as data:
+            geometry[key] = (data['points'], data['normals'])
+    with contextlib.redirect_stdout(sys.stderr):
+        backend = GarfBackend(args.repository, args.checkpoint, args.device)
+        tool = GarfTool(backend, geometry, backend.checkpoint_sha256)
+    for line in sys.stdin:
+        try:
+            envelope = json.loads(line)
+            # Observation ID is supplied by orchestrator, independently of S2 args.
+            with contextlib.redirect_stdout(sys.stderr):
+                if envelope.get('tool_name') == 'propose_assembly_candidates':
+                    result = propose_candidates(tool, envelope['request'], current_observation_id=envelope['current_observation_id'])
+                elif envelope.get('tool_name', 'propose_assembly') == 'propose_assembly':
+                    result = tool(envelope['request'], current_observation_id=envelope['current_observation_id'])
+                else:
+                    result = {'status':'rejected','reason':'unknown tool name'}
+        except Exception as exc:
+            result = {'status':'failed', 'reason':str(exc)}
+        print(json.dumps(result, allow_nan=False), flush=True)
+
+
+if __name__ == '__main__':
+    main()

@@ -50,3 +50,14 @@ def test_reject_nonmanifold_before_publish(tmp_path):
     with pytest.raises(ValueError, match='non-manifold'):
         prepare(source, tmp_path / 'bad', pitch=.01, target_length=.2)
     assert not (tmp_path / 'bad').exists()
+
+
+def test_simulation_only_never_exports_failed_print_geometry(tmp_path):
+    import json
+    source = scene_file(tmp_path)
+    output = tmp_path/'simulation'
+    prepare(source,output,pitch=.01,target_length=.2,simulation_only=True)
+    manifest = json.loads((output/'geometry_manifest.json').read_text())
+    assert manifest['simulation_only'] and not manifest['manufacturing_validated']
+    assert not list(output.glob('*.stl'))
+    assert not all(manifest['topology_checks'].values())

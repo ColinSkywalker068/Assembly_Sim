@@ -216,7 +216,7 @@ def _grasp_for(cells: tuple[Cell, ...], all_cells: set[Cell], pitch: float, max_
 
 
 def process_assembly(
-    assembly: AssemblyInput, config: VoxelizationConfig | None = None
+    assembly: AssemblyInput, config: VoxelizationConfig | None = None, cell_repair=None
 ) -> ProcessedAssembly:
     """Normalize and surface-voxelize every fragment on one common grid."""
 
@@ -258,6 +258,15 @@ def process_assembly(
     for fragment, cells in zip(assembly.fragments, cleaned):
         if not cells:
             raise ValueError(f"fragment {fragment.name} has no occupied voxels")
+
+    repair_report = {}
+    if cell_repair is not None:
+        occupied = {cell for cells in cleaned for cell in cells}
+        for index, cells in enumerate(cleaned):
+            repaired, additions = cell_repair(cells, occupied - set(cells))
+            cleaned[index] = repaired
+            occupied.update(additions)
+            repair_report[assembly.fragments[index].name] = additions
 
     min_z = min(cell[2] for cells in cleaned for cell in cells)
     cleaned = [tuple((i, j, k - min_z) for i, j, k in cells) for cells in cleaned]
@@ -326,6 +335,7 @@ def process_assembly(
             "loader": assembly.loader,
             "path": str(assembly.source_path),
             "fragment_names": tuple(fragment.source_name for fragment in assembly.fragments),
+            "repair_added_cells_before_z_shift": repair_report,
         },
         config=config,
         source_to_canonical=source_to_canonical,

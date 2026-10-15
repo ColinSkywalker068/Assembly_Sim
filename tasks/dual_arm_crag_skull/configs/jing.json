@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "implementation_status": "cpu_preparation_and_proxy_scene_entry",
+  "implementation_status": "garf_gpu_and_rgbd_scene_smoke_verified",
   "workcell": {
     "preset": "dual_arm",
     "arm_model": "FANUC CRX-10iA/L",
@@ -33,7 +33,8 @@
     "trigger": "subtask_completion_or_failure",
     "output": "validated_skill_request",
     "tools": [
-      "propose_assembly"
+      "propose_assembly",
+      "propose_assembly_candidates"
     ]
   },
   "s1": {
@@ -72,9 +73,13 @@
     "checkpoint_filename": "GARF.ckpt",
     "checkpoint_size_bytes": 573313422,
     "checkpoint_path": null,
-    "checkpoint_sha256": null,
-    "upstream_commit": null,
+    "checkpoint_sha256": "cc6512ab48818b902bc1a7a0b4c569e049dbd6633c62cfff3de0890715825e02",
+    "upstream_commit": "2d489c0b7b58de8af774aa1657c86c638e4744c2",
     "service_implemented": false,
-    "tool_name": "propose_assembly"
+    "tool_name": "propose_assembly",
+    "local_tool_runner_implemented": true,
+    "steps": 20,
+    "iterations": 6,
+    "geometry_seed": 42
   }
 }

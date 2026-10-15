@@ -8,7 +8,7 @@
 
 **当前包含 CPU 几何准备与仿真启动入口，尚不是完整装配系统。** 已创建独立任务目录、配置、无 Isaac 依赖的检查入口、接口文档和实施 TODO。上游演示保持独立；没有宣称完成 YAM 适配、头骨导入、训练、物理成功验证或真实机器人部署。
 
-CRX-10iA/L 是用户批准的临时型号，尚未核实捐赠实机。YAM 具体夹爪型号、资产、TCP、相机标定、真实控制选项均待确认。原始 CRAG 数据不随本次交付下载，生成数据存放于仓库外。
+CRX-10iA/L 是用户批准的临时型号，尚未核实捐赠实机。YAM 具体夹爪型号、资产、TCP、相机标定、真实控制选项均待确认。原始 CRAG 数据已从用户服务器取得，权重、数据及生成结果均存放于仓库外。
 
 ```bash
 python3 -m tasks.dual_arm_crag_skull inspect
@@ -109,9 +109,9 @@ UMI 是离线手持示范来源，不是 FANUC 控制驱动。使用 UMI SLAM/�
 
 ## GARF 作为 S2 的装配推理工具
 
-用户指定权重：[GARF.ckpt](https://drive.google.com/file/d/1ZN0-Y2HaVe6zI7q4xUVVvhbSqKGbORfg/view)，Drive 元数据大小 573,313,422 bytes。已确认文件名与大小，尚未下载或验证 checkpoint 架构兼容性。配套代码参考 [ai4ce/GARF](https://github.com/ai4ce/GARF)，其官方评估使用 `denoiser_flow_matching` 和 `ckpt_path`。GARF 与 CRAG 是不同模型，不能把该权重直接加载到 CRAG 网络。
+用户指定权重：[GARF.ckpt](https://drive.google.com/file/d/1ZN0-Y2HaVe6zI7q4xUVVvhbSqKGbORfg/view)，Drive 元数据大小 573,313,422 bytes。已下载、校验 SHA256，并在官方 CUDA 环境严格加载成功。配套代码参考 [ai4ce/GARF](https://github.com/ai4ce/GARF)，其官方评估使用 `denoiser_flow_matching` 和 `ckpt_path`。GARF 与 CRAG 是不同模型，不能把该权重直接加载到 CRAG 网络。
 
-权重由独立 GPU 推理服务加载一次。S2 调用 `propose_assembly` 工具，不接收权重张量，也不直接调用电机。以下是本项目拟定的服务接口，并非声称 GARF 原生已有 API 或置信度输出；当前尚未实现推理服务。
+权重由独立 GPU 推理服务加载一次。S2 调用 `propose_assembly` 工具，不接收权重张量，也不直接调用电机。以下是本项目拟定的服务接口，并非声称 GARF 原生已有 API 或置信度输出；已实现本地 JSON-lines 推理进程，网络服务与 S2 API 编排尚待接入。
 
 ```mermaid
 flowchart TD
@@ -152,3 +152,54 @@ python -m tasks.dual_arm_crag_skull launch \
 准备步骤保留节点变换与稳定 ID，复用共同网格和唯一体素归属，保留所有占据体素，拒绝非六邻域连通/非闭合/绕向不一致的碎片；输出布局、米制 NPZ 与毫米 STL，以及源文件哈希、坐标变换和单位 manifest。当前仍为表面采样体素，不是实体体素填充；间隙为零，薄壁、插入路径和制造试样尚未验证，STL 是几何候选。
 
 `launch` 复用双 CRX、三相机、PhysX 碎片场景，显式要求允许 Robotiq 临时代替；不声称 YAM 已实现。当前只有人工交互入口，无自动六片装配专家。CPU 合成 GLB 测试不能代替真实头骨样本与 GPU 物理抓取验证。此前 Arm(dict) 风险描述属于历史待复核项，不能认定当前重构后的代码仍存在该错误。
+
+## 运行 GARF tool 与 RGB-D 接口
+
+已实现 `tools.garf.GarfTool`、Anthropic 风格 tool schema、JSON-lines runner；GPU 模型加载一次，支持单 seed 和 1–8 个 seed 候选。完整点云与法向量以 NPZ 注册，S2 只提交 ID，不能提交任意文件路径。输出候选不直接触发运动。
+
+官方 GARF 依赖在独立目录执行 `uv sync --extra post`；固定源码 commit `2d489c0b7b58de8af774aa1657c86c638e4744c2`。权重 SHA256：`cc6512ab48818b902bc1a7a0b4c569e049dbd6633c62cfff3de0890715825e02`。使用严格 state_dict 匹配和受限 checkpoint 加载，只允许核对过的 OmegaConf 元数据类型。
+
+```bash
+python -m tasks.dual_arm_crag_skull.tools \
+  --repository /data/GARF --checkpoint /data/GARF.ckpt \
+  --geometry /data/points/registry.json < /data/request.jsonl
+```
+
+注册表为 `{"part_0":"/data/part_0.npz", ...}`，NPZ 包含米制 `points: Nx3` 与 `normals: Nx3`。单行请求例子：
+
+```json
+{"tool_name":"propose_assembly_candidates","current_observation_id":"obs-10","request":{"observation_id":"obs-10","fragment_ids":["part_0","part_1"],"anchor_id":"part_0","seeds":[41,42,43,44]}}
+```
+
+`current_observation_id` 由编排器提供；S2 的 observation_id 不一致则拒绝。固定几何抽样，只改变初始噪声；默认 20 步、6 次迭代。大批推理仍应由外部进程施加超时与资源限制。
+
+用户提供每个 part 的完整点云后，可以省去完整几何重建，但不能省去 RGB-D 中的实例识别和当前位姿估计。见 [接口文档](INTERFACES.md) 的反投影、ICP、锚点恢复公式，以及“已装好碎片融合为一个刚体”的逐步推理接口。
+
+真实资产来源已定位到 maxwell 的 `data/fanuc_crag_skull_assembly/01_crag_case/view_gt.glb`，确认为八片 Hoolock 头骨。原 bundle README 明确旧影片是运动学 storyboard，不能当物理抓取验证。新的 `smoke.py` 在 Isaac Sim 5.1 执行物理步进并在暂停的同一时刻采集三路 RGB、光学 Z depth、内外参；仍不表示完成抓取装配。
+
+```bash
+python -m tasks.dual_arm_crag_skull prepare \
+  --input /data/view_gt.glb --output /data/skull_diagnostic \
+  --pitch .008 --target-length .2 --source-is-assembled-gt \
+  --simulation-only --allow-disconnected-rigid-proxy
+python -m tasks.dual_arm_crag_skull.smoke \
+  --assembly /data/skull_diagnostic/layout.json --output /data/smoke \
+  --allow-robotiq-proxy
+```
+
+该诊断模式保留所有体素，把不连通分量作为一个刚体近似，并明确写入 manifest；不导出 STL，不适合打印或装配验收。可选单格补桥保持全部原体素并避免侵占其他片，但在本次头骨上未解决全部断裂，因此没有用于上述运行。原 FANUC 资产还触发部分 link 的质量/惯量警告，动力学可信度须另行校准。
+
+## 2026-10-14 实测结果
+
+[机器可读报告](reports/2026-10-14.json) 记录八片真实头骨、权重哈希、四噪声候选和三相机数据。GPU 上固定几何采样，使用 20 步 × 6 次迭代：
+
+| noise seed | 推理秒数（不含加载） | 非锚点平均平移误差 | 非锚点平均旋转误差 |
+|---|---:|---:|---:|
+| 41 | 3.57 | 58.9 mm | 101.3° |
+| 42 | 2.28 | 46.6 mm | 124.4° |
+| 43 | 2.16 | 47.8 mm | 118.9° |
+| 44 | 1.77 | 57.6 mm | 123.7° |
+
+误差用独立 GT 作锚点对齐，只用于离线评估。当前候选显著不足以直接装配；多噪声调用确实得到不同候选，但这四次结果没有证明精度足够。下一步应对齐官方数据预处理、检查法向/归一化、评估更大点数、多候选几何筛选及头骨域适配。不得把 oracle 最优候选作为部署成功率。
+
+物理诊断场景已跑 120 次 world.step（约 4.05 s），三路 RGB-D 采样时间一致；这是场景/传感器 smoke test，尚无抓取或自动装配成功结果。

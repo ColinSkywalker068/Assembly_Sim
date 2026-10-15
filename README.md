@@ -2,7 +2,7 @@
 
 ## Jing branch: dual-arm CRAG skull assembly
 
-The `jing` branch adds a configuration and architecture scaffold for dual FANUC CRX-10iA/L arms, YAM grippers, three cameras, printable CRAG skull fragments, and an S2/S1/S0 stack (Claude Opus 5.5 requested model / Diffusion Policy / deterministic motion control). Hardware parameters and runtime integrations remain pending.
+The `jing` branch adds CPU geometry preparation, GARF inference tools, an RGB-D scene smoke runner, and architecture documentation for dual FANUC CRX-10iA/L arms, YAM grippers, three cameras, printable CRAG skull fragments, and an S2/S1/S0 stack (Claude Opus 5.5 requested model / Diffusion Policy / deterministic motion control). Hardware integration, printable geometry repair, and autonomous physical assembly remain pending.
 
 - [Jing task README](tasks/dual_arm_crag_skull/README.md)
 - [Implementation TODO](tasks/dual_arm_crag_skull/TODO.md)
