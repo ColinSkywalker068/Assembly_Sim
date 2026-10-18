@@ -1,0 +1,194 @@
+{
+  "max_penetration_fraction": 0.0,
+  "contact_components": 1,
+  "pairs": [
+    {
+      "pair": [
+        "0",
+        "1"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.693359375,
+      "directional_contact_fractions": [
+        0.001953125,
+        0.693359375
+      ]
+    },
+    {
+      "pair": [
+        "0",
+        "2"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.69921875,
+      "directional_contact_fractions": [
+        0.00390625,
+        0.69921875
+      ]
+    },
+    {
+      "pair": [
+        "0",
+        "3"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.673828125,
+      "directional_contact_fractions": [
+        0.0,
+        0.673828125
+      ]
+    },
+    {
+      "pair": [
+        "0",
+        "4"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.0859375,
+      "directional_contact_fractions": [
+        0.0,
+        0.0859375
+      ]
+    },
+    {
+      "pair": [
+        "0",
+        "5"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.5234375,
+      "directional_contact_fractions": [
+        0.001953125,
+        0.5234375
+      ]
+    },
+    {
+      "pair": [
+        "1",
+        "2"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.166015625,
+      "directional_contact_fractions": [
+        0.0859375,
+        0.166015625
+      ]
+    },
+    {
+      "pair": [
+        "1",
+        "3"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.0,
+      "directional_contact_fractions": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "pair": [
+        "1",
+        "4"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.0,
+      "directional_contact_fractions": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "pair": [
+        "1",
+        "5"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.099609375,
+      "directional_contact_fractions": [
+        0.015625,
+        0.099609375
+      ]
+    },
+    {
+      "pair": [
+        "2",
+        "3"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.0,
+      "directional_contact_fractions": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "pair": [
+        "2",
+        "4"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.0,
+      "directional_contact_fractions": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "pair": [
+        "2",
+        "5"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.013671875,
+      "directional_contact_fractions": [
+        0.00390625,
+        0.013671875
+      ]
+    },
+    {
+      "pair": [
+        "3",
+        "4"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.0,
+      "directional_contact_fractions": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "pair": [
+        "3",
+        "5"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.0,
+      "directional_contact_fractions": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "pair": [
+        "4",
+        "5"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.0,
+      "directional_contact_fractions": [
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "rejected": false,
+  "sample_count_per_part": 512,
+  "tolerance_m": 0.001,
+  "contact_m": 0.003,
+  "containment": "fixed_100_unit_mesh_no_internal_scaling",
+  "contact_rule": "either direction >1% sampled contact, normal dot < -0.5",
+  "motion_feasibility_checked": false,
+  "sampling_can_miss_collisions": true
+}

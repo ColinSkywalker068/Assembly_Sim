@@ -1,0 +1,554 @@
+{
+  "max_penetration_fraction": 0.0,
+  "contact_components": 1,
+  "pairs": [
+    {
+      "pair": [
+        "0",
+        "1"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.220703125,
+      "directional_contact_fractions": [
+        0.220703125,
+        0.20703125
+      ]
+    },
+    {
+      "pair": [
+        "0",
+        "2"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.015625,
+      "directional_contact_fractions": [
+        0.015625,
+        0.015625
+      ]
+    },
+    {
+      "pair": [
+        "0",
+        "3"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.283203125,
+      "directional_contact_fractions": [
+        0.283203125,
+        0.25390625
+      ]
+    },
+    {
+      "pair": [
+        "0",
+        "4"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.24609375,
+      "directional_contact_fractions": [
+        0.24609375,
+        0.0703125
+      ]
+    },
+    {
+      "pair": [
+        "0",
+        "5"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.05859375,
+      "directional_contact_fractions": [
+        0.05859375,
+        0.041015625
+      ]
+    },
+    {
+      "pair": [
+        "0",
+        "6"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.05859375,
+      "directional_contact_fractions": [
+        0.05859375,
+        0.025390625
+      ]
+    },
+    {
+      "pair": [
+        "0",
+        "7"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.048828125,
+      "directional_contact_fractions": [
+        0.048828125,
+        0.001953125
+      ]
+    },
+    {
+      "pair": [
+        "0",
+        "8"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.048828125,
+      "directional_contact_fractions": [
+        0.048828125,
+        0.001953125
+      ]
+    },
+    {
+      "pair": [
+        "0",
+        "9"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.0078125,
+      "directional_contact_fractions": [
+        0.0078125,
+        0.001953125
+      ]
+    },
+    {
+      "pair": [
+        "1",
+        "2"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.0,
+      "directional_contact_fractions": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "pair": [
+        "1",
+        "3"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.0625,
+      "directional_contact_fractions": [
+        0.0625,
+        0.02734375
+      ]
+    },
+    {
+      "pair": [
+        "1",
+        "4"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.056640625,
+      "directional_contact_fractions": [
+        0.056640625,
+        0.015625
+      ]
+    },
+    {
+      "pair": [
+        "1",
+        "5"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.150390625,
+      "directional_contact_fractions": [
+        0.14453125,
+        0.150390625
+      ]
+    },
+    {
+      "pair": [
+        "1",
+        "6"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.0,
+      "directional_contact_fractions": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "pair": [
+        "1",
+        "7"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.0,
+      "directional_contact_fractions": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "pair": [
+        "1",
+        "8"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.240234375,
+      "directional_contact_fractions": [
+        0.240234375,
+        0.009765625
+      ]
+    },
+    {
+      "pair": [
+        "1",
+        "9"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.009765625,
+      "directional_contact_fractions": [
+        0.009765625,
+        0.00390625
+      ]
+    },
+    {
+      "pair": [
+        "2",
+        "3"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.20703125,
+      "directional_contact_fractions": [
+        0.115234375,
+        0.20703125
+      ]
+    },
+    {
+      "pair": [
+        "2",
+        "4"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.259765625,
+      "directional_contact_fractions": [
+        0.259765625,
+        0.146484375
+      ]
+    },
+    {
+      "pair": [
+        "2",
+        "5"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.0,
+      "directional_contact_fractions": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "pair": [
+        "2",
+        "6"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.033203125,
+      "directional_contact_fractions": [
+        0.033203125,
+        0.02734375
+      ]
+    },
+    {
+      "pair": [
+        "2",
+        "7"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.34375,
+      "directional_contact_fractions": [
+        0.34375,
+        0.10546875
+      ]
+    },
+    {
+      "pair": [
+        "2",
+        "8"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.015625,
+      "directional_contact_fractions": [
+        0.015625,
+        0.001953125
+      ]
+    },
+    {
+      "pair": [
+        "2",
+        "9"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.0,
+      "directional_contact_fractions": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "pair": [
+        "3",
+        "4"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.037109375,
+      "directional_contact_fractions": [
+        0.037109375,
+        0.0078125
+      ]
+    },
+    {
+      "pair": [
+        "3",
+        "5"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.0,
+      "directional_contact_fractions": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "pair": [
+        "3",
+        "6"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.3359375,
+      "directional_contact_fractions": [
+        0.3359375,
+        0.203125
+      ]
+    },
+    {
+      "pair": [
+        "3",
+        "7"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.009765625,
+      "directional_contact_fractions": [
+        0.009765625,
+        0.0
+      ]
+    },
+    {
+      "pair": [
+        "3",
+        "8"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.0546875,
+      "directional_contact_fractions": [
+        0.0546875,
+        0.00390625
+      ]
+    },
+    {
+      "pair": [
+        "3",
+        "9"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.041015625,
+      "directional_contact_fractions": [
+        0.041015625,
+        0.01953125
+      ]
+    },
+    {
+      "pair": [
+        "4",
+        "5"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.4296875,
+      "directional_contact_fractions": [
+        0.126953125,
+        0.4296875
+      ]
+    },
+    {
+      "pair": [
+        "4",
+        "6"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.0,
+      "directional_contact_fractions": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "pair": [
+        "4",
+        "7"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.30078125,
+      "directional_contact_fractions": [
+        0.30078125,
+        0.126953125
+      ]
+    },
+    {
+      "pair": [
+        "4",
+        "8"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.05859375,
+      "directional_contact_fractions": [
+        0.05859375,
+        0.005859375
+      ]
+    },
+    {
+      "pair": [
+        "4",
+        "9"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.0,
+      "directional_contact_fractions": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "pair": [
+        "5",
+        "6"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.0,
+      "directional_contact_fractions": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "pair": [
+        "5",
+        "7"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.0,
+      "directional_contact_fractions": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "pair": [
+        "5",
+        "8"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.083984375,
+      "directional_contact_fractions": [
+        0.083984375,
+        0.005859375
+      ]
+    },
+    {
+      "pair": [
+        "5",
+        "9"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.0,
+      "directional_contact_fractions": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "pair": [
+        "6",
+        "7"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.0546875,
+      "directional_contact_fractions": [
+        0.0546875,
+        0.015625
+      ]
+    },
+    {
+      "pair": [
+        "6",
+        "8"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.2734375,
+      "directional_contact_fractions": [
+        0.2734375,
+        0.021484375
+      ]
+    },
+    {
+      "pair": [
+        "6",
+        "9"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.189453125,
+      "directional_contact_fractions": [
+        0.189453125,
+        0.142578125
+      ]
+    },
+    {
+      "pair": [
+        "7",
+        "8"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.337890625,
+      "directional_contact_fractions": [
+        0.337890625,
+        0.13671875
+      ]
+    },
+    {
+      "pair": [
+        "7",
+        "9"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.0,
+      "directional_contact_fractions": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "pair": [
+        "8",
+        "9"
+      ],
+      "penetration_fraction": 0.0,
+      "contact_fraction": 0.27734375,
+      "directional_contact_fractions": [
+        0.04296875,
+        0.27734375
+      ]
+    }
+  ],
+  "rejected": false,
+  "sample_count_per_part": 512,
+  "tolerance_m": 0.001,
+  "contact_m": 0.003,
+  "containment": "fixed_100_unit_mesh_no_internal_scaling",
+  "contact_rule": "either direction >1% sampled contact, normal dot < -0.5",
+  "motion_feasibility_checked": false,
+  "sampling_can_miss_collisions": true
+}

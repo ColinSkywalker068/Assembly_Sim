@@ -1,0 +1,281 @@
+[
+  {
+    "object": "AMNH_103402_Skull",
+    "isolated_part": 4,
+    "part_name": "AMNH_103402_Skull_preprocessed_mat_matspc_00029_s0026.obj",
+    "samples": 4096,
+    "part_extents_mm": [
+      9.871996317016782,
+      13.36482550866202,
+      6.78749787327736
+    ],
+    "pairs": [
+      {
+        "other": 0,
+        "min_distance_mm": 2.3338041832308947,
+        "distance_quantiles_mm": [
+          2.547686568850676,
+          3.7024354727784274,
+          6.1587609444415845,
+          7.789302819460738
+        ],
+        "close_fraction": 0.02978515625,
+        "opposing_contact_fraction": 0.013671875,
+        "strict_contact_fraction": 0.0
+      },
+      {
+        "other": 1,
+        "min_distance_mm": 78.52148291002372,
+        "distance_quantiles_mm": [
+          78.77711385363787,
+          80.3625686574109,
+          86.0516621464916,
+          90.74628761533481
+        ],
+        "close_fraction": 0.0,
+        "opposing_contact_fraction": 0.0,
+        "strict_contact_fraction": 0.0
+      },
+      {
+        "other": 2,
+        "min_distance_mm": 55.36793845077216,
+        "distance_quantiles_mm": [
+          55.60260620182783,
+          57.0485473152788,
+          62.61126878084415,
+          66.94023369508957
+        ],
+        "close_fraction": 0.0,
+        "opposing_contact_fraction": 0.0,
+        "strict_contact_fraction": 0.0
+      },
+      {
+        "other": 3,
+        "min_distance_mm": 87.57439622359122,
+        "distance_quantiles_mm": [
+          87.77528460557978,
+          89.45555508256135,
+          96.0104680154397,
+          100.92913447217919
+        ],
+        "close_fraction": 0.0,
+        "opposing_contact_fraction": 0.0,
+        "strict_contact_fraction": 0.0
+      },
+      {
+        "other": 5,
+        "min_distance_mm": 49.850264093180655,
+        "distance_quantiles_mm": [
+          50.09096889022666,
+          51.276793049723175,
+          55.57353362433833,
+          59.13742046723787
+        ],
+        "close_fraction": 0.0,
+        "opposing_contact_fraction": 0.0,
+        "strict_contact_fraction": 0.0
+      }
+    ],
+    "dense_rule_connects": true,
+    "minimum_surface_gap_mm": 2.3338041832308947
+  },
+  {
+    "object": "AMNH_196486_Cranium",
+    "isolated_part": 4,
+    "part_name": "AMNH_196486_Cranium_preprocessed_mat_matspc_00017_s0026.obj",
+    "samples": 4096,
+    "part_extents_mm": [
+      11.710476266741411,
+      4.061980741126311,
+      4.4753858781605995
+    ],
+    "pairs": [
+      {
+        "other": 0,
+        "min_distance_mm": 36.85639773077482,
+        "distance_quantiles_mm": [
+          36.90478773543032,
+          37.168095236866776,
+          38.36232463254675,
+          39.38728670159668
+        ],
+        "close_fraction": 0.0,
+        "opposing_contact_fraction": 0.0,
+        "strict_contact_fraction": 0.0
+      },
+      {
+        "other": 1,
+        "min_distance_mm": 2.805489397527142,
+        "distance_quantiles_mm": [
+          3.11514875077124,
+          3.7804096344435263,
+          5.43551594122024,
+          7.369736227286202
+        ],
+        "close_fraction": 0.00537109375,
+        "opposing_contact_fraction": 0.00439453125,
+        "strict_contact_fraction": 0.0
+      },
+      {
+        "other": 2,
+        "min_distance_mm": 30.27087425706848,
+        "distance_quantiles_mm": [
+          30.557449212933953,
+          31.73558814923561,
+          35.479923997747896,
+          39.258028727149785
+        ],
+        "close_fraction": 0.0,
+        "opposing_contact_fraction": 0.0,
+        "strict_contact_fraction": 0.0
+      },
+      {
+        "other": 3,
+        "min_distance_mm": 8.903886424203199,
+        "distance_quantiles_mm": [
+          9.115991383025658,
+          10.116339683661504,
+          13.40999567428042,
+          16.26502721535919
+        ],
+        "close_fraction": 0.0,
+        "opposing_contact_fraction": 0.0,
+        "strict_contact_fraction": 0.0
+      },
+      {
+        "other": 5,
+        "min_distance_mm": 44.16454777751685,
+        "distance_quantiles_mm": [
+          44.33165307596331,
+          45.287901984720975,
+          48.241298984193634,
+          51.09271149814125
+        ],
+        "close_fraction": 0.0,
+        "opposing_contact_fraction": 0.0,
+        "strict_contact_fraction": 0.0
+      },
+      {
+        "other": 6,
+        "min_distance_mm": 80.18079857846607,
+        "distance_quantiles_mm": [
+          80.274670030144,
+          80.74973928392598,
+          83.02935304486834,
+          84.92777380658906
+        ],
+        "close_fraction": 0.0,
+        "opposing_contact_fraction": 0.0,
+        "strict_contact_fraction": 0.0
+      }
+    ],
+    "dense_rule_connects": false,
+    "minimum_surface_gap_mm": 2.805489397527142
+  },
+  {
+    "object": "AMNH_76378_Skull",
+    "isolated_part": 7,
+    "part_name": "AMNH_76378_Skull_preprocessed_mat_matspc_00020_s0063.obj",
+    "samples": 4096,
+    "part_extents_mm": [
+      5.967938839634153,
+      8.531630876378417,
+      7.492945343927002
+    ],
+    "pairs": [
+      {
+        "other": 0,
+        "min_distance_mm": 3.966166903694483,
+        "distance_quantiles_mm": [
+          4.1407805156502,
+          5.121662131862707,
+          7.591542870331704,
+          10.11160127959703
+        ],
+        "close_fraction": 0.0,
+        "opposing_contact_fraction": 0.0,
+        "strict_contact_fraction": 0.0
+      },
+      {
+        "other": 1,
+        "min_distance_mm": 109.69431720978831,
+        "distance_quantiles_mm": [
+          109.7925055010267,
+          110.02684183491021,
+          110.97155341888161,
+          111.89438592354196
+        ],
+        "close_fraction": 0.0,
+        "opposing_contact_fraction": 0.0,
+        "strict_contact_fraction": 0.0
+      },
+      {
+        "other": 2,
+        "min_distance_mm": 102.38981314534851,
+        "distance_quantiles_mm": [
+          102.42546437252183,
+          102.65681769354543,
+          103.69325923085624,
+          104.69564850794994
+        ],
+        "close_fraction": 0.0,
+        "opposing_contact_fraction": 0.0,
+        "strict_contact_fraction": 0.0
+      },
+      {
+        "other": 3,
+        "min_distance_mm": 93.03378030332394,
+        "distance_quantiles_mm": [
+          93.10414388122828,
+          93.32535443216995,
+          94.31875838537538,
+          95.27677940049236
+        ],
+        "close_fraction": 0.0,
+        "opposing_contact_fraction": 0.0,
+        "strict_contact_fraction": 0.0
+      },
+      {
+        "other": 4,
+        "min_distance_mm": 116.47719110103486,
+        "distance_quantiles_mm": [
+          116.61204457743555,
+          116.9013176722847,
+          117.60093728084983,
+          118.41674334516375
+        ],
+        "close_fraction": 0.0,
+        "opposing_contact_fraction": 0.0,
+        "strict_contact_fraction": 0.0
+      },
+      {
+        "other": 5,
+        "min_distance_mm": 107.15516824871091,
+        "distance_quantiles_mm": [
+          107.43114210527672,
+          108.40027575754586,
+          110.09123168012103,
+          111.42900976472693
+        ],
+        "close_fraction": 0.0,
+        "opposing_contact_fraction": 0.0,
+        "strict_contact_fraction": 0.0
+      },
+      {
+        "other": 6,
+        "min_distance_mm": 101.32710180699135,
+        "distance_quantiles_mm": [
+          101.60721284861978,
+          102.43729504751408,
+          104.06830660821609,
+          105.40813158888812
+        ],
+        "close_fraction": 0.0,
+        "opposing_contact_fraction": 0.0,
+        "strict_contact_fraction": 0.0
+      }
+    ],
+    "dense_rule_connects": false,
+    "minimum_surface_gap_mm": 3.966166903694483
+  }
+]

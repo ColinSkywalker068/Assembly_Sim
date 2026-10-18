@@ -64,7 +64,7 @@ def parameter_digest(module):
     return h.hexdigest()
 
 
-def evaluate(backend, dataset, names, stage, out, seeds):
+def evaluate(backend, dataset, names, stage, out, seeds, metric_dataset=None):
     import torch
     backend.model.eval()
     rows=[]
@@ -73,15 +73,17 @@ def evaluate(backend, dataset, names, stage, out, seeds):
         count=len(d['points_per_part']); ids=list(map(str,range(count)))
         anchor=int(np.argmax(d['points_per_part']))
         backend.model_unit_m=.2/(float(d['extent'])*float(d['mesh_scale']))
-        point_scale=.2/float(d['extent'])
+        reference=d if metric_dataset is None else metric_dataset[name]
+        point_scale=.2/float(reference['extent'])
+        canonical_probability=None
         for seed in seeds:
             poses=backend.predict_registered(ids,anchor,seed)
             errors=[]; clouds=[]; start=0
             # Registered meshes for this offline benchmark use assembled axes.
             # Model sees only independently centered/rotated clouds; one anchor
             # is clamped exactly as in official inference, all other GT is evaluation only.
-            for i,(pose,n) in enumerate(zip(poses,d['points_per_part'])):
-                gt=d['pointclouds_gt'][start:start+n]*point_scale
+            for i,(pose,n) in enumerate(zip(poses,reference['points_per_part'])):
+                gt=reference['pointclouds_gt'][start:start+n]*point_scale
                 pred=gt@pose[:3,:3].T+pose[:3,3]
                 clouds.append(pred)
                 if i!=anchor:
@@ -90,24 +92,33 @@ def evaluate(backend, dataset, names, stage, out, seeds):
                         point_rmse_mm=float(np.sqrt(np.mean(np.sum((pred-gt)**2,axis=1)))*1000)))
                 start+=n
             probability=backend.last_diagnostics['fracture_probability']
-            mask=d['label_mask']; y=d['fracture_surface_gt'][mask]; p=probability[mask]
+            if metric_dataset is not None:
+                if canonical_probability is None:
+                    device_index=torch.device(backend.device).index or 0
+                    with torch.inference_mode(),torch.random.fork_rng(devices=[device_index]),torch.autocast(device_type='cuda',dtype=torch.float16):
+                        torch.manual_seed(42)
+                        output=backend.model.feature_extractor(tensor_batch(reference,backend.device))
+                        canonical_probability=output['coarse_seg_pred'].float().cpu().numpy().reshape(-1)
+                probability=canonical_probability
+            mask=reference['label_mask']; y=reference['fracture_surface_gt'][mask]; p=probability[mask]
             tp=int(((p>.5)&y).sum()); fp=int(((p>.5)&~y).sum()); fn=int(((p<=.5)&y).sum())
             row=dict(object=name,stage=stage,seed=seed,anchor=anchor,parts=errors,
                      centroid_error_mm=float(np.mean([x['centroid_error_mm'] for x in errors])),
                      rotation_error_deg=float(np.mean([x['rotation_error_deg'] for x in errors])),
                      point_rmse_mm=float(np.mean([x['point_rmse_mm'] for x in errors])),
-                     fracture_f1=2*tp/max(1,2*tp+fp+fn),fracture_ranking=ranking_metrics(y,p))
+                     fracture_f1=2*tp/max(1,2*tp+fp+fn),fracture_ranking=ranking_metrics(y,p),
+                     input_counts=d['points_per_part'].tolist(),metric_counts=reference['points_per_part'].tolist())
             rows.append(row)
             np.savez_compressed(out/f'{stage}--{name}--{seed}.npz',predicted=np.concatenate(clouds),
-                truth=d['pointclouds_gt']*point_scale,probability=probability,
-                labels=d['fracture_surface_gt'],mask=mask,counts=d['points_per_part'],
-                normals=d['pointclouds_normals_gt'],poses=np.array(poses))
+                truth=reference['pointclouds_gt']*point_scale,probability=probability,
+                labels=reference['fracture_surface_gt'],mask=mask,counts=reference['points_per_part'],
+                normals=reference['pointclouds_normals_gt'],poses=np.array(poses))
             print('EVAL',stage,name,seed,row['centroid_error_mm'],row['rotation_error_deg'],flush=True)
         (out/f'{stage}-metrics.json').write_text(json.dumps(rows,indent=2))
     return rows
 
 
-def train_stage(backend,dataset,names,stage,steps,out):
+def train_stage(backend,dataset,names,stage,steps,out,seg_weight=0.,seed=20261018):
     import torch
     model=backend.model
     # Keep small-batch BN statistics frozen, but enable autograd explicitly:
@@ -121,8 +132,8 @@ def train_stage(backend,dataset,names,stage,steps,out):
     if stage=='joint': groups.append(dict(params=list(model.denoiser.parameters()),lr=1e-5))
     optimizer=torch.optim.AdamW(groups,weight_decay=.01)
     scaler=torch.amp.GradScaler('cuda')
-    rng=np.random.default_rng(20261018)
-    torch.manual_seed(20261018); np.random.seed(20261018)
+    rng=np.random.default_rng(seed)
+    torch.manual_seed(seed); np.random.seed(seed)
     before=dict(encoder=parameter_digest(model.feature_extractor.encoder),denoiser=parameter_digest(model.denoiser))
     history=[]; order=[]; start_time=time.time()
     for step in range(steps):
@@ -132,9 +143,16 @@ def train_stage(backend,dataset,names,stage,steps,out):
         with torch.autocast(device_type='cuda',dtype=torch.float16):
             if stage=='encoder':
                 loss=segmentation_loss(model.feature_extractor(batch),batch)
+                segmentation=loss; pose_loss=None
             else:
-                prediction=model(batch)
-                loss=model._loss(batch,prediction)[0]['vec_mse_loss']
+                captured={}
+                hook=model.feature_extractor.register_forward_hook(lambda module,inputs,output:captured.update(output=output)) if seg_weight else None
+                try: prediction=model(batch)
+                finally:
+                    if hook is not None:hook.remove()
+                pose_loss=model._loss(batch,prediction)[0]['vec_mse_loss']
+                segmentation=segmentation_loss(captured['output'],batch) if seg_weight else None
+                loss=pose_loss+seg_weight*segmentation if seg_weight else pose_loss
         if not torch.isfinite(loss): raise RuntimeError(f'nonfinite {stage} loss at {step}')
         scaler.scale(loss).backward(); scaler.unscale_(optimizer)
         params=[p for p in model.parameters() if p.requires_grad]
@@ -142,6 +160,8 @@ def train_stage(backend,dataset,names,stage,steps,out):
         old_scale=scaler.get_scale()
         scaler.step(optimizer); scaler.update()
         row=dict(step=step,object=name,loss=float(loss.detach()),
+                 flow_loss=float(pose_loss.detach()) if pose_loss is not None else None,
+                 dice_loss=float(segmentation.detach()) if segmentation is not None else None,
                  gradient_norm=float(norm) if torch.isfinite(norm) else None,
                  optimizer_step_skipped=scaler.get_scale()<old_scale,seconds=time.time()-start_time)
         history.append(row)
@@ -149,7 +169,7 @@ def train_stage(backend,dataset,names,stage,steps,out):
     after=dict(encoder=parameter_digest(model.feature_extractor.encoder),denoiser=parameter_digest(model.denoiser))
     (out/f'{stage}-training.json').write_text(json.dumps(dict(steps=steps,
         optimizer_updates=sum(not r['optimizer_step_skipped'] for r in history),learning_rate=1e-5,
-        batch_size=1,bn_mode='eval frozen running statistics',before=before,after=after,history=history),indent=2))
+        batch_size=1,segmentation_weight=seg_weight,seed=seed,bn_mode='eval frozen running statistics',before=before,after=after,history=history),indent=2))
     torch.save({'state_dict':model.state_dict()},out/f'{stage}.ckpt')
     backend._feature_cache=None
 

@@ -16,8 +16,11 @@ def main():
     parser.add_argument('--mesh-registry', help='Optional IDs to closed local meshes in the same metre frames as the NPZ registry')
     parser.add_argument('--model-unit-m', type=float, help='Explicit metres per model coordinate unit; required for official preprocessing')
     parser.add_argument('--legacy-preprocessing', action='store_true', help='Explicit historical baseline only')
+    parser.add_argument('--minimum-points-per-part', type=int, default=20, help='Explicit experimental sampling override, 20..400; total remains 5000')
     parser.add_argument('--device', default='cuda:0')
     args = parser.parse_args()
+    if args.legacy_preprocessing and args.minimum_points_per_part != 20:
+        parser.error("minimum point override requires official preprocessing")
     geometry = {}
     for key, path in json.load(open(args.geometry)).items():
         with np.load(path, allow_pickle=False) as data:
@@ -33,7 +36,7 @@ def main():
             if meshes is None or args.model_unit_m is None:
                 parser.error('official mode requires --mesh-registry and --model-unit-m; point density is not surface area')
             from .official_backend import OfficialGarfBackend
-            backend = OfficialGarfBackend(args.repository, args.checkpoint, meshes, args.model_unit_m, args.device)
+            backend = OfficialGarfBackend(args.repository, args.checkpoint, meshes, args.model_unit_m, args.device, args.minimum_points_per_part)
         tool = GarfTool(backend, geometry, backend.checkpoint_sha256)
     for line in sys.stdin:
         try:

@@ -13,19 +13,25 @@ from .garf_backend import GarfBackend
 
 
 class OfficialGarfBackend(GarfBackend):
-    def __init__(self, repository, checkpoint, meshes, model_unit_m, device='cuda:0'):
+    def __init__(self, repository, checkpoint, meshes, model_unit_m, device='cuda:0', minimum_points_per_part=20):
         if not np.isfinite(model_unit_m) or model_unit_m <= 0:
             raise ValueError('explicit positive metres per model unit required')
+        if type(minimum_points_per_part) is not int or not 20 <= minimum_points_per_part <= 400:
+            raise ValueError("minimum_points_per_part must be an integer in [20, 400]")
+        self.minimum_points_per_part = minimum_points_per_part
         super().__init__(repository, checkpoint, device)
         self.meshes = meshes
         self.model_unit_m = float(model_unit_m)
         self._prepared = None
         self.metadata.update(preprocessing='official_MeshInferenceDataset', total_points=5000,
-                             minimum_points=20, model_unit_m=self.model_unit_m)
+                             minimum_points=self.minimum_points_per_part, model_unit_m=self.model_unit_m,
+                             sampling_profile="official_default" if self.minimum_points_per_part == 20 else "explicit_minimum_ablation")
         self.metadata.pop('sampling', None)
         self.metadata.pop('nominal_points_per_part', None)
 
     def prepare(self, ids):
+        if len(ids) * self.minimum_points_per_part > 5000:
+            raise ValueError("minimum part allocations exceed total 5000-point budget")
         from assembly.data.inference import MeshInferenceDataset
         digest=hashlib.sha256()
         for key in ids:
@@ -42,7 +48,7 @@ class OfficialGarfBackend(GarfBackend):
                 path=Path(folder)/f'{index}.ply'; m.export(path); paths.append(str(path))
             ds=MeshInferenceDataset(name='registered', meshes_paths=paths,
                 pad_to_parts=len(ids), num_points_to_sample=5000, mesh_type='ply',
-                sample_method='weighted', min_points_per_part=20, seed=42, sample_strategy='uniform')
+                sample_method='weighted', min_points_per_part=self.minimum_points_per_part, seed=42, sample_strategy='uniform')
             # Upstream currently leaves uniform sampling RNG unspecified. Fix only
             # that RNG, preserving the official sampler, counts and transforms.
             original=trimesh.sample.sample_surface

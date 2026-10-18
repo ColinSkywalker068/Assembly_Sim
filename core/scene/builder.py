@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any, Mapping
+import os
 
 from core.robots.builder import compose_robot
 from core.robots.controls import RobotHandle, WorkcellController
@@ -37,6 +38,10 @@ def simulation_launch_config(
         launch.update(
             {"headless": True, "hide_ui": False, "multi_gpu": False, "max_gpu_count": 1}
         )
+    if 'JING_SIM_GPU' in os.environ:
+        gpu=int(os.environ['JING_SIM_GPU'])
+        if gpu<0:raise ValueError('JING_SIM_GPU must be nonnegative')
+        launch.update(active_gpu=gpu,physics_gpu=gpu,multi_gpu=False,max_gpu_count=1)
     return launch
 
 

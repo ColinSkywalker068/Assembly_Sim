@@ -1,0 +1,244 @@
+{
+  "world_step_calls": 720,
+  "fragment_count": 8,
+  "elapsed_simulation_s": 24.00000125169754,
+  "physics_steps_from_elapsed_time": 2880,
+  "gripper": "robotiq_proxy",
+  "assembly_success_evaluated": false,
+  "cameras": {
+    "agent": {
+      "timestamp_s": 24.01666791923344,
+      "depth_units": "m",
+      "depth_type": "optical_z",
+      "valid_fraction": 1.0,
+      "world_T_camera_optical": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          -0.7882464758132599,
+          0.6153596455472002,
+          -2.1
+        ],
+        [
+          0.0,
+          -0.6153596455472002,
+          -0.7882464758132599,
+          3.44
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "intrinsics": [
+        [
+          2290.6227714035144,
+          0,
+          960.0
+        ],
+        [
+          0,
+          2354.356853615721,
+          720.0
+        ],
+        [
+          0,
+          0,
+          1
+        ]
+      ]
+    },
+    "left_wrist": {
+      "timestamp_s": 24.01666791923344,
+      "depth_units": "m",
+      "depth_type": "optical_z",
+      "valid_fraction": 1.0,
+      "world_T_camera_optical": [
+        [
+          3.647916411229435e-05,
+          -0.9307787642555243,
+          -0.3655829463750051,
+          -0.24015290567213282
+        ],
+        [
+          -0.937206837891638,
+          -0.12753766889043874,
+          0.32461898592526917,
+          -0.16007802136962687
+        ],
+        [
+          -0.3487740553401698,
+          0.3426149953299652,
+          -0.8723368748921602,
+          1.164822480768896
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "intrinsics": [
+        [
+          1649.2483954105305,
+          0,
+          960.0
+        ],
+        [
+          0,
+          1695.136934603319,
+          720.0
+        ],
+        [
+          0,
+          0,
+          1
+        ]
+      ]
+    },
+    "right_wrist": {
+      "timestamp_s": 24.01666791923344,
+      "depth_units": "m",
+      "depth_type": "optical_z",
+      "valid_fraction": 1.0,
+      "world_T_camera_optical": [
+        [
+          -3.6431117662261706e-05,
+          0.930778739403152,
+          0.3655830096542412,
+          0.24015303795394433
+        ],
+        [
+          0.9372068517132891,
+          0.1275376354710925,
+          -0.32461895915073685,
+          0.16007797252090586
+        ],
+        [
+          -0.34877401820439363,
+          0.34261507528642404,
+          -0.8723368583362963,
+          1.1648223534145876
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "intrinsics": [
+        [
+          1649.2483954105305,
+          0,
+          960.0
+        ],
+        [
+          0,
+          1695.136934603319,
+          720.0
+        ],
+        [
+          0,
+          0,
+          1
+        ]
+      ]
+    }
+  },
+  "physics_dt": 0.008333333333333333,
+  "settling": {
+    "window_s": 1.0000000521540642,
+    "parts": [
+      {
+        "id": "fragment_b4a2653675d3ae95",
+        "stable": false,
+        "window_translation_mm": 0.0016293450513883406,
+        "window_rotation_deg": 0.008735629044832032,
+        "maximum_linear_speed_m_s": 0.00481949957957259,
+        "maximum_angular_speed_rad_s": 0.20702419088913893,
+        "initial_to_final_displacement_mm": 0.00011151007970493857
+      },
+      {
+        "id": "fragment_b99c0e66e050d6ef",
+        "stable": false,
+        "window_translation_mm": 0.006400512750932811,
+        "window_rotation_deg": 0.046853085678553716,
+        "maximum_linear_speed_m_s": 0.006249736086233665,
+        "maximum_angular_speed_rad_s": 0.3469239326301987,
+        "initial_to_final_displacement_mm": 0.0009079931817401721
+      },
+      {
+        "id": "fragment_36d5ca6a07ba2b2f",
+        "stable": true,
+        "window_translation_mm": 0.00027028258364226006,
+        "window_rotation_deg": 0.001125528862028954,
+        "maximum_linear_speed_m_s": 0.0016616972445999193,
+        "maximum_angular_speed_rad_s": 0.010250374282848612,
+        "initial_to_final_displacement_mm": 2.5552243218571484
+      },
+      {
+        "id": "fragment_3c8c3298c2b4e704",
+        "stable": true,
+        "window_translation_mm": 0.00044304337344522793,
+        "window_rotation_deg": 0.0015604693524037903,
+        "maximum_linear_speed_m_s": 0.0014354399212958215,
+        "maximum_angular_speed_rad_s": 0.027955482094437243,
+        "initial_to_final_displacement_mm": 0.0008800520336767078
+      },
+      {
+        "id": "fragment_038755611176a8c9",
+        "stable": true,
+        "window_translation_mm": 5.9604644775390625e-05,
+        "window_rotation_deg": 7.2445096183544e-06,
+        "maximum_linear_speed_m_s": 0.0015997898847304299,
+        "maximum_angular_speed_rad_s": 0.00022346054836795302,
+        "initial_to_final_displacement_mm": 9.064022496787041e-05
+      },
+      {
+        "id": "fragment_48c51df7e1148345",
+        "stable": true,
+        "window_translation_mm": 0.0003477314555364345,
+        "window_rotation_deg": 0.0013724888698395043,
+        "maximum_linear_speed_m_s": 0.0018546779682864201,
+        "maximum_angular_speed_rad_s": 0.0299236968406114,
+        "initial_to_final_displacement_mm": 0.00012910160013410044
+      },
+      {
+        "id": "fragment_3b11f6f1187b8b2b",
+        "stable": true,
+        "window_translation_mm": 0.0009415187592459092,
+        "window_rotation_deg": 0.001861508507778669,
+        "maximum_linear_speed_m_s": 0.0016581354277820585,
+        "maximum_angular_speed_rad_s": 0.024716927297280193,
+        "initial_to_final_displacement_mm": 0.0006056547591954939
+      },
+      {
+        "id": "fragment_45266904a743c03b",
+        "stable": true,
+        "window_translation_mm": 0.00027028258364226006,
+        "window_rotation_deg": 0.001028784135924944,
+        "maximum_linear_speed_m_s": 0.0028547514829202415,
+        "maximum_angular_speed_rad_s": 0.04102501814948125,
+        "initial_to_final_displacement_mm": 1.2260009170194672
+      }
+    ],
+    "all_stable": false,
+    "assembly_success_evaluated": false,
+    "grasp_or_release_executed": false,
+    "thresholds": {
+      "drift_m": 0.001,
+      "rotation_deg": 2,
+      "linear_speed_m_s": 0.005,
+      "angular_speed_deg_s": 5
+    }
+  }
+}

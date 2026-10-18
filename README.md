@@ -2,7 +2,7 @@
 
 ## Jing branch: dual-arm CRAG skull assembly
 
-The `jing` branch adds CPU geometry preparation, GARF inference tools, an RGB-D scene smoke runner, specimen-grouped skull adaptation experiments, and architecture documentation for dual FANUC CRX-10iA/L arms, YAM grippers, three cameras, printable CRAG skull fragments, and an S2/S1/S0 stack (Claude Opus 5.5 requested model / Diffusion Policy / deterministic motion control). The first encoder/denoiser fine-tuning pilot improves position error but still fails geometric assembly checks; see the [measured report](tasks/dual_arm_crag_skull/reports/2026-10-18-finetune/README.md). Hardware integration, printable geometry repair, and autonomous physical assembly remain pending.
+The `jing` branch adds CPU geometry preparation, GARF inference tools, an RGB-D scene smoke runner, specimen-grouped skull adaptation experiments, and architecture documentation for dual FANUC CRX-10iA/L arms, YAM grippers, three cameras, printable CRAG skull fragments, and an S2/S1/S0 stack (Claude Opus 5.5 requested model / Diffusion Policy / deterministic motion control). The expanded nine-specimen ablation reaches 38.05 mm mean position error, but all 72 candidates fail geometric checks. PhysX settling improves from 6/8 to 7/8 stable fragments; autonomous assembly remains pending. See the [latest measured report](tasks/dual_arm_crag_skull/reports/2026-10-18-ablation-v2/README.md).
 
 - [Jing task README](tasks/dual_arm_crag_skull/README.md)
 - [Implementation TODO](tasks/dual_arm_crag_skull/TODO.md)

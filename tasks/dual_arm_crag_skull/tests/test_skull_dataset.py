@@ -14,6 +14,12 @@ def test_split_keeps_same_specimen_together_and_order_independent():
     with pytest.raises(ValueError): specimen_id('unknown')
 
 
+def test_specimen_aliases_across_sources():
+    assert specimen_id('Hoolock-f-AMNH-83425-cranium')==specimen_id('AMNH_83425_Skull')
+    assert specimen_id('example-NMNH-271047-cranium')==specimen_id('USNM271047_Skull')
+    assert specimen_id('Pan-paniscus-f-RMCA-RG-29045-cranium')=='RMCA_29045'
+
+
 def test_contact_labels_distinguish_opposing_surface_from_uncertain_gap():
     a=trimesh.creation.box(); b=trimesh.creation.box()
     b.apply_translation([1,0,0])

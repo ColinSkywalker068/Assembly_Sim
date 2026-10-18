@@ -18,10 +18,12 @@ from scipy.spatial.transform import Rotation
 
 
 def specimen_id(name):
-    match = re.match(r"(AMNH_\d+)(?:_|$)", name)
+    match = re.search(r'(AMNH|MCZ|RMCA|NMNH|USNM|UWZM|CMNH|NHMUK)[_-]?(?:M[_-]|RG[_-])?(\d+(?:\.\d+)?)',name,re.I)
     if not match:
         raise ValueError(f"Unknown specimen naming convention: {name}")
-    return match[1]
+    museum=match[1].upper()
+    if museum=='NMNH': museum='USNM'
+    return museum+'_'+match[2]
 
 
 def grouped_split(names):
@@ -77,18 +79,33 @@ def prepare(args):
     sys.path.insert(0, args.repository)
     from assembly.data.inference import MeshInferenceDataset
     out = Path(args.output); out.mkdir(parents=True, exist_ok=True)
+    root=getattr(args,'root','skull'); minimum=getattr(args,'minimum',20)
+    if not 20<=minimum<=400: raise ValueError('minimum points must be in [20,400]')
+    config=dict(source=str(Path(args.source).resolve()),root=root,minimum=minimum,total=5000)
+    config_path=out/'sampling_config.json'
+    if config_path.exists() and json.loads(config_path.read_text())!=config:
+        raise ValueError('refusing to reuse a cache with different sampling/source configuration')
+    config_path.write_text(json.dumps(config,indent=2))
     with h5py.File(args.source, 'r') as source:
         inventory = []
-        for name, group in source['skull'].items():
+        for name, group in source[root].items():
+            if root!='skull' and not any(k in name.lower() for k in ('skull','cranium')): continue
             inventory.append(dict(name=name, specimen=specimen_id(name), parts=len(group['pieces']),
                                   labeled_parts=sum('shared_faces' in v for v in group['pieces'].values())))
         eligible = [r['name'] for r in inventory if r['parts'] >= 6 and 'Mandible' not in r['name']]
-        split = grouped_split(eligible)
+        split = grouped_split(eligible) if root=='skull' else {n:'val' for n in eligible}
+        # Already studied Hoolock remains a historical transfer control, not a
+        # newly independent validation specimen. All other new skulls are val.
+        if root!='skull':
+            eligible=[n for n in eligible if specimen_id(n)!='AMNH_83425']
+            split={n:split[n] for n in eligible}
         manifest = dict(source=args.source, source_size=Path(args.source).stat().st_size,
-                        split_method='specimen hash order jing-skull-v1; 70/15/15; no score selection',
+                        split_method=('specimen hash order jing-skull-v1; 70/15/15; no score selection' if root=='skull'
+                                      else 'all new cranial specimens reserved for validation; historical Hoolock excluded'),
                         inventory=inventory, split=split,
                         label_type='geometric pseudo-label; positive d<=0.0005*object_extent AND normal_dot<=-0.8; negative d>0.002*extent; otherwise ignored',
-                        normalization='official MeshInferenceDataset; 5000 area-weighted points, min20, seed42',
+                        sampling=config,source_root=root,
+                        normalization=f'official MeshInferenceDataset; 5000 area-weighted points, min{minimum}, seed42',
                         physical_scale='experimental uniform 200 mm assembled maximum extent; not source physical units',
                         objects=[])
         (out/'manifest.json').write_text(json.dumps(manifest, indent=2))
@@ -98,10 +115,11 @@ def prepare(args):
             if report_path.exists():
                 report = json.loads(report_path.read_text())
             else:
-                names, meshes = load_meshes(source['skull'][name])
+                names, meshes = load_meshes(source[root][name])
                 quality = [dict(watertight=bool(m.is_watertight), winding=bool(m.is_winding_consistent),
                                 volume=float(m.volume), faces=len(m.faces)) for m in meshes]
-                report = dict(name=name, split=split[name], parts=names, mesh_quality=quality)
+                report = dict(name=name, split=split[name], parts=names, mesh_quality=quality,
+                              source=args.source,source_root=root,specimen=specimen_id(name))
                 if not all(q['watertight'] and q['winding'] and q['volume'] > 0 for q in quality):
                     report.update(status='excluded', reason='mesh closure/winding/volume failed; no silent repair')
                 else:
@@ -111,7 +129,7 @@ def prepare(args):
                             path=Path(folder)/f'{i}.ply'; m.export(path); paths.append(str(path))
                         ds=MeshInferenceDataset(name=name, meshes_paths=paths, pad_to_parts=len(meshes),
                             num_points_to_sample=5000, mesh_type='ply', sample_method='weighted',
-                            min_points_per_part=20, seed=42, sample_strategy='uniform')
+                            min_points_per_part=minimum, seed=42, sample_strategy='uniform')
                         original=trimesh.sample.sample_surface
                         rng=np.random.default_rng(42)
                         def sample(*a, **kw):
@@ -122,7 +140,7 @@ def prepare(args):
                         finally: trimesh.sample.sample_surface=original
                     positive, mask, distances, dots, extent=contact_labels(ds.meshes,data)
                     # An independent check: distance to the provided, decimated full surface.
-                    full=source['skull'][name]['full_mesh']
+                    full=source[root][name]['full_mesh']
                     full_mesh=trimesh.Trimesh(full['vertices'][:]/ds.scale_max, full['faces'][:], process=True)
                     _, full_distance, _=trimesh.proximity.closest_point(full_mesh,data['pointclouds_gt'])
                     max_roundtrip=0.; max_normal=0.; offset=0
@@ -157,4 +175,6 @@ if __name__=='__main__':
     parser=argparse.ArgumentParser()
     for arg in ('source','repository','output'):
         parser.add_argument('--'+arg,required=True)
+    parser.add_argument('--root',default='skull')
+    parser.add_argument('--minimum',type=int,default=20)
     prepare(parser.parse_args())

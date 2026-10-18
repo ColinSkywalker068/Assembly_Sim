@@ -1,0 +1,1230 @@
+[
+  {
+    "object": "morphosource_v1__Pan-paniscus-f-RMCA-RG-29045-cranium",
+    "stage": "multi200",
+    "seed": 41,
+    "anchor": 8,
+    "parts": [
+      {
+        "part": 0,
+        "centroid_error_mm": 117.37391725476984,
+        "rotation_error_deg": 163.78308446638417,
+        "point_rmse_mm": 124.78057038344448
+      },
+      {
+        "part": 1,
+        "centroid_error_mm": 111.10384175480526,
+        "rotation_error_deg": 134.27390850182732,
+        "point_rmse_mm": 113.51350519915316
+      },
+      {
+        "part": 2,
+        "centroid_error_mm": 55.52870085827864,
+        "rotation_error_deg": 159.7747812046004,
+        "point_rmse_mm": 71.1716057883632
+      },
+      {
+        "part": 3,
+        "centroid_error_mm": 129.40260496809384,
+        "rotation_error_deg": 168.44425555319185,
+        "point_rmse_mm": 134.81355913997749
+      },
+      {
+        "part": 4,
+        "centroid_error_mm": 4.997241764819449,
+        "rotation_error_deg": 9.878186435438382,
+        "point_rmse_mm": 6.357958983576119
+      },
+      {
+        "part": 5,
+        "centroid_error_mm": 7.600679272326977,
+        "rotation_error_deg": 8.676598772958789,
+        "point_rmse_mm": 8.235689580241395
+      },
+      {
+        "part": 6,
+        "centroid_error_mm": 26.01209329952732,
+        "rotation_error_deg": 36.91989009680625,
+        "point_rmse_mm": 30.71865301913568
+      },
+      {
+        "part": 7,
+        "centroid_error_mm": 0.9282995297427894,
+        "rotation_error_deg": 9.760182172784468,
+        "point_rmse_mm": 6.5031802347632395
+      },
+      {
+        "part": 9,
+        "centroid_error_mm": 66.14432595346656,
+        "rotation_error_deg": 78.01288695380045,
+        "point_rmse_mm": 74.57475941140387
+      }
+    ],
+    "centroid_error_mm": 57.67685607287007,
+    "rotation_error_deg": 85.50264157308803,
+    "point_rmse_mm": 63.407720193339856,
+    "fracture_f1": 0.788641975308642,
+    "fracture_ranking": [
+      0.8414058722398323,
+      0.6741571585285434
+    ],
+    "input_counts": [
+      291,
+      292,
+      363,
+      291,
+      504,
+      299,
+      359,
+      763,
+      1435,
+      403
+    ],
+    "metric_counts": [
+      167,
+      167,
+      282,
+      167,
+      507,
+      179,
+      275,
+      921,
+      1990,
+      345
+    ]
+  },
+  {
+    "object": "morphosource_v1__Pan-paniscus-f-RMCA-RG-29045-cranium",
+    "stage": "multi200",
+    "seed": 42,
+    "anchor": 8,
+    "parts": [
+      {
+        "part": 0,
+        "centroid_error_mm": 113.06413572304842,
+        "rotation_error_deg": 116.08863316861593,
+        "point_rmse_mm": 119.70295529385386
+      },
+      {
+        "part": 1,
+        "centroid_error_mm": 8.51117658720025,
+        "rotation_error_deg": 28.12242431136553,
+        "point_rmse_mm": 14.467108770220703
+      },
+      {
+        "part": 2,
+        "centroid_error_mm": 83.46957554110625,
+        "rotation_error_deg": 96.15085312425576,
+        "point_rmse_mm": 89.95296595479692
+      },
+      {
+        "part": 3,
+        "centroid_error_mm": 117.83572689158464,
+        "rotation_error_deg": 98.57532498226006,
+        "point_rmse_mm": 120.0895759519259
+      },
+      {
+        "part": 4,
+        "centroid_error_mm": 4.987619861232009,
+        "rotation_error_deg": 4.977945872759908,
+        "point_rmse_mm": 5.434602994251499
+      },
+      {
+        "part": 5,
+        "centroid_error_mm": 7.5611002817835296,
+        "rotation_error_deg": 6.357758315903656,
+        "point_rmse_mm": 7.986146206898566
+      },
+      {
+        "part": 6,
+        "centroid_error_mm": 17.478202935007644,
+        "rotation_error_deg": 35.16280949487246,
+        "point_rmse_mm": 23.33153004087378
+      },
+      {
+        "part": 7,
+        "centroid_error_mm": 2.17915856213327,
+        "rotation_error_deg": 7.793811922946431,
+        "point_rmse_mm": 5.4394546455461965
+      },
+      {
+        "part": 9,
+        "centroid_error_mm": 5.5339841361285105,
+        "rotation_error_deg": 9.15147356475555,
+        "point_rmse_mm": 6.793112165523417
+      }
+    ],
+    "centroid_error_mm": 40.06896450213606,
+    "rotation_error_deg": 44.709003861970594,
+    "point_rmse_mm": 43.68860578043231,
+    "fracture_f1": 0.788641975308642,
+    "fracture_ranking": [
+      0.8414058722398323,
+      0.6741571585285434
+    ],
+    "input_counts": [
+      291,
+      292,
+      363,
+      291,
+      504,
+      299,
+      359,
+      763,
+      1435,
+      403
+    ],
+    "metric_counts": [
+      167,
+      167,
+      282,
+      167,
+      507,
+      179,
+      275,
+      921,
+      1990,
+      345
+    ]
+  },
+  {
+    "object": "morphosource_v1__USNM17994_Smilodectes_cranium_smooth",
+    "stage": "multi200",
+    "seed": 41,
+    "anchor": 0,
+    "parts": [
+      {
+        "part": 1,
+        "centroid_error_mm": 21.688526984575255,
+        "rotation_error_deg": 23.296251685530656,
+        "point_rmse_mm": 25.71720318190093
+      },
+      {
+        "part": 2,
+        "centroid_error_mm": 33.93690639096724,
+        "rotation_error_deg": 155.43468370956464,
+        "point_rmse_mm": 42.156321050555164
+      },
+      {
+        "part": 3,
+        "centroid_error_mm": 62.74624187886169,
+        "rotation_error_deg": 134.07294083071451,
+        "point_rmse_mm": 71.94802208768854
+      },
+      {
+        "part": 4,
+        "centroid_error_mm": 101.79565720011244,
+        "rotation_error_deg": 96.16183996446304,
+        "point_rmse_mm": 104.02409709713288
+      },
+      {
+        "part": 5,
+        "centroid_error_mm": 20.978563051329473,
+        "rotation_error_deg": 175.55104366974243,
+        "point_rmse_mm": 29.561433111278397
+      },
+      {
+        "part": 6,
+        "centroid_error_mm": 50.74523087284976,
+        "rotation_error_deg": 107.06329379817467,
+        "point_rmse_mm": 53.96058883682492
+      }
+    ],
+    "centroid_error_mm": 48.64852106311597,
+    "rotation_error_deg": 115.26334227636498,
+    "point_rmse_mm": 54.561277560896805,
+    "fracture_f1": 0.4265193370165746,
+    "fracture_ranking": [
+      0.7602640506250634,
+      0.2926896032258152
+    ],
+    "input_counts": [
+      2249,
+      1245,
+      276,
+      368,
+      310,
+      279,
+      273
+    ],
+    "metric_counts": [
+      2786,
+      1431,
+      123,
+      247,
+      168,
+      127,
+      118
+    ]
+  },
+  {
+    "object": "morphosource_v1__USNM17994_Smilodectes_cranium_smooth",
+    "stage": "multi200",
+    "seed": 42,
+    "anchor": 0,
+    "parts": [
+      {
+        "part": 1,
+        "centroid_error_mm": 16.645455758952973,
+        "rotation_error_deg": 28.84862921301349,
+        "point_rmse_mm": 24.595146685938868
+      },
+      {
+        "part": 2,
+        "centroid_error_mm": 40.6196030639211,
+        "rotation_error_deg": 174.75517806364917,
+        "point_rmse_mm": 46.12726239428109
+      },
+      {
+        "part": 3,
+        "centroid_error_mm": 52.020070058554225,
+        "rotation_error_deg": 150.72180939997276,
+        "point_rmse_mm": 64.18033467403917
+      },
+      {
+        "part": 4,
+        "centroid_error_mm": 96.97422803077033,
+        "rotation_error_deg": 63.29560103807417,
+        "point_rmse_mm": 98.5238422031198
+      },
+      {
+        "part": 5,
+        "centroid_error_mm": 23.07604551950855,
+        "rotation_error_deg": 29.283827227823814,
+        "point_rmse_mm": 23.944260024961423
+      },
+      {
+        "part": 6,
+        "centroid_error_mm": 44.764144234312205,
+        "rotation_error_deg": 115.17875782363342,
+        "point_rmse_mm": 48.85613333708516
+      }
+    ],
+    "centroid_error_mm": 45.683257777669894,
+    "rotation_error_deg": 93.68063379436113,
+    "point_rmse_mm": 51.03782988657091,
+    "fracture_f1": 0.4265193370165746,
+    "fracture_ranking": [
+      0.7602640506250634,
+      0.2926896032258152
+    ],
+    "input_counts": [
+      2249,
+      1245,
+      276,
+      368,
+      310,
+      279,
+      273
+    ],
+    "metric_counts": [
+      2786,
+      1431,
+      123,
+      247,
+      168,
+      127,
+      118
+    ]
+  },
+  {
+    "object": "morphosource_v2__Alouatta-palliata-aequatorialis-m-NMNH-338107-cranium",
+    "stage": "multi200",
+    "seed": 41,
+    "anchor": 0,
+    "parts": [
+      {
+        "part": 1,
+        "centroid_error_mm": 134.59403805474975,
+        "rotation_error_deg": 171.55700524884278,
+        "point_rmse_mm": 152.6790933254953
+      },
+      {
+        "part": 2,
+        "centroid_error_mm": 80.08083050295441,
+        "rotation_error_deg": 167.95339421129384,
+        "point_rmse_mm": 89.97716389968456
+      },
+      {
+        "part": 3,
+        "centroid_error_mm": 101.62753537653039,
+        "rotation_error_deg": 176.53017619462287,
+        "point_rmse_mm": 109.07030064481118
+      },
+      {
+        "part": 4,
+        "centroid_error_mm": 89.65888900776231,
+        "rotation_error_deg": 148.3877884685497,
+        "point_rmse_mm": 94.8757411141813
+      },
+      {
+        "part": 5,
+        "centroid_error_mm": 70.39091507215906,
+        "rotation_error_deg": 54.52885078974368,
+        "point_rmse_mm": 72.95086376339859
+      }
+    ],
+    "centroid_error_mm": 95.27044160283117,
+    "rotation_error_deg": 143.7914429826106,
+    "point_rmse_mm": 103.91063254951419,
+    "fracture_f1": 0.344149459193707,
+    "fracture_ranking": [
+      0.6794400685209353,
+      0.17477347886960545
+    ],
+    "input_counts": [
+      3356,
+      384,
+      291,
+      329,
+      269,
+      371
+    ],
+    "metric_counts": [
+      4073,
+      256,
+      137,
+      186,
+      109,
+      239
+    ]
+  },
+  {
+    "object": "morphosource_v2__Alouatta-palliata-aequatorialis-m-NMNH-338107-cranium",
+    "stage": "multi200",
+    "seed": 42,
+    "anchor": 0,
+    "parts": [
+      {
+        "part": 1,
+        "centroid_error_mm": 42.10922457068104,
+        "rotation_error_deg": 26.1981857714653,
+        "point_rmse_mm": 44.554475649118054
+      },
+      {
+        "part": 2,
+        "centroid_error_mm": 78.59915032520435,
+        "rotation_error_deg": 101.33987331485453,
+        "point_rmse_mm": 83.42090138564168
+      },
+      {
+        "part": 3,
+        "centroid_error_mm": 104.5558618510117,
+        "rotation_error_deg": 173.6234264866487,
+        "point_rmse_mm": 111.91476122840554
+      },
+      {
+        "part": 4,
+        "centroid_error_mm": 46.1950787870358,
+        "rotation_error_deg": 94.86283948699473,
+        "point_rmse_mm": 52.12888498127581
+      },
+      {
+        "part": 5,
+        "centroid_error_mm": 75.69777572502217,
+        "rotation_error_deg": 41.90194645496366,
+        "point_rmse_mm": 77.57752860021351
+      }
+    ],
+    "centroid_error_mm": 69.43141825179102,
+    "rotation_error_deg": 87.58525430298539,
+    "point_rmse_mm": 73.91931036893092,
+    "fracture_f1": 0.344149459193707,
+    "fracture_ranking": [
+      0.6794400685209353,
+      0.17477347886960545
+    ],
+    "input_counts": [
+      3356,
+      384,
+      291,
+      329,
+      269,
+      371
+    ],
+    "metric_counts": [
+      4073,
+      256,
+      137,
+      186,
+      109,
+      239
+    ]
+  },
+  {
+    "object": "morphosource_v2__Alouatta-seniculus-f-AMNH-42316-cranium",
+    "stage": "multi200",
+    "seed": 41,
+    "anchor": 0,
+    "parts": [
+      {
+        "part": 1,
+        "centroid_error_mm": 1.5032075688610282,
+        "rotation_error_deg": 5.128944179509751,
+        "point_rmse_mm": 2.029015650216539
+      },
+      {
+        "part": 2,
+        "centroid_error_mm": 59.931978871543755,
+        "rotation_error_deg": 89.18529747303867,
+        "point_rmse_mm": 61.61547665111378
+      },
+      {
+        "part": 3,
+        "centroid_error_mm": 2.714868518782985,
+        "rotation_error_deg": 1.6355699340293617,
+        "point_rmse_mm": 2.78314544161453
+      },
+      {
+        "part": 4,
+        "centroid_error_mm": 77.81761329949275,
+        "rotation_error_deg": 165.81525576036142,
+        "point_rmse_mm": 85.72534812142406
+      },
+      {
+        "part": 5,
+        "centroid_error_mm": 23.321679798144654,
+        "rotation_error_deg": 164.3231683642312,
+        "point_rmse_mm": 35.606261542299386
+      }
+    ],
+    "centroid_error_mm": 33.057869611365035,
+    "rotation_error_deg": 85.21764714223409,
+    "point_rmse_mm": 37.55184948133366,
+    "fracture_f1": 0.7454445057979017,
+    "fracture_ranking": [
+      0.888076793636017,
+      0.6026592806695023
+    ],
+    "input_counts": [
+      3082,
+      516,
+      308,
+      390,
+      385,
+      319
+    ],
+    "metric_counts": [
+      3720,
+      426,
+      159,
+      264,
+      258,
+      173
+    ]
+  },
+  {
+    "object": "morphosource_v2__Alouatta-seniculus-f-AMNH-42316-cranium",
+    "stage": "multi200",
+    "seed": 42,
+    "anchor": 0,
+    "parts": [
+      {
+        "part": 1,
+        "centroid_error_mm": 1.322086626885741,
+        "rotation_error_deg": 5.05222100799096,
+        "point_rmse_mm": 1.881632001105559
+      },
+      {
+        "part": 2,
+        "centroid_error_mm": 3.1958772595045115,
+        "rotation_error_deg": 4.9153625649748465,
+        "point_rmse_mm": 3.321275854275431
+      },
+      {
+        "part": 3,
+        "centroid_error_mm": 3.9658662241407105,
+        "rotation_error_deg": 5.721461805561767,
+        "point_rmse_mm": 4.635197422037482
+      },
+      {
+        "part": 4,
+        "centroid_error_mm": 12.269562242706126,
+        "rotation_error_deg": 20.093994892965913,
+        "point_rmse_mm": 13.692619603502987
+      },
+      {
+        "part": 5,
+        "centroid_error_mm": 22.16980049807914,
+        "rotation_error_deg": 21.325536258364227,
+        "point_rmse_mm": 22.551549493193942
+      }
+    ],
+    "centroid_error_mm": 8.584638570263246,
+    "rotation_error_deg": 11.421715305971542,
+    "point_rmse_mm": 9.21645487482308,
+    "fracture_f1": 0.7454445057979017,
+    "fracture_ranking": [
+      0.888076793636017,
+      0.6026592806695023
+    ],
+    "input_counts": [
+      3082,
+      516,
+      308,
+      390,
+      385,
+      319
+    ],
+    "metric_counts": [
+      3720,
+      426,
+      159,
+      264,
+      258,
+      173
+    ]
+  },
+  {
+    "object": "morphosource_v2__Aotus-griseimembra-f-MCZ-19801-cranium",
+    "stage": "multi200",
+    "seed": 41,
+    "anchor": 0,
+    "parts": [
+      {
+        "part": 1,
+        "centroid_error_mm": 3.7409592330690624,
+        "rotation_error_deg": 3.6709783419558453,
+        "point_rmse_mm": 4.125642396578535
+      },
+      {
+        "part": 2,
+        "centroid_error_mm": 2.843182302151181,
+        "rotation_error_deg": 2.381397001802002,
+        "point_rmse_mm": 3.00623622788906
+      },
+      {
+        "part": 3,
+        "centroid_error_mm": 0.9040371735419592,
+        "rotation_error_deg": 2.980251415505671,
+        "point_rmse_mm": 1.5967194681100172
+      },
+      {
+        "part": 4,
+        "centroid_error_mm": 140.5343074625004,
+        "rotation_error_deg": 153.8799082310768,
+        "point_rmse_mm": 144.89666785426678
+      },
+      {
+        "part": 5,
+        "centroid_error_mm": 17.820761663699095,
+        "rotation_error_deg": 157.1227337363112,
+        "point_rmse_mm": 32.44389542074732
+      }
+    ],
+    "centroid_error_mm": 33.16864956699234,
+    "rotation_error_deg": 64.0070537453303,
+    "point_rmse_mm": 37.21383227351834,
+    "fracture_f1": 0.693484419263456,
+    "fracture_ranking": [
+      0.8855911311046772,
+      0.5565532183188765
+    ],
+    "input_counts": [
+      2878,
+      645,
+      286,
+      593,
+      289,
+      309
+    ],
+    "metric_counts": [
+      3456,
+      592,
+      131,
+      525,
+      135,
+      161
+    ]
+  },
+  {
+    "object": "morphosource_v2__Aotus-griseimembra-f-MCZ-19801-cranium",
+    "stage": "multi200",
+    "seed": 42,
+    "anchor": 0,
+    "parts": [
+      {
+        "part": 1,
+        "centroid_error_mm": 3.016259152890021,
+        "rotation_error_deg": 3.37594375558176,
+        "point_rmse_mm": 3.426857072046601
+      },
+      {
+        "part": 2,
+        "centroid_error_mm": 3.3035884249806564,
+        "rotation_error_deg": 2.0412640902639274,
+        "point_rmse_mm": 3.4076885107236254
+      },
+      {
+        "part": 3,
+        "centroid_error_mm": 0.9572259533332578,
+        "rotation_error_deg": 4.4673551401297305,
+        "point_rmse_mm": 2.101425250524216
+      },
+      {
+        "part": 4,
+        "centroid_error_mm": 42.326670027844436,
+        "rotation_error_deg": 61.81038788392258,
+        "point_rmse_mm": 46.75149218618727
+      },
+      {
+        "part": 5,
+        "centroid_error_mm": 52.10540123292296,
+        "rotation_error_deg": 75.7598698668056,
+        "point_rmse_mm": 58.64142112963273
+      }
+    ],
+    "centroid_error_mm": 20.341828958394267,
+    "rotation_error_deg": 29.49096414734072,
+    "point_rmse_mm": 22.865776829822888,
+    "fracture_f1": 0.693484419263456,
+    "fracture_ranking": [
+      0.8855911311046772,
+      0.5565532183188765
+    ],
+    "input_counts": [
+      2878,
+      645,
+      286,
+      593,
+      289,
+      309
+    ],
+    "metric_counts": [
+      3456,
+      592,
+      131,
+      525,
+      135,
+      161
+    ]
+  },
+  {
+    "object": "morphosource_v2__Hylobates-lar-vestitus-f-NMNH-271047-cranium",
+    "stage": "multi200",
+    "seed": 41,
+    "anchor": 3,
+    "parts": [
+      {
+        "part": 0,
+        "centroid_error_mm": 4.042365719143413,
+        "rotation_error_deg": 3.84703993437739,
+        "point_rmse_mm": 5.3044474799230015
+      },
+      {
+        "part": 1,
+        "centroid_error_mm": 53.92321886233148,
+        "rotation_error_deg": 173.1725297382309,
+        "point_rmse_mm": 72.76440265453363
+      },
+      {
+        "part": 2,
+        "centroid_error_mm": 8.28276632241151,
+        "rotation_error_deg": 9.366217912404435,
+        "point_rmse_mm": 8.847195551023523
+      },
+      {
+        "part": 4,
+        "centroid_error_mm": 44.64236415107514,
+        "rotation_error_deg": 140.55496194465493,
+        "point_rmse_mm": 58.73355984432782
+      },
+      {
+        "part": 5,
+        "centroid_error_mm": 1.5046992391659249,
+        "rotation_error_deg": 10.703631824626424,
+        "point_rmse_mm": 3.8933390226897404
+      },
+      {
+        "part": 6,
+        "centroid_error_mm": 3.292317796200731,
+        "rotation_error_deg": 6.93241444850855,
+        "point_rmse_mm": 4.375296012479212
+      }
+    ],
+    "centroid_error_mm": 19.281288681721367,
+    "rotation_error_deg": 57.42946596713377,
+    "point_rmse_mm": 25.65304009416282,
+    "fracture_f1": 0.591990713871155,
+    "fracture_ranking": [
+      0.8025771260808882,
+      0.4717603555923538
+    ],
+    "input_counts": [
+      1583,
+      359,
+      288,
+      1849,
+      287,
+      287,
+      347
+    ],
+    "metric_counts": [
+      1887,
+      234,
+      140,
+      2245,
+      138,
+      138,
+      218
+    ]
+  },
+  {
+    "object": "morphosource_v2__Hylobates-lar-vestitus-f-NMNH-271047-cranium",
+    "stage": "multi200",
+    "seed": 42,
+    "anchor": 3,
+    "parts": [
+      {
+        "part": 0,
+        "centroid_error_mm": 3.8552855207611687,
+        "rotation_error_deg": 2.8868523839325824,
+        "point_rmse_mm": 4.303354581452042
+      },
+      {
+        "part": 1,
+        "centroid_error_mm": 8.648771943818865,
+        "rotation_error_deg": 24.94694093936916,
+        "point_rmse_mm": 10.894723593780805
+      },
+      {
+        "part": 2,
+        "centroid_error_mm": 8.157846596154135,
+        "rotation_error_deg": 9.339077311818784,
+        "point_rmse_mm": 8.741847466959529
+      },
+      {
+        "part": 4,
+        "centroid_error_mm": 18.68094695034565,
+        "rotation_error_deg": 23.70489691936105,
+        "point_rmse_mm": 20.65514744231474
+      },
+      {
+        "part": 5,
+        "centroid_error_mm": 2.135221707425613,
+        "rotation_error_deg": 11.750607622845832,
+        "point_rmse_mm": 4.423763793407547
+      },
+      {
+        "part": 6,
+        "centroid_error_mm": 3.661857418842413,
+        "rotation_error_deg": 7.172165171876489,
+        "point_rmse_mm": 4.738152402987079
+      }
+    ],
+    "centroid_error_mm": 7.523321689557974,
+    "rotation_error_deg": 13.30009005820065,
+    "point_rmse_mm": 8.959498213483624,
+    "fracture_f1": 0.591990713871155,
+    "fracture_ranking": [
+      0.8025771260808882,
+      0.4717603555923538
+    ],
+    "input_counts": [
+      1583,
+      359,
+      288,
+      1849,
+      287,
+      287,
+      347
+    ],
+    "metric_counts": [
+      1887,
+      234,
+      140,
+      2245,
+      138,
+      138,
+      218
+    ]
+  },
+  {
+    "object": "morphosource_v2__Nomascus-gabriellae-f-AMNH-87253-cranium",
+    "stage": "multi200",
+    "seed": 41,
+    "anchor": 0,
+    "parts": [
+      {
+        "part": 1,
+        "centroid_error_mm": 49.03268902522799,
+        "rotation_error_deg": 111.32067098731395,
+        "point_rmse_mm": 64.28570545197586
+      },
+      {
+        "part": 2,
+        "centroid_error_mm": 3.5065658234591006,
+        "rotation_error_deg": 151.12453876443792,
+        "point_rmse_mm": 46.30126292497076
+      },
+      {
+        "part": 3,
+        "centroid_error_mm": 2.576317292509871,
+        "rotation_error_deg": 2.836231477052702,
+        "point_rmse_mm": 3.096017053856692
+      },
+      {
+        "part": 4,
+        "centroid_error_mm": 19.962341832885606,
+        "rotation_error_deg": 137.6518283161902,
+        "point_rmse_mm": 43.98971651398256
+      },
+      {
+        "part": 5,
+        "centroid_error_mm": 3.0871180052172553,
+        "rotation_error_deg": 3.4145435642964053,
+        "point_rmse_mm": 3.5467686509228904
+      },
+      {
+        "part": 6,
+        "centroid_error_mm": 95.30227461845574,
+        "rotation_error_deg": 171.16612724541136,
+        "point_rmse_mm": 99.57553803245192
+      }
+    ],
+    "centroid_error_mm": 28.911217766292594,
+    "rotation_error_deg": 96.25232339245042,
+    "point_rmse_mm": 43.465834771360115,
+    "fracture_f1": 0.6683823529411764,
+    "fracture_ranking": [
+      0.8085153202413896,
+      0.5232083972364164
+    ],
+    "input_counts": [
+      2044,
+      452,
+      372,
+      941,
+      333,
+      573,
+      285
+    ],
+    "metric_counts": [
+      2510,
+      360,
+      252,
+      1020,
+      199,
+      524,
+      135
+    ]
+  },
+  {
+    "object": "morphosource_v2__Nomascus-gabriellae-f-AMNH-87253-cranium",
+    "stage": "multi200",
+    "seed": 42,
+    "anchor": 0,
+    "parts": [
+      {
+        "part": 1,
+        "centroid_error_mm": 46.25742687176039,
+        "rotation_error_deg": 101.79832492981889,
+        "point_rmse_mm": 60.785997313277036
+      },
+      {
+        "part": 2,
+        "centroid_error_mm": 10.668937527488321,
+        "rotation_error_deg": 140.0480279388959,
+        "point_rmse_mm": 46.03008495681817
+      },
+      {
+        "part": 3,
+        "centroid_error_mm": 2.8839980461013486,
+        "rotation_error_deg": 2.8022300707465893,
+        "point_rmse_mm": 3.4394866730154776
+      },
+      {
+        "part": 4,
+        "centroid_error_mm": 8.29814396733278,
+        "rotation_error_deg": 23.829403264309516,
+        "point_rmse_mm": 11.607544801105995
+      },
+      {
+        "part": 5,
+        "centroid_error_mm": 4.2913520000464995,
+        "rotation_error_deg": 3.22079656846881,
+        "point_rmse_mm": 4.633387007989694
+      },
+      {
+        "part": 6,
+        "centroid_error_mm": 94.46253899851634,
+        "rotation_error_deg": 170.8653142480985,
+        "point_rmse_mm": 98.7319178671354
+      }
+    ],
+    "centroid_error_mm": 27.810399568540948,
+    "rotation_error_deg": 73.76068283672303,
+    "point_rmse_mm": 37.53806976989029,
+    "fracture_f1": 0.6683823529411764,
+    "fracture_ranking": [
+      0.8085153202413896,
+      0.5232083972364164
+    ],
+    "input_counts": [
+      2044,
+      452,
+      372,
+      941,
+      333,
+      573,
+      285
+    ],
+    "metric_counts": [
+      2510,
+      360,
+      252,
+      1020,
+      199,
+      524,
+      135
+    ]
+  },
+  {
+    "object": "skull__AMNH_200847_Cranium",
+    "stage": "multi200",
+    "seed": 41,
+    "anchor": 0,
+    "parts": [
+      {
+        "part": 1,
+        "centroid_error_mm": 37.19755714137767,
+        "rotation_error_deg": 174.03289571488344,
+        "point_rmse_mm": 40.23060136333188
+      },
+      {
+        "part": 2,
+        "centroid_error_mm": 14.95467074419265,
+        "rotation_error_deg": 72.17650780089963,
+        "point_rmse_mm": 16.187377968822048
+      },
+      {
+        "part": 3,
+        "centroid_error_mm": 3.3179002383453122,
+        "rotation_error_deg": 168.9003187880843,
+        "point_rmse_mm": 5.318129583245734
+      },
+      {
+        "part": 4,
+        "centroid_error_mm": 32.23499570090748,
+        "rotation_error_deg": 107.58964968480895,
+        "point_rmse_mm": 32.49456903156919
+      },
+      {
+        "part": 5,
+        "centroid_error_mm": 20.062224743798616,
+        "rotation_error_deg": 146.60112977596378,
+        "point_rmse_mm": 21.11995786370275
+      }
+    ],
+    "centroid_error_mm": 21.553469713724347,
+    "rotation_error_deg": 133.86010035292801,
+    "point_rmse_mm": 23.07012716213432,
+    "fracture_f1": 0.3945578231292517,
+    "fracture_ranking": [
+      0.8218537178273859,
+      0.18860387945973328
+    ],
+    "input_counts": [
+      3957,
+      222,
+      211,
+      203,
+      202,
+      205
+    ],
+    "metric_counts": [
+      4845,
+      48,
+      34,
+      24,
+      22,
+      27
+    ]
+  },
+  {
+    "object": "skull__AMNH_200847_Cranium",
+    "stage": "multi200",
+    "seed": 42,
+    "anchor": 0,
+    "parts": [
+      {
+        "part": 1,
+        "centroid_error_mm": 31.612740833456666,
+        "rotation_error_deg": 24.26964405616308,
+        "point_rmse_mm": 31.728608737828573
+      },
+      {
+        "part": 2,
+        "centroid_error_mm": 15.57467987721491,
+        "rotation_error_deg": 157.31009369946392,
+        "point_rmse_mm": 18.31963392617804
+      },
+      {
+        "part": 3,
+        "centroid_error_mm": 11.14918239636158,
+        "rotation_error_deg": 160.3215378093524,
+        "point_rmse_mm": 11.940679879231944
+      },
+      {
+        "part": 4,
+        "centroid_error_mm": 25.11775053254523,
+        "rotation_error_deg": 81.15513401869265,
+        "point_rmse_mm": 25.29661853336338
+      },
+      {
+        "part": 5,
+        "centroid_error_mm": 17.521745160826615,
+        "rotation_error_deg": 70.47559733067224,
+        "point_rmse_mm": 17.858521919312327
+      }
+    ],
+    "centroid_error_mm": 20.195219760081,
+    "rotation_error_deg": 98.70640138286886,
+    "point_rmse_mm": 21.02881259918285,
+    "fracture_f1": 0.3945578231292517,
+    "fracture_ranking": [
+      0.8218537178273859,
+      0.18860387945973328
+    ],
+    "input_counts": [
+      3957,
+      222,
+      211,
+      203,
+      202,
+      205
+    ],
+    "metric_counts": [
+      4845,
+      48,
+      34,
+      24,
+      22,
+      27
+    ]
+  },
+  {
+    "object": "skull__AMNH_26943_Skull",
+    "stage": "multi200",
+    "seed": 41,
+    "anchor": 0,
+    "parts": [
+      {
+        "part": 1,
+        "centroid_error_mm": 4.449663576334018,
+        "rotation_error_deg": 5.248953132330591,
+        "point_rmse_mm": 5.730254318660457
+      },
+      {
+        "part": 2,
+        "centroid_error_mm": 149.25805499995346,
+        "rotation_error_deg": 99.34335628086416,
+        "point_rmse_mm": 149.35426178676775
+      },
+      {
+        "part": 3,
+        "centroid_error_mm": 110.71984388560631,
+        "rotation_error_deg": 169.40076405100035,
+        "point_rmse_mm": 111.85139818275546
+      },
+      {
+        "part": 4,
+        "centroid_error_mm": 64.25064739681889,
+        "rotation_error_deg": 179.33949351484455,
+        "point_rmse_mm": 64.75536306272787
+      },
+      {
+        "part": 5,
+        "centroid_error_mm": 29.46815857403528,
+        "rotation_error_deg": 117.34544566549164,
+        "point_rmse_mm": 29.95618981162112
+      }
+    ],
+    "centroid_error_mm": 71.62927368654958,
+    "rotation_error_deg": 114.13560252890625,
+    "point_rmse_mm": 72.32949343250652,
+    "fracture_f1": 0.5013192612137203,
+    "fracture_ranking": [
+      0.7065391964297645,
+      0.3566634201270795
+    ],
+    "input_counts": [
+      3041,
+      1104,
+      207,
+      242,
+      204,
+      202
+    ],
+    "metric_counts": [
+      3669,
+      1180,
+      29,
+      74,
+      25,
+      23
+    ]
+  },
+  {
+    "object": "skull__AMNH_26943_Skull",
+    "stage": "multi200",
+    "seed": 42,
+    "anchor": 0,
+    "parts": [
+      {
+        "part": 1,
+        "centroid_error_mm": 4.032265195857098,
+        "rotation_error_deg": 4.607315849078691,
+        "point_rmse_mm": 5.107482769540673
+      },
+      {
+        "part": 2,
+        "centroid_error_mm": 141.67124239625147,
+        "rotation_error_deg": 46.80467362842786,
+        "point_rmse_mm": 141.7221178572931
+      },
+      {
+        "part": 3,
+        "centroid_error_mm": 1.8422945522302596,
+        "rotation_error_deg": 7.335910602973718,
+        "point_rmse_mm": 2.1884633994038913
+      },
+      {
+        "part": 4,
+        "centroid_error_mm": 56.70414226245593,
+        "rotation_error_deg": 51.26702028416635,
+        "point_rmse_mm": 56.73990197587053
+      },
+      {
+        "part": 5,
+        "centroid_error_mm": 34.21697764116519,
+        "rotation_error_deg": 11.076250119180788,
+        "point_rmse_mm": 34.22070210877687
+      }
+    ],
+    "centroid_error_mm": 47.69338440959199,
+    "rotation_error_deg": 24.218234096765478,
+    "point_rmse_mm": 47.99573362217701,
+    "fracture_f1": 0.5013192612137203,
+    "fracture_ranking": [
+      0.7065391964297645,
+      0.3566634201270795
+    ],
+    "input_counts": [
+      3041,
+      1104,
+      207,
+      242,
+      204,
+      202
+    ],
+    "metric_counts": [
+      3669,
+      1180,
+      29,
+      74,
+      25,
+      23
+    ]
+  }
+]
