@@ -58,7 +58,10 @@ class GarfTool:
             digest = hashlib.sha256()
             for key, (p, n) in zip(ids, parts):
                 digest.update(key.encode()); digest.update(p.tobytes()); digest.update(n.tobytes())
-            poses = self.backend.predict(parts, ids.index(request['anchor_id']), request['seed'])
+            if hasattr(self.backend, 'predict_registered'):
+                poses = self.backend.predict_registered(ids, ids.index(request['anchor_id']), request['seed'])
+            else:
+                poses = self.backend.predict(parts, ids.index(request['anchor_id']), request['seed'])
             if len(poses) != len(ids):
                 raise ValueError('backend returned wrong part count')
             matrices = [rigid_transform(t).tolist() for t in poses]

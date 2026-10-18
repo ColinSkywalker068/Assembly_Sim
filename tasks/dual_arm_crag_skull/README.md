@@ -162,7 +162,9 @@ python -m tasks.dual_arm_crag_skull launch \
 ```bash
 python -m tasks.dual_arm_crag_skull.tools \
   --repository /data/GARF --checkpoint /data/GARF.ckpt \
-  --geometry /data/points/registry.json < /data/request.jsonl
+  --geometry /data/points/registry.json \
+  --mesh-registry /data/points/mesh_registry.json \
+  --model-unit-m 0.20749005075939986 < /data/request.jsonl
 ```
 
 注册表为 `{"part_0":"/data/part_0.npz", ...}`，NPZ 包含米制 `points: Nx3` 与 `normals: Nx3`。单行请求例子：
@@ -211,3 +213,12 @@ python -m tasks.dual_arm_crag_skull.smoke \
 `export_points` 现在额外输出同局部坐标的 PLY 和 `mesh_registry.json`；JSONL 工具加 `--mesh-registry PATH` 可执行不依赖 GT 的穿透/接触筛选。无合格候选时明确返回 `all_candidates_rejected`；几何评分不授权机器人运动。原有四个 noise 候选全部拒绝。理想两片合并实验也没有恢复剩余六片的装配精度，不能作为自动安装成功。
 
 本轮另修复了多候选随机性混杂：PointTransformer 在 eval 模式仍随机打乱序列，且固定 seed 后重复编码也未保证相同指纹。现在同一批几何只编码一次，缓存按几何内容失效；四个候选已验证共享相同特征，平均位置误差仍约52–60 mm。该修复保证实验可比性，不代表头骨装配精度已解决。
+
+
+## 2026-10-18：生产入口对齐与头骨特征诊断
+
+默认 JSONL 入口现使用 `OfficialGarfBackend`，直接调用固定版本的官方 `MeshInferenceDataset`：总5000点、面积加权、最低20点、相同共同尺度/逐片旋转和归一化，不再在生产入口按点云密度重新抽样。显式固定采样RNG，并复用同一几何特征，保障多noise可比。旧近似入口仅可通过 `--legacy-preprocessing` 使用。
+
+`--model-unit-m` 表示每个模型坐标单位对应多少米，必须来自输入标定或明确的实验尺度。上面的数值仅适用于本次最长边200 mm的头骨实验，不能套用于其他物体。`--mesh-registry` 是提供完整表面与面积的注册几何，必须与NPZ处于同一局部米制坐标；官方点云在服务端由该几何生成。只有无组织点云、没有面积/表面信息时，无法声称与官方mesh采样完全等价，默认入口会拒绝缺失元数据而不猜测。
+
+断裂面几何代理诊断显示，瓶子召回率约99.9%，头骨约8.0%；头骨最大片召回率为0。该差异支持编码器对头骨断裂几何泛化不足，但分类掩码未直接参与当前位姿模型，不能把它当作唯一已确认根因。详见 [本轮报告](reports/2026-10-18/README.md)。

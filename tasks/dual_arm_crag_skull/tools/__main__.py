@@ -14,6 +14,8 @@ def main():
     parser.add_argument('--checkpoint', required=True)
     parser.add_argument('--geometry', required=True, help='JSON mapping IDs to NPZ paths: points/normals in metres')
     parser.add_argument('--mesh-registry', help='Optional IDs to closed local meshes in the same metre frames as the NPZ registry')
+    parser.add_argument('--model-unit-m', type=float, help='Explicit metres per model coordinate unit; required for official preprocessing')
+    parser.add_argument('--legacy-preprocessing', action='store_true', help='Explicit historical baseline only')
     parser.add_argument('--device', default='cuda:0')
     args = parser.parse_args()
     geometry = {}
@@ -25,7 +27,13 @@ def main():
         import trimesh
         meshes={k:trimesh.load_mesh(p) for k,p in json.load(open(args.mesh_registry)).items()}
     with contextlib.redirect_stdout(sys.stderr):
-        backend = GarfBackend(args.repository, args.checkpoint, args.device)
+        if args.legacy_preprocessing:
+            backend = GarfBackend(args.repository, args.checkpoint, args.device)
+        else:
+            if meshes is None or args.model_unit_m is None:
+                parser.error('official mode requires --mesh-registry and --model-unit-m; point density is not surface area')
+            from .official_backend import OfficialGarfBackend
+            backend = OfficialGarfBackend(args.repository, args.checkpoint, meshes, args.model_unit_m, args.device)
         tool = GarfTool(backend, geometry, backend.checkpoint_sha256)
     for line in sys.stdin:
         try:

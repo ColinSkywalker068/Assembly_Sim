@@ -1,0 +1,4 @@
+# Optional Linux acceleration for full-mesh geometric screening.
+# Install in the isolated GARF environment, not the Isaac runtime.
+rtree==1.4.1
+embreex==4.4.0

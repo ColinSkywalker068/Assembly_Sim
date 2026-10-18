@@ -1,0 +1,107 @@
+{
+  "label_type": "GT geometric contact proxy, not annotated fracture GT",
+  "distance_m": 0.001,
+  "opposing_normal_dot_max": -0.5,
+  "fracture_mask_used_by_pose_model": false,
+  "parts": [
+    {
+      "id": "fragment_b4a2653675d3ae95",
+      "points": 181,
+      "predicted_fracture_fraction": 0.35359116022099446,
+      "contact_proxy_fraction": 0.6243093922651933,
+      "tp": 6,
+      "fp": 58,
+      "fn": 107,
+      "precision": 0.09375,
+      "recall": 0.05309734513274336
+    },
+    {
+      "id": "fragment_b99c0e66e050d6ef",
+      "points": 197,
+      "predicted_fracture_fraction": 0.27411167512690354,
+      "contact_proxy_fraction": 0.6091370558375635,
+      "tp": 23,
+      "fp": 31,
+      "fn": 97,
+      "precision": 0.42592592592592593,
+      "recall": 0.19166666666666668
+    },
+    {
+      "id": "fragment_36d5ca6a07ba2b2f",
+      "points": 117,
+      "predicted_fracture_fraction": 0.1623931623931624,
+      "contact_proxy_fraction": 0.7777777777777778,
+      "tp": 12,
+      "fp": 7,
+      "fn": 79,
+      "precision": 0.631578947368421,
+      "recall": 0.13186813186813187
+    },
+    {
+      "id": "fragment_3c8c3298c2b4e704",
+      "points": 137,
+      "predicted_fracture_fraction": 0.5036496350364964,
+      "contact_proxy_fraction": 0.5474452554744526,
+      "tp": 53,
+      "fp": 16,
+      "fn": 22,
+      "precision": 0.7681159420289855,
+      "recall": 0.7066666666666667
+    },
+    {
+      "id": "fragment_038755611176a8c9",
+      "points": 538,
+      "predicted_fracture_fraction": 0.046468401486988845,
+      "contact_proxy_fraction": 0.30297397769516726,
+      "tp": 0,
+      "fp": 25,
+      "fn": 163,
+      "precision": 0.0,
+      "recall": 0.0
+    },
+    {
+      "id": "fragment_48c51df7e1148345",
+      "points": 95,
+      "predicted_fracture_fraction": 0.021052631578947368,
+      "contact_proxy_fraction": 0.8526315789473684,
+      "tp": 0,
+      "fp": 2,
+      "fn": 81,
+      "precision": 0.0,
+      "recall": 0.0
+    },
+    {
+      "id": "fragment_3b11f6f1187b8b2b",
+      "points": 223,
+      "predicted_fracture_fraction": 0.013452914798206279,
+      "contact_proxy_fraction": 0.5919282511210763,
+      "tp": 2,
+      "fp": 1,
+      "fn": 130,
+      "precision": 0.6666666666666666,
+      "recall": 0.015151515151515152
+    },
+    {
+      "id": "fragment_45266904a743c03b",
+      "points": 3512,
+      "predicted_fracture_fraction": 0.0014236902050113896,
+      "contact_proxy_fraction": 0.12072892938496584,
+      "tp": 0,
+      "fp": 5,
+      "fn": 424,
+      "precision": 0.0,
+      "recall": 0.0
+    }
+  ],
+  "counts": [
+    181,
+    197,
+    117,
+    137,
+    538,
+    95,
+    223,
+    3512
+  ],
+  "model_unit_m": 0.20749005075939986
+}
