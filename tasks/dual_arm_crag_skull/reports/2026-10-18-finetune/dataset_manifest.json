@@ -1,0 +1,4728 @@
+{
+  "source": "/local_data/public/CRAG/release/final_data/skull.hdf5",
+  "source_size": 3381336502,
+  "split_method": "specimen hash order jing-skull-v1; 70/15/15; no score selection",
+  "inventory": [
+    {
+      "name": "AMNH_100489_Cranium",
+      "specimen": "AMNH_100489",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_100536_Mandible",
+      "specimen": "AMNH_100536",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_100551_Cranium",
+      "specimen": "AMNH_100551",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_100557_Cranium",
+      "specimen": "AMNH_100557",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_100633_Cranium",
+      "specimen": "AMNH_100633",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_100821_Cranium",
+      "specimen": "AMNH_100821",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_100824_Cranium",
+      "specimen": "AMNH_100824",
+      "parts": 9,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_100828_Cranium",
+      "specimen": "AMNH_100828",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_102018_Cranium",
+      "specimen": "AMNH_102018",
+      "parts": 10,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_102018_Mandible",
+      "specimen": "AMNH_102018",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_102018_Skull",
+      "specimen": "AMNH_102018",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_102021_Cranium",
+      "specimen": "AMNH_102021",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_102021_Mandible",
+      "specimen": "AMNH_102021",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_102021_Skull",
+      "specimen": "AMNH_102021",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103402_Cranium",
+      "specimen": "AMNH_103402",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103402_Mandible",
+      "specimen": "AMNH_103402",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103402_Skull",
+      "specimen": "AMNH_103402",
+      "parts": 6,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103458_Mandible",
+      "specimen": "AMNH_103458",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103458_Skull",
+      "specimen": "AMNH_103458",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103460_Cranium",
+      "specimen": "AMNH_103460",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103460_Mandible",
+      "specimen": "AMNH_103460",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103460_Skull",
+      "specimen": "AMNH_103460",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103464_Cranium",
+      "specimen": "AMNH_103464",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103464_Mandible",
+      "specimen": "AMNH_103464",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103464_Skull",
+      "specimen": "AMNH_103464",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103465_Mandible",
+      "specimen": "AMNH_103465",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103465_Skull",
+      "specimen": "AMNH_103465",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103466_Cranium",
+      "specimen": "AMNH_103466",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103466_Mandible",
+      "specimen": "AMNH_103466",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103466_Skull",
+      "specimen": "AMNH_103466",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103468_Cranium",
+      "specimen": "AMNH_103468",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103468_Mandible",
+      "specimen": "AMNH_103468",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103468_Skull",
+      "specimen": "AMNH_103468",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103469_Cranium",
+      "specimen": "AMNH_103469",
+      "parts": 7,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103469_Mandible",
+      "specimen": "AMNH_103469",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103469_Skull",
+      "specimen": "AMNH_103469",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103471_Cranium",
+      "specimen": "AMNH_103471",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103471_Mandible",
+      "specimen": "AMNH_103471",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103644_Cranium",
+      "specimen": "AMNH_103644",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103644_Mandible",
+      "specimen": "AMNH_103644",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103645_Cranium",
+      "specimen": "AMNH_103645",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103645_Skull",
+      "specimen": "AMNH_103645",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103648_Cranium",
+      "specimen": "AMNH_103648",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103648_Mandible",
+      "specimen": "AMNH_103648",
+      "parts": 6,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103648_Skull",
+      "specimen": "AMNH_103648",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103649_Cranium",
+      "specimen": "AMNH_103649",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103649_Mandible",
+      "specimen": "AMNH_103649",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103649_Skull",
+      "specimen": "AMNH_103649",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103650_Cranium",
+      "specimen": "AMNH_103650",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103650_Mandible",
+      "specimen": "AMNH_103650",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103650_Skull",
+      "specimen": "AMNH_103650",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103651_Cranium",
+      "specimen": "AMNH_103651",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103651_Mandible",
+      "specimen": "AMNH_103651",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103651_Skull",
+      "specimen": "AMNH_103651",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103652_Cranium",
+      "specimen": "AMNH_103652",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103652_Mandible",
+      "specimen": "AMNH_103652",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103654_Cranium",
+      "specimen": "AMNH_103654",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103655_Cranium",
+      "specimen": "AMNH_103655",
+      "parts": 8,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103655_Mandible",
+      "specimen": "AMNH_103655",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103655_Skull",
+      "specimen": "AMNH_103655",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103656_Cranium",
+      "specimen": "AMNH_103656",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103656_Mandible",
+      "specimen": "AMNH_103656",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103656_Skull",
+      "specimen": "AMNH_103656",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103657_Mandible",
+      "specimen": "AMNH_103657",
+      "parts": 6,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103657_Skull",
+      "specimen": "AMNH_103657",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103669_Mandible",
+      "specimen": "AMNH_103669",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103670_Cranium",
+      "specimen": "AMNH_103670",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103670_Mandible",
+      "specimen": "AMNH_103670",
+      "parts": 6,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103670_Skull",
+      "specimen": "AMNH_103670",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103671_Mandible",
+      "specimen": "AMNH_103671",
+      "parts": 9,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_103671_Skull",
+      "specimen": "AMNH_103671",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_106033_Cranium",
+      "specimen": "AMNH_106033",
+      "parts": 9,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_106033_Mandible",
+      "specimen": "AMNH_106033",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_106033_Skull",
+      "specimen": "AMNH_106033",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_106034_Cranium",
+      "specimen": "AMNH_106034",
+      "parts": 6,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_106034_Mandible",
+      "specimen": "AMNH_106034",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_106034_Skull",
+      "specimen": "AMNH_106034",
+      "parts": 6,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_106272_Cranium",
+      "specimen": "AMNH_106272",
+      "parts": 6,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_106272_Mandible",
+      "specimen": "AMNH_106272",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_106272_Skull",
+      "specimen": "AMNH_106272",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_106273_Cranium",
+      "specimen": "AMNH_106273",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_106273_Mandible",
+      "specimen": "AMNH_106273",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_106274_Cranium",
+      "specimen": "AMNH_106274",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_106274_Mandible",
+      "specimen": "AMNH_106274",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_106274_Skull",
+      "specimen": "AMNH_106274",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_106275_Cranium",
+      "specimen": "AMNH_106275",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_106275_Mandible",
+      "specimen": "AMNH_106275",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_106284_Mandible",
+      "specimen": "AMNH_106284",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_107555_Cranium",
+      "specimen": "AMNH_107555",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_107555_Mandible",
+      "specimen": "AMNH_107555",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_107568_Cranium",
+      "specimen": "AMNH_107568",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_109364_Cranium",
+      "specimen": "AMNH_109364",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_109369_Cranium",
+      "specimen": "AMNH_109369",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_119864_Cranium",
+      "specimen": "AMNH_119864",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_119868_Cranium",
+      "specimen": "AMNH_119868",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_133825_Cranium",
+      "specimen": "AMNH_133825",
+      "parts": 6,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_133830_Cranium",
+      "specimen": "AMNH_133830",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_133833_Cranium",
+      "specimen": "AMNH_133833",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_133835_Cranium",
+      "specimen": "AMNH_133835",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_133887_Cranium",
+      "specimen": "AMNH_133887",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_133890_Cranium",
+      "specimen": "AMNH_133890",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_133892_Cranium",
+      "specimen": "AMNH_133892",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_141982_Cranium",
+      "specimen": "AMNH_141982",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_150039_Cranium",
+      "specimen": "AMNH_150039",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_153290_Cranium",
+      "specimen": "AMNH_153290",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_153553_Cranium",
+      "specimen": "AMNH_153553",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_153560_Cranium",
+      "specimen": "AMNH_153560",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_16050_Mandible",
+      "specimen": "AMNH_16050",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_161115_Cranium",
+      "specimen": "AMNH_161115",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_161117_Cranium",
+      "specimen": "AMNH_161117",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_161117_Mandible",
+      "specimen": "AMNH_161117",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_161734_Mandible",
+      "specimen": "AMNH_161734",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_16721_Cranium",
+      "specimen": "AMNH_16721",
+      "parts": 8,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_16930_Cranium",
+      "specimen": "AMNH_16930",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_16930_Mandible",
+      "specimen": "AMNH_16930",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_16931_Cranium",
+      "specimen": "AMNH_16931",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_16931_Mandible",
+      "specimen": "AMNH_16931",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_169432_Cranium",
+      "specimen": "AMNH_169432",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_169432_Mandible",
+      "specimen": "AMNH_169432",
+      "parts": 6,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_170668_Cranium",
+      "specimen": "AMNH_170668",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_170668_Mandible",
+      "specimen": "AMNH_170668",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_170672_Mandible",
+      "specimen": "AMNH_170672",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_170672_Skull",
+      "specimen": "AMNH_170672",
+      "parts": 9,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_170699_Skull",
+      "specimen": "AMNH_170699",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_170700_Skull",
+      "specimen": "AMNH_170700",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_170705_Cranium",
+      "specimen": "AMNH_170705",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_170705_Mandible",
+      "specimen": "AMNH_170705",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_170705_Skull",
+      "specimen": "AMNH_170705",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_170707_Skull",
+      "specimen": "AMNH_170707",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_170708_Cranium",
+      "specimen": "AMNH_170708",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_170715_Mandible",
+      "specimen": "AMNH_170715",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_170717_Mandible",
+      "specimen": "AMNH_170717",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_170720_Skull",
+      "specimen": "AMNH_170720",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_170728_Mandible",
+      "specimen": "AMNH_170728",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_170728_Skull",
+      "specimen": "AMNH_170728",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_170731_Cranium",
+      "specimen": "AMNH_170731",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_170731_Mandible",
+      "specimen": "AMNH_170731",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_170731_Skull",
+      "specimen": "AMNH_170731",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_170737_Skull",
+      "specimen": "AMNH_170737",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_170739_Cranium",
+      "specimen": "AMNH_170739",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_170739_Skull",
+      "specimen": "AMNH_170739",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_170740_Cranium",
+      "specimen": "AMNH_170740",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_170740_Mandible",
+      "specimen": "AMNH_170740",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_170740_Skull",
+      "specimen": "AMNH_170740",
+      "parts": 7,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_170743_Cranium",
+      "specimen": "AMNH_170743",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_170743_Mandible",
+      "specimen": "AMNH_170743",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_170743_Skull",
+      "specimen": "AMNH_170743",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_170744_Cranium",
+      "specimen": "AMNH_170744",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_171375_Cranium",
+      "specimen": "AMNH_171375",
+      "parts": 6,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_17356_Cranium",
+      "specimen": "AMNH_17356",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_184597_Cranium",
+      "specimen": "AMNH_184597",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_184597_Mandible",
+      "specimen": "AMNH_184597",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_184597_Skull",
+      "specimen": "AMNH_184597",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_188126_Mandible",
+      "specimen": "AMNH_188126",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_188126_Skull",
+      "specimen": "AMNH_188126",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_19223_Cranium",
+      "specimen": "AMNH_19223",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_19223_Mandible",
+      "specimen": "AMNH_19223",
+      "parts": 6,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_19550_Cranium",
+      "specimen": "AMNH_19550",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_19550_Mandible",
+      "specimen": "AMNH_19550",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_196486_Cranium",
+      "specimen": "AMNH_196486",
+      "parts": 7,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_196487_Cranium",
+      "specimen": "AMNH_196487",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_196488_Cranium",
+      "specimen": "AMNH_196488",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_200847_Cranium",
+      "specimen": "AMNH_200847",
+      "parts": 6,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_200886_Cranium",
+      "specimen": "AMNH_200886",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_201036_Cranium",
+      "specimen": "AMNH_201036",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_201294_Mandible",
+      "specimen": "AMNH_201294",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_20812_Cranium",
+      "specimen": "AMNH_20812",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_20812_Mandible",
+      "specimen": "AMNH_20812",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_208990_Cranium",
+      "specimen": "AMNH_208990",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_208990_Mandible",
+      "specimen": "AMNH_208990",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_208990_Skull",
+      "specimen": "AMNH_208990",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_208991_Cranium",
+      "specimen": "AMNH_208991",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_208991_Skull",
+      "specimen": "AMNH_208991",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_211653_Skull",
+      "specimen": "AMNH_211653",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_212953_Skull",
+      "specimen": "AMNH_212953",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_216247_Cranium",
+      "specimen": "AMNH_216247",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_216249_Cranium",
+      "specimen": "AMNH_216249",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_22886_Cranium",
+      "specimen": "AMNH_22886",
+      "parts": 8,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_236348_Cranium",
+      "specimen": "AMNH_236348",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_236348_Mandible",
+      "specimen": "AMNH_236348",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_236348_Skull",
+      "specimen": "AMNH_236348",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_239436_Cranium",
+      "specimen": "AMNH_239436",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_239436_Mandible",
+      "specimen": "AMNH_239436",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_239436_Skull",
+      "specimen": "AMNH_239436",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_241118_Mandible",
+      "specimen": "AMNH_241118",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_241118_Skull",
+      "specimen": "AMNH_241118",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_241120_Cranium",
+      "specimen": "AMNH_241120",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_241120_Mandible",
+      "specimen": "AMNH_241120",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_24166_Cranium",
+      "specimen": "AMNH_24166",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_24166_Mandible",
+      "specimen": "AMNH_24166",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_24167_Cranium",
+      "specimen": "AMNH_24167",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_24167_Mandible",
+      "specimen": "AMNH_24167",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_24168_Cranium",
+      "specimen": "AMNH_24168",
+      "parts": 6,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_24168_Mandible",
+      "specimen": "AMNH_24168",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_24169_Cranium",
+      "specimen": "AMNH_24169",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_24169_Mandible",
+      "specimen": "AMNH_24169",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_24173_Mandible",
+      "specimen": "AMNH_24173",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_24176_Cranium",
+      "specimen": "AMNH_24176",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_24177_Cranium",
+      "specimen": "AMNH_24177",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_24178_Cranium",
+      "specimen": "AMNH_24178",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_256790_Cranium",
+      "specimen": "AMNH_256790",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_256790_Mandible",
+      "specimen": "AMNH_256790",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_256790_Skull",
+      "specimen": "AMNH_256790",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_257141_Cranium",
+      "specimen": "AMNH_257141",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_257141_Mandible",
+      "specimen": "AMNH_257141",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_257141_Skull",
+      "specimen": "AMNH_257141",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_259_Cranium",
+      "specimen": "AMNH_259",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_259_Mandible",
+      "specimen": "AMNH_259",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_26594_Cranium",
+      "specimen": "AMNH_26594",
+      "parts": 7,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_26594_Mandible",
+      "specimen": "AMNH_26594",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_26594_Skull",
+      "specimen": "AMNH_26594",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_26943_Cranium",
+      "specimen": "AMNH_26943",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_26943_Mandible",
+      "specimen": "AMNH_26943",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_26943_Skull",
+      "specimen": "AMNH_26943",
+      "parts": 6,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_26968_Cranium",
+      "specimen": "AMNH_26968",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_26968_Mandible",
+      "specimen": "AMNH_26968",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_269851_Mandible",
+      "specimen": "AMNH_269851",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_269854_Cranium",
+      "specimen": "AMNH_269854",
+      "parts": 8,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_269907_Cranium",
+      "specimen": "AMNH_269907",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_269907_Mandible",
+      "specimen": "AMNH_269907",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_269907_Skull",
+      "specimen": "AMNH_269907",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_269917_Mandible",
+      "specimen": "AMNH_269917",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_27702_Cranium",
+      "specimen": "AMNH_27702",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_27702_Mandible",
+      "specimen": "AMNH_27702",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_27702_Skull",
+      "specimen": "AMNH_27702",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_27711_Cranium",
+      "specimen": "AMNH_27711",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_27711_Mandible",
+      "specimen": "AMNH_27711",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_27711_Skull",
+      "specimen": "AMNH_27711",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_28419_Mandible",
+      "specimen": "AMNH_28419",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_28495_Mandible",
+      "specimen": "AMNH_28495",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_29844_Cranium",
+      "specimen": "AMNH_29844",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_29844_Mandible",
+      "specimen": "AMNH_29844",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_29844_Skull",
+      "specimen": "AMNH_29844",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_29845_Cranium",
+      "specimen": "AMNH_29845",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_29845_Mandible",
+      "specimen": "AMNH_29845",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_29845_Skull",
+      "specimen": "AMNH_29845",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_29846_Mandible",
+      "specimen": "AMNH_29846",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_32057_Cranium",
+      "specimen": "AMNH_32057",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_32057_Mandible",
+      "specimen": "AMNH_32057",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_32058_Mandible",
+      "specimen": "AMNH_32058",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_32058_Skull",
+      "specimen": "AMNH_32058",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_32649_Cranium",
+      "specimen": "AMNH_32649",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_32649_Mandible",
+      "specimen": "AMNH_32649",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_32649_Skull",
+      "specimen": "AMNH_32649",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_33304_Cranium",
+      "specimen": "AMNH_33304",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_33304_Mandible",
+      "specimen": "AMNH_33304",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_33304_Skull",
+      "specimen": "AMNH_33304",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_33305_Cranium",
+      "specimen": "AMNH_33305",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_33305_Mandible",
+      "specimen": "AMNH_33305",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_33305_Skull",
+      "specimen": "AMNH_33305",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_33306_Mandiblew",
+      "specimen": "AMNH_33306",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_33306_Skull",
+      "specimen": "AMNH_33306",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_33308_Cranium",
+      "specimen": "AMNH_33308",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_33308_Mandible",
+      "specimen": "AMNH_33308",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_33308_Skull",
+      "specimen": "AMNH_33308",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_35752_Cranium",
+      "specimen": "AMNH_35752",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_35752_Skull",
+      "specimen": "AMNH_35752",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_3768_Mandible",
+      "specimen": "AMNH_3768",
+      "parts": 6,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_42696_Skull",
+      "specimen": "AMNH_42696",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_51380_Mandible",
+      "specimen": "AMNH_51380",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_52217_Cranium",
+      "specimen": "AMNH_52217",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_52217_Mandible",
+      "specimen": "AMNH_52217",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_52217_Skull",
+      "specimen": "AMNH_52217",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_52221_Cranium",
+      "specimen": "AMNH_52221",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_52221_Mandible",
+      "specimen": "AMNH_52221",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_52221_Skull",
+      "specimen": "AMNH_52221",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_52223_Cranium",
+      "specimen": "AMNH_52223",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_52223_Mandible",
+      "specimen": "AMNH_52223",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_52226_Cranium",
+      "specimen": "AMNH_52226",
+      "parts": 7,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_52226_Mandible",
+      "specimen": "AMNH_52226",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_52226_Skull",
+      "specimen": "AMNH_52226",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_52228_Cranium",
+      "specimen": "AMNH_52228",
+      "parts": 7,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_52228_Mandible",
+      "specimen": "AMNH_52228",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_52228_Skull",
+      "specimen": "AMNH_52228",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_52229_Mandible",
+      "specimen": "AMNH_52229",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_52229_Skull",
+      "specimen": "AMNH_52229",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_52234_Cranium",
+      "specimen": "AMNH_52234",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_52234_Mandible",
+      "specimen": "AMNH_52234",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_52236_Mandible",
+      "specimen": "AMNH_52236",
+      "parts": 7,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_52236_Skull",
+      "specimen": "AMNH_52236",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_52668_Cranium",
+      "specimen": "AMNH_52668",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_52668_Mandible",
+      "specimen": "AMNH_52668",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_52674_Cranium",
+      "specimen": "AMNH_52674",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_52674_Skull",
+      "specimen": "AMNH_52674",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_52676_Cranium",
+      "specimen": "AMNH_52676",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_52676_Mandible",
+      "specimen": "AMNH_52676",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_52676_Skull",
+      "specimen": "AMNH_52676",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_52677_Cranium",
+      "specimen": "AMNH_52677",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_52677_Mandible",
+      "specimen": "AMNH_52677",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_52677_Skull",
+      "specimen": "AMNH_52677",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_52678_Cranium",
+      "specimen": "AMNH_52678",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_54227_Mandible",
+      "specimen": "AMNH_54227",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_54288_Cranium",
+      "specimen": "AMNH_54288",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_54288_Mandible",
+      "specimen": "AMNH_54288",
+      "parts": 6,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_54288_Skull",
+      "specimen": "AMNH_54288",
+      "parts": 6,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_55446_Mandible",
+      "specimen": "AMNH_55446",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_55446_Skull",
+      "specimen": "AMNH_55446",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_70064_Cranium",
+      "specimen": "AMNH_70064",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_71759_Cranium",
+      "specimen": "AMNH_71759",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_71759_Skull",
+      "specimen": "AMNH_71759",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_71762_Cranium",
+      "specimen": "AMNH_71762",
+      "parts": 7,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_71762_Mandible",
+      "specimen": "AMNH_71762",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_71762_Skull",
+      "specimen": "AMNH_71762",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_71766_Mandible",
+      "specimen": "AMNH_71766",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_71789_Mandible",
+      "specimen": "AMNH_71789",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_73541_Cranium",
+      "specimen": "AMNH_73541",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_73541_Mandible",
+      "specimen": "AMNH_73541",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_73542_Mandible",
+      "specimen": "AMNH_73542",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_73542_Skull",
+      "specimen": "AMNH_73542",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_73544_Mandible",
+      "specimen": "AMNH_73544",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_73544_Skull",
+      "specimen": "AMNH_73544",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_74422_Cranium",
+      "specimen": "AMNH_74422",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_74422_Mandible",
+      "specimen": "AMNH_74422",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_74423_Cranium",
+      "specimen": "AMNH_74423",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_74423_Mandible",
+      "specimen": "AMNH_74423",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_74425_Cranium",
+      "specimen": "AMNH_74425",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_74425_Mandible",
+      "specimen": "AMNH_74425",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_74426_Cranium",
+      "specimen": "AMNH_74426",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_74426_Skull",
+      "specimen": "AMNH_74426",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_74427_Cranium",
+      "specimen": "AMNH_74427",
+      "parts": 6,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_74427_Mandible",
+      "specimen": "AMNH_74427",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_76044_Cranium",
+      "specimen": "AMNH_76044",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_76044_Mandible",
+      "specimen": "AMNH_76044",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_76045_Cranium",
+      "specimen": "AMNH_76045",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_76045_Mandible",
+      "specimen": "AMNH_76045",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_76369_Mandible",
+      "specimen": "AMNH_76369",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_76369_Skull",
+      "specimen": "AMNH_76369",
+      "parts": 9,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_76370_Cranium",
+      "specimen": "AMNH_76370",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_76370_Mandible",
+      "specimen": "AMNH_76370",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_76370_Skull",
+      "specimen": "AMNH_76370",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_76371_Cranium",
+      "specimen": "AMNH_76371",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_76371_Mandible",
+      "specimen": "AMNH_76371",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_76371_Skull",
+      "specimen": "AMNH_76371",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_76372_Skull",
+      "specimen": "AMNH_76372",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_76373_Cranium",
+      "specimen": "AMNH_76373",
+      "parts": 8,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_76373_Skull",
+      "specimen": "AMNH_76373",
+      "parts": 9,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_76374_Cranium",
+      "specimen": "AMNH_76374",
+      "parts": 10,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_76377_Cranium",
+      "specimen": "AMNH_76377",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_76377_Mandible",
+      "specimen": "AMNH_76377",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_76377_Skull",
+      "specimen": "AMNH_76377",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_76378_Cranium",
+      "specimen": "AMNH_76378",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_76378_Mandible",
+      "specimen": "AMNH_76378",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_76378_Skull",
+      "specimen": "AMNH_76378",
+      "parts": 8,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_76382_Cranium",
+      "specimen": "AMNH_76382",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_76382_Mandible",
+      "specimen": "AMNH_76382",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_76382_Skull",
+      "specimen": "AMNH_76382",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_76891_Cranium",
+      "specimen": "AMNH_76891",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_76906_Cranium",
+      "specimen": "AMNH_76906",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_76912_Cranium",
+      "specimen": "AMNH_76912",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_76924_Cranium",
+      "specimen": "AMNH_76924",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_78557_Cranium",
+      "specimen": "AMNH_78557",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_78559_Cranium",
+      "specimen": "AMNH_78559",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_78560_Cranium",
+      "specimen": "AMNH_78560",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_80081_Cranium",
+      "specimen": "AMNH_80081",
+      "parts": 6,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_80081_Mandible",
+      "specimen": "AMNH_80081",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_80207_Mandible",
+      "specimen": "AMNH_80207",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_80403_Cranium",
+      "specimen": "AMNH_80403",
+      "parts": 8,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_80773_Cranium",
+      "specimen": "AMNH_80773",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_80773_Mandible",
+      "specimen": "AMNH_80773",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_80773_Skull",
+      "specimen": "AMNH_80773",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_80895_Cranium",
+      "specimen": "AMNH_80895",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_80895_Mandible",
+      "specimen": "AMNH_80895",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_80895_Skull",
+      "specimen": "AMNH_80895",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_81066_Cranium",
+      "specimen": "AMNH_81066",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_81066_Mandible",
+      "specimen": "AMNH_81066",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_81067_Cranium",
+      "specimen": "AMNH_81067",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_81067_Mandible",
+      "specimen": "AMNH_81067",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_81069_Cranium",
+      "specimen": "AMNH_81069",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_81069_Mandible",
+      "specimen": "AMNH_81069",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_81070_Cranium",
+      "specimen": "AMNH_81070",
+      "parts": 6,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_81070_Mandible",
+      "specimen": "AMNH_81070",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_81070_Skull",
+      "specimen": "AMNH_81070",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_81072_Cranium",
+      "specimen": "AMNH_81072",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_81072_Mandible",
+      "specimen": "AMNH_81072",
+      "parts": 5,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_81072_Skull",
+      "specimen": "AMNH_81072",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_81811_Cranium",
+      "specimen": "AMNH_81811",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_83594_Cranium",
+      "specimen": "AMNH_83594",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_83594_Mandible",
+      "specimen": "AMNH_83594",
+      "parts": 6,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_83595_Cranium",
+      "specimen": "AMNH_83595",
+      "parts": 6,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_85173_Cranium",
+      "specimen": "AMNH_85173",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_89002_Cranium",
+      "specimen": "AMNH_89002",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_89002_Skull",
+      "specimen": "AMNH_89002",
+      "parts": 8,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_89440_Cranium",
+      "specimen": "AMNH_89440",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_90418_Cranium",
+      "specimen": "AMNH_90418",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_90418_Mandible",
+      "specimen": "AMNH_90418",
+      "parts": 4,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_90419_Cranium",
+      "specimen": "AMNH_90419",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_90419_Mandible",
+      "specimen": "AMNH_90419",
+      "parts": 6,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_90420_Cranium",
+      "specimen": "AMNH_90420",
+      "parts": 2,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_95013_Cranium",
+      "specimen": "AMNH_95013",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_95020_Cranium",
+      "specimen": "AMNH_95020",
+      "parts": 3,
+      "labeled_parts": 0
+    },
+    {
+      "name": "AMNH_98334_Cranium",
+      "specimen": "AMNH_98334",
+      "parts": 2,
+      "labeled_parts": 0
+    }
+  ],
+  "split": {
+    "AMNH_100824_Cranium": "train",
+    "AMNH_102018_Cranium": "train",
+    "AMNH_103402_Skull": "train",
+    "AMNH_103469_Cranium": "test",
+    "AMNH_103655_Cranium": "train",
+    "AMNH_106033_Cranium": "train",
+    "AMNH_106034_Cranium": "train",
+    "AMNH_106034_Skull": "train",
+    "AMNH_106272_Cranium": "test",
+    "AMNH_133825_Cranium": "train",
+    "AMNH_16721_Cranium": "val",
+    "AMNH_170672_Skull": "test",
+    "AMNH_170740_Skull": "train",
+    "AMNH_171375_Cranium": "test",
+    "AMNH_196486_Cranium": "train",
+    "AMNH_200847_Cranium": "val",
+    "AMNH_22886_Cranium": "val",
+    "AMNH_24168_Cranium": "train",
+    "AMNH_26594_Cranium": "train",
+    "AMNH_26943_Skull": "val",
+    "AMNH_269854_Cranium": "train",
+    "AMNH_52226_Cranium": "train",
+    "AMNH_52228_Cranium": "train",
+    "AMNH_54288_Skull": "train",
+    "AMNH_71762_Cranium": "val",
+    "AMNH_74427_Cranium": "train",
+    "AMNH_76369_Skull": "train",
+    "AMNH_76373_Cranium": "train",
+    "AMNH_76373_Skull": "train",
+    "AMNH_76374_Cranium": "train",
+    "AMNH_76378_Skull": "test",
+    "AMNH_80081_Cranium": "train",
+    "AMNH_80403_Cranium": "train",
+    "AMNH_81070_Cranium": "train",
+    "AMNH_83595_Cranium": "train",
+    "AMNH_89002_Skull": "test"
+  },
+  "label_type": "geometric pseudo-label; positive d<=0.0005*object_extent AND normal_dot<=-0.8; negative d>0.002*extent; otherwise ignored",
+  "normalization": "official MeshInferenceDataset; 5000 area-weighted points, min20, seed42",
+  "physical_scale": "experimental uniform 200 mm assembled maximum extent; not source physical units",
+  "objects": [
+    {
+      "name": "AMNH_100824_Cranium",
+      "split": "train",
+      "parts": [
+        "AMNH_100824_Cranium_preprocessed_mat_matspc_00021_s0000.obj",
+        "AMNH_100824_Cranium_preprocessed_mat_matspc_00021_s0001.obj",
+        "AMNH_100824_Cranium_preprocessed_mat_matspc_00021_s0002.obj",
+        "AMNH_100824_Cranium_preprocessed_mat_matspc_00021_s0003.obj",
+        "AMNH_100824_Cranium_preprocessed_mat_matspc_00021_s0005.obj",
+        "AMNH_100824_Cranium_preprocessed_mat_matspc_00021_s0008.obj",
+        "AMNH_100824_Cranium_preprocessed_mat_matspc_00021_s0009.obj",
+        "AMNH_100824_Cranium_preprocessed_mat_matspc_00021_s0014.obj",
+        "AMNH_100824_Cranium_preprocessed_mat_matspc_00021_s0019.obj"
+      ],
+      "mesh_quality": [
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.016246553898153996,
+          "faces": 78286
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.5041011750092668,
+          "faces": 710004
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.0008765970507223324,
+          "faces": 6448
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.00048463755300333345,
+          "faces": 4118
+        },
+        {
+          "watertight": false,
+          "winding": true,
+          "volume": 0.00036635630666766666,
+          "faces": 3802
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 3.688885128099995e-05,
+          "faces": 846
+        },
+        {
+          "watertight": false,
+          "winding": true,
+          "volume": 0.0045509442740744996,
+          "faces": 28168
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.024765247114783163,
+          "faces": 85556
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.00011024613038483333,
+          "faces": 2014
+        }
+      ],
+      "status": "excluded",
+      "reason": "mesh closure/winding/volume failed; no silent repair"
+    },
+    {
+      "name": "AMNH_102018_Cranium",
+      "split": "train",
+      "parts": [
+        "AMNH_102018_Cranium_preprocessed_mat_matspc_00025_s0000.obj",
+        "AMNH_102018_Cranium_preprocessed_mat_matspc_00025_s0001.obj",
+        "AMNH_102018_Cranium_preprocessed_mat_matspc_00025_s0002.obj",
+        "AMNH_102018_Cranium_preprocessed_mat_matspc_00025_s0010.obj",
+        "AMNH_102018_Cranium_preprocessed_mat_matspc_00025_s0011.obj",
+        "AMNH_102018_Cranium_preprocessed_mat_matspc_00025_s0012.obj",
+        "AMNH_102018_Cranium_preprocessed_mat_matspc_00025_s0023.obj",
+        "AMNH_102018_Cranium_preprocessed_mat_matspc_00025_s0041.obj",
+        "AMNH_102018_Cranium_preprocessed_mat_matspc_00025_s0043.obj",
+        "AMNH_102018_Cranium_preprocessed_mat_matspc_00025_s0044.obj"
+      ],
+      "mesh_quality": [
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 1.0964738935864666,
+          "faces": 783142
+        },
+        {
+          "watertight": false,
+          "winding": true,
+          "volume": 0.002529439268337,
+          "faces": 14982
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.004246553165772666,
+          "faces": 20214
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.07535182594297798,
+          "faces": 265248
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.00019064411539216667,
+          "faces": 2426
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.003786030924805832,
+          "faces": 22530
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 5.063659933616666e-05,
+          "faces": 1126
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.0007005834474473333,
+          "faces": 7096
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.0021163723054209993,
+          "faces": 13682
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.00010499332940116665,
+          "faces": 1372
+        }
+      ],
+      "status": "excluded",
+      "reason": "mesh closure/winding/volume failed; no silent repair"
+    },
+    {
+      "name": "AMNH_103402_Skull",
+      "split": "train",
+      "parts": [
+        "AMNH_103402_Skull_preprocessed_mat_matspc_00029_s0000.obj",
+        "AMNH_103402_Skull_preprocessed_mat_matspc_00029_s0001.obj",
+        "AMNH_103402_Skull_preprocessed_mat_matspc_00029_s0002.obj",
+        "AMNH_103402_Skull_preprocessed_mat_matspc_00029_s0007.obj",
+        "AMNH_103402_Skull_preprocessed_mat_matspc_00029_s0026.obj",
+        "AMNH_103402_Skull_preprocessed_mat_matspc_00029_s0029.obj"
+      ],
+      "mesh_quality": [
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.9906203718996821,
+          "faces": 633648
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.00021235696682283338,
+          "faces": 2532
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.04776337245880683,
+          "faces": 108860
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 7.524378440183328e-05,
+          "faces": 1124
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.00013559189027383334,
+          "faces": 2172
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.00021550693692866667,
+          "faces": 3092
+        }
+      ],
+      "status": "ready",
+      "positive_fraction": 0.0516,
+      "supervised_fraction": 0.9764,
+      "normal_roundtrip_max": 6.303702881904627e-08,
+      "point_roundtrip_max": 6.800243118609828e-08,
+      "positive_normal_dot_median": -0.9987877570829629,
+      "full_surface_distance_median_positive": 0.03922693996159464,
+      "full_surface_distance_median_negative": 5.733040247631702e-05,
+      "extent_model_units": 1.0,
+      "model_unit_m": 0.10008106539477005
+    },
+    {
+      "name": "AMNH_103469_Cranium",
+      "split": "test",
+      "parts": [
+        "AMNH_103469_Cranium_preprocessed_mat_matspc_00016_s0000.obj",
+        "AMNH_103469_Cranium_preprocessed_mat_matspc_00016_s0002.obj",
+        "AMNH_103469_Cranium_preprocessed_mat_matspc_00016_s0005.obj",
+        "AMNH_103469_Cranium_preprocessed_mat_matspc_00016_s0010.obj",
+        "AMNH_103469_Cranium_preprocessed_mat_matspc_00016_s0014.obj",
+        "AMNH_103469_Cranium_preprocessed_mat_matspc_00016_s0016.obj",
+        "AMNH_103469_Cranium_preprocessed_mat_matspc_00016_s0017.obj"
+      ],
+      "mesh_quality": [
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.6432190740478113,
+          "faces": 407720
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.17569887049662233,
+          "faces": 365908
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 3.655601886449998e-05,
+          "faces": 1020
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 4.370675509616663e-05,
+          "faces": 1216
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.00013161011720400016,
+          "faces": 1806
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.0001321563672466666,
+          "faces": 1774
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.002547285491287166,
+          "faces": 19954
+        }
+      ],
+      "status": "ready",
+      "positive_fraction": 0.133,
+      "supervised_fraction": 0.95,
+      "normal_roundtrip_max": 7.519973041492101e-08,
+      "point_roundtrip_max": 7.315848882250009e-08,
+      "positive_normal_dot_median": -0.9990569783107959,
+      "full_surface_distance_median_positive": 0.050525707081958735,
+      "full_surface_distance_median_negative": 5.508263259998345e-05,
+      "extent_model_units": 1.0,
+      "model_unit_m": 0.10013568308852025
+    },
+    {
+      "name": "AMNH_103655_Cranium",
+      "split": "train",
+      "parts": [
+        "AMNH_103655_Cranium_preprocessed_mat_matspc_00022_s0000.obj",
+        "AMNH_103655_Cranium_preprocessed_mat_matspc_00022_s0003.obj",
+        "AMNH_103655_Cranium_preprocessed_mat_matspc_00022_s0004.obj",
+        "AMNH_103655_Cranium_preprocessed_mat_matspc_00022_s0009.obj",
+        "AMNH_103655_Cranium_preprocessed_mat_matspc_00022_s0025.obj",
+        "AMNH_103655_Cranium_preprocessed_mat_matspc_00022_s0026.obj",
+        "AMNH_103655_Cranium_preprocessed_mat_matspc_00022_s0029.obj",
+        "AMNH_103655_Cranium_preprocessed_mat_matspc_00022_s0031.obj"
+      ],
+      "mesh_quality": [
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.6972153337886349,
+          "faces": 614234
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.030443162838977328,
+          "faces": 83114
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.04462390310234149,
+          "faces": 111566
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 3.49656239048333e-05,
+          "faces": 886
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.0016613532751230005,
+          "faces": 11378
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.04879048579450268,
+          "faces": 102780
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.0015308034848846663,
+          "faces": 12428
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.00023532764877283335,
+          "faces": 2294
+        }
+      ],
+      "status": "ready",
+      "positive_fraction": 0.1604,
+      "supervised_fraction": 0.9334,
+      "normal_roundtrip_max": 7.217124222552718e-08,
+      "point_roundtrip_max": 3.896182410034754e-08,
+      "positive_normal_dot_median": -0.9989753269471655,
+      "full_surface_distance_median_positive": 0.04528910720111598,
+      "full_surface_distance_median_negative": 7.865742493810707e-05,
+      "extent_model_units": 1.0,
+      "model_unit_m": 0.10009208448672609
+    },
+    {
+      "name": "AMNH_106033_Cranium",
+      "split": "train",
+      "parts": [
+        "AMNH_106033_Cranium_preprocessed_mat_matspc_00024_s0000.obj",
+        "AMNH_106033_Cranium_preprocessed_mat_matspc_00024_s0001.obj",
+        "AMNH_106033_Cranium_preprocessed_mat_matspc_00024_s0002.obj",
+        "AMNH_106033_Cranium_preprocessed_mat_matspc_00024_s0003.obj",
+        "AMNH_106033_Cranium_preprocessed_mat_matspc_00024_s0005.obj",
+        "AMNH_106033_Cranium_preprocessed_mat_matspc_00024_s0008.obj",
+        "AMNH_106033_Cranium_preprocessed_mat_matspc_00024_s0009.obj",
+        "AMNH_106033_Cranium_preprocessed_mat_matspc_00024_s0012.obj",
+        "AMNH_106033_Cranium_preprocessed_mat_matspc_00024_s0019.obj"
+      ],
+      "mesh_quality": [
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 1.2467162493554493,
+          "faces": 649048
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.0014774496084950003,
+          "faces": 14580
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 3.7545041679999994e-05,
+          "faces": 724
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.0010011531449799996,
+          "faces": 9466
+        },
+        {
+          "watertight": false,
+          "winding": true,
+          "volume": 0.0007441993946891663,
+          "faces": 6846
+        },
+        {
+          "watertight": false,
+          "winding": true,
+          "volume": 0.0004703190811851665,
+          "faces": 4246
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.00021156776608366673,
+          "faces": 2416
+        },
+        {
+          "watertight": false,
+          "winding": true,
+          "volume": 0.00013272275268616662,
+          "faces": 1444
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 4.393308897099998e-05,
+          "faces": 856
+        }
+      ],
+      "status": "excluded",
+      "reason": "mesh closure/winding/volume failed; no silent repair"
+    },
+    {
+      "name": "AMNH_106034_Cranium",
+      "split": "train",
+      "parts": [
+        "AMNH_106034_Cranium_preprocessed_mat_matspc_00020_s0000.obj",
+        "AMNH_106034_Cranium_preprocessed_mat_matspc_00020_s0002.obj",
+        "AMNH_106034_Cranium_preprocessed_mat_matspc_00020_s0006.obj",
+        "AMNH_106034_Cranium_preprocessed_mat_matspc_00020_s0013.obj",
+        "AMNH_106034_Cranium_preprocessed_mat_matspc_00020_s0016.obj",
+        "AMNH_106034_Cranium_preprocessed_mat_matspc_00020_s0025.obj"
+      ],
+      "mesh_quality": [
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 1.8074375546295272,
+          "faces": 527354
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 4.748143916149996e-05,
+          "faces": 898
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 4.1314181094833476e-05,
+          "faces": 854
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.0003207857483650003,
+          "faces": 3422
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 7.087976041516674e-05,
+          "faces": 1450
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.0004673118160733335,
+          "faces": 4880
+        }
+      ],
+      "status": "excluded",
+      "positive_fraction": 0.002,
+      "supervised_fraction": 0.9978,
+      "normal_roundtrip_max": 6.736297414322578e-08,
+      "point_roundtrip_max": 6.735181673489521e-08,
+      "positive_normal_dot_median": -0.9990643430411807,
+      "full_surface_distance_median_positive": 0.011409014107465153,
+      "full_surface_distance_median_negative": 4.878468577351317e-05,
+      "extent_model_units": 0.9999999999999999,
+      "model_unit_m": 0.10033109372879834,
+      "reason": "insufficient positives or transform roundtrip failed"
+    },
+    {
+      "name": "AMNH_106034_Skull",
+      "split": "train",
+      "parts": [
+        "AMNH_106034_Skull_preprocessed_mat_matspc_00015_s0000.obj",
+        "AMNH_106034_Skull_preprocessed_mat_matspc_00015_s0006.obj",
+        "AMNH_106034_Skull_preprocessed_mat_matspc_00015_s0010.obj",
+        "AMNH_106034_Skull_preprocessed_mat_matspc_00015_s0012.obj",
+        "AMNH_106034_Skull_preprocessed_mat_matspc_00015_s0017.obj",
+        "AMNH_106034_Skull_preprocessed_mat_matspc_00015_s0022.obj"
+      ],
+      "mesh_quality": [
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 1.21570823227522,
+          "faces": 470450
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 8.822226498650001e-05,
+          "faces": 1408
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 7.111004457416665e-05,
+          "faces": 888
+        },
+        {
+          "watertight": false,
+          "winding": true,
+          "volume": 0.00022175109217316673,
+          "faces": 2364
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 2.8933560025666658e-05,
+          "faces": 758
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.00025970570583483334,
+          "faces": 3284
+        }
+      ],
+      "status": "excluded",
+      "reason": "mesh closure/winding/volume failed; no silent repair"
+    },
+    {
+      "name": "AMNH_106272_Cranium",
+      "split": "test",
+      "parts": [
+        "AMNH_106272_Cranium_preprocessed_mat_matspc_00031_s0000.obj",
+        "AMNH_106272_Cranium_preprocessed_mat_matspc_00031_s0001.obj",
+        "AMNH_106272_Cranium_preprocessed_mat_matspc_00031_s0002.obj",
+        "AMNH_106272_Cranium_preprocessed_mat_matspc_00031_s0004.obj",
+        "AMNH_106272_Cranium_preprocessed_mat_matspc_00031_s0013.obj",
+        "AMNH_106272_Cranium_preprocessed_mat_matspc_00031_s0018.obj"
+      ],
+      "mesh_quality": [
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.9042853098347953,
+          "faces": 744052
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.00026522870056249994,
+          "faces": 3230
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 3.878990198916666e-05,
+          "faces": 828
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 3.9955794417833396e-05,
+          "faces": 706
+        },
+        {
+          "watertight": false,
+          "winding": true,
+          "volume": 0.0006507655291838335,
+          "faces": 6112
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 3.059128989050001e-05,
+          "faces": 880
+        }
+      ],
+      "status": "excluded",
+      "reason": "mesh closure/winding/volume failed; no silent repair"
+    },
+    {
+      "name": "AMNH_133825_Cranium",
+      "split": "train",
+      "parts": [
+        "AMNH_133825_Cranium_preprocessed_mat_matspc_00027_s0000.obj",
+        "AMNH_133825_Cranium_preprocessed_mat_matspc_00027_s0011.obj",
+        "AMNH_133825_Cranium_preprocessed_mat_matspc_00027_s0012.obj",
+        "AMNH_133825_Cranium_preprocessed_mat_matspc_00027_s0032.obj",
+        "AMNH_133825_Cranium_preprocessed_mat_matspc_00027_s0039.obj",
+        "AMNH_133825_Cranium_preprocessed_mat_matspc_00027_s0043.obj"
+      ],
+      "mesh_quality": [
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 1.080074698637919,
+          "faces": 579584
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.004677547743664332,
+          "faces": 32178
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.05564300020805631,
+          "faces": 180354
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 3.3859151673666555e-05,
+          "faces": 938
+        },
+        {
+          "watertight": false,
+          "winding": true,
+          "volume": 0.00027600118386216654,
+          "faces": 3092
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.00018771127674950004,
+          "faces": 2434
+        }
+      ],
+      "status": "excluded",
+      "reason": "mesh closure/winding/volume failed; no silent repair"
+    },
+    {
+      "name": "AMNH_16721_Cranium",
+      "split": "val",
+      "parts": [
+        "AMNH_16721_Cranium_preprocessed_mat_matspc_00019_s0000.obj",
+        "AMNH_16721_Cranium_preprocessed_mat_matspc_00019_s0001.obj",
+        "AMNH_16721_Cranium_preprocessed_mat_matspc_00019_s0003.obj",
+        "AMNH_16721_Cranium_preprocessed_mat_matspc_00019_s0004.obj",
+        "AMNH_16721_Cranium_preprocessed_mat_matspc_00019_s0005.obj",
+        "AMNH_16721_Cranium_preprocessed_mat_matspc_00019_s0014.obj",
+        "AMNH_16721_Cranium_preprocessed_mat_matspc_00019_s0020.obj",
+        "AMNH_16721_Cranium_preprocessed_mat_matspc_00019_s0025.obj"
+      ],
+      "mesh_quality": [
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 1.2887821033609324,
+          "faces": 737174
+        },
+        {
+          "watertight": false,
+          "winding": true,
+          "volume": 0.0006497146725176663,
+          "faces": 6476
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 7.55587913373333e-05,
+          "faces": 992
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.0004246024163949997,
+          "faces": 4318
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.00022976404204466658,
+          "faces": 2600
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.013570406777705832,
+          "faces": 50382
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 2.93446509471667e-05,
+          "faces": 952
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 3.698764525616665e-05,
+          "faces": 1044
+        }
+      ],
+      "status": "excluded",
+      "reason": "mesh closure/winding/volume failed; no silent repair"
+    },
+    {
+      "name": "AMNH_170672_Skull",
+      "split": "test",
+      "parts": [
+        "AMNH_170672_Skull_preprocessed_mat_matspc_00029_s0000.obj",
+        "AMNH_170672_Skull_preprocessed_mat_matspc_00029_s0002.obj",
+        "AMNH_170672_Skull_preprocessed_mat_matspc_00029_s0007.obj",
+        "AMNH_170672_Skull_preprocessed_mat_matspc_00029_s0022.obj",
+        "AMNH_170672_Skull_preprocessed_mat_matspc_00029_s0026.obj",
+        "AMNH_170672_Skull_preprocessed_mat_matspc_00029_s0031.obj",
+        "AMNH_170672_Skull_preprocessed_mat_matspc_00029_s0032.obj",
+        "AMNH_170672_Skull_preprocessed_mat_matspc_00029_s0033.obj",
+        "AMNH_170672_Skull_preprocessed_mat_matspc_00029_s0036.obj"
+      ],
+      "mesh_quality": [
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 1.3861898693705477,
+          "faces": 1151714
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 3.0325330634499985e-05,
+          "faces": 744
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.0005939578164894998,
+          "faces": 10230
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.04453591953867666,
+          "faces": 97202
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 4.330046797533331e-05,
+          "faces": 752
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.004961020329556166,
+          "faces": 21248
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.0008604583226028334,
+          "faces": 7046
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.00038518065224816666,
+          "faces": 3552
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.00017239215536283344,
+          "faces": 1882
+        }
+      ],
+      "status": "ready",
+      "positive_fraction": 0.047,
+      "supervised_fraction": 0.9806,
+      "normal_roundtrip_max": 8.282739583087562e-08,
+      "point_roundtrip_max": 4.949380116858748e-08,
+      "positive_normal_dot_median": -0.9987349763009232,
+      "full_surface_distance_median_positive": 0.0441497480092264,
+      "full_surface_distance_median_negative": 0.0003092953472230099,
+      "extent_model_units": 1.0,
+      "model_unit_m": 0.10003801240498315
+    },
+    {
+      "name": "AMNH_170740_Skull",
+      "split": "train",
+      "parts": [
+        "AMNH_170740_Skull_preprocessed_mat_matspc_00031_s0000.obj",
+        "AMNH_170740_Skull_preprocessed_mat_matspc_00031_s0002.obj",
+        "AMNH_170740_Skull_preprocessed_mat_matspc_00031_s0032.obj",
+        "AMNH_170740_Skull_preprocessed_mat_matspc_00031_s0063.obj",
+        "AMNH_170740_Skull_preprocessed_mat_matspc_00031_s0071.obj",
+        "AMNH_170740_Skull_preprocessed_mat_matspc_00031_s0077.obj",
+        "AMNH_170740_Skull_preprocessed_mat_matspc_00031_s0090.obj"
+      ],
+      "mesh_quality": [
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.5140642608879057,
+          "faces": 801574
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 4.616678553400009e-05,
+          "faces": 1164
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 6.397441957299998e-05,
+          "faces": 1060
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 2.8519698037666656e-05,
+          "faces": 754
+        },
+        {
+          "watertight": false,
+          "winding": true,
+          "volume": 9.047437391783329e-05,
+          "faces": 1194
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 4.66741802783333e-05,
+          "faces": 1052
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 3.476845206433334e-05,
+          "faces": 834
+        }
+      ],
+      "status": "excluded",
+      "reason": "mesh closure/winding/volume failed; no silent repair"
+    },
+    {
+      "name": "AMNH_171375_Cranium",
+      "split": "test",
+      "parts": [
+        "AMNH_171375_Cranium_preprocessed_mat_matspc_00016_s0000.obj",
+        "AMNH_171375_Cranium_preprocessed_mat_matspc_00016_s0001.obj",
+        "AMNH_171375_Cranium_preprocessed_mat_matspc_00016_s0008.obj",
+        "AMNH_171375_Cranium_preprocessed_mat_matspc_00016_s0009.obj",
+        "AMNH_171375_Cranium_preprocessed_mat_matspc_00016_s0019.obj",
+        "AMNH_171375_Cranium_preprocessed_mat_matspc_00016_s0027.obj"
+      ],
+      "mesh_quality": [
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.7611479726148791,
+          "faces": 720562
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.0021447654278896663,
+          "faces": 13570
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.0018551642511456668,
+          "faces": 11806
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 5.975517426399997e-05,
+          "faces": 868
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 8.144135565299998e-05,
+          "faces": 1184
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 2.6350977253333232e-05,
+          "faces": 738
+        }
+      ],
+      "status": "ready",
+      "positive_fraction": 0.0204,
+      "supervised_fraction": 0.9864,
+      "normal_roundtrip_max": 6.347701439479714e-08,
+      "point_roundtrip_max": 5.6840546935887915e-08,
+      "positive_normal_dot_median": -0.998756631090747,
+      "full_surface_distance_median_positive": 0.031085521629786395,
+      "full_surface_distance_median_negative": 0.0002217427543651529,
+      "extent_model_units": 1.0,
+      "model_unit_m": 0.10005503045281788
+    },
+    {
+      "name": "AMNH_196486_Cranium",
+      "split": "train",
+      "parts": [
+        "AMNH_196486_Cranium_preprocessed_mat_matspc_00017_s0000.obj",
+        "AMNH_196486_Cranium_preprocessed_mat_matspc_00017_s0001.obj",
+        "AMNH_196486_Cranium_preprocessed_mat_matspc_00017_s0024.obj",
+        "AMNH_196486_Cranium_preprocessed_mat_matspc_00017_s0025.obj",
+        "AMNH_196486_Cranium_preprocessed_mat_matspc_00017_s0026.obj",
+        "AMNH_196486_Cranium_preprocessed_mat_matspc_00017_s0034.obj",
+        "AMNH_196486_Cranium_preprocessed_mat_matspc_00017_s0041.obj"
+      ],
+      "mesh_quality": [
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.17713286445234067,
+          "faces": 238944
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.7198976381790464,
+          "faces": 429732
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 4.905391793616668e-05,
+          "faces": 992
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 3.272622385416664e-05,
+          "faces": 1000
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 5.120692566299999e-05,
+          "faces": 1232
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.0001518653064436667,
+          "faces": 1882
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.0002633898807166667,
+          "faces": 3628
+        }
+      ],
+      "status": "ready",
+      "positive_fraction": 0.1388,
+      "supervised_fraction": 0.9426,
+      "normal_roundtrip_max": 6.528664321658884e-08,
+      "point_roundtrip_max": 7.374417859695725e-08,
+      "positive_normal_dot_median": -0.9986737994044481,
+      "full_surface_distance_median_positive": 0.06336885625500789,
+      "full_surface_distance_median_negative": 4.62057546530339e-05,
+      "extent_model_units": 1.0730957991457246,
+      "model_unit_m": 0.10009809510891039
+    },
+    {
+      "name": "AMNH_200847_Cranium",
+      "split": "val",
+      "parts": [
+        "AMNH_200847_Cranium_preprocessed_mat_matspc_00031_s0000.obj",
+        "AMNH_200847_Cranium_preprocessed_mat_matspc_00031_s0001.obj",
+        "AMNH_200847_Cranium_preprocessed_mat_matspc_00031_s0002.obj",
+        "AMNH_200847_Cranium_preprocessed_mat_matspc_00031_s0011.obj",
+        "AMNH_200847_Cranium_preprocessed_mat_matspc_00031_s0012.obj",
+        "AMNH_200847_Cranium_preprocessed_mat_matspc_00031_s0013.obj"
+      ],
+      "mesh_quality": [
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.7150237677216723,
+          "faces": 754434
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.0011275119720133328,
+          "faces": 9152
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.0004188451250971667,
+          "faces": 4478
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 8.868312497783334e-05,
+          "faces": 1210
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 5.39113404475e-05,
+          "faces": 1148
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.00016384364887383332,
+          "faces": 2314
+        }
+      ],
+      "status": "ready",
+      "positive_fraction": 0.0088,
+      "supervised_fraction": 0.9886,
+      "normal_roundtrip_max": 5.414035308959342e-08,
+      "point_roundtrip_max": 8.139620533142988e-08,
+      "positive_normal_dot_median": -0.9983133761641992,
+      "full_surface_distance_median_positive": 0.02350628076015835,
+      "full_surface_distance_median_negative": 0.00034384283165789296,
+      "extent_model_units": 1.0,
+      "model_unit_m": 0.10009158587339732
+    },
+    {
+      "name": "AMNH_22886_Cranium",
+      "split": "val",
+      "parts": [
+        "AMNH_22886_Cranium_preprocessed_mat_matspc_00031_s0000.obj",
+        "AMNH_22886_Cranium_preprocessed_mat_matspc_00031_s0001.obj",
+        "AMNH_22886_Cranium_preprocessed_mat_matspc_00031_s0002.obj",
+        "AMNH_22886_Cranium_preprocessed_mat_matspc_00031_s0003.obj",
+        "AMNH_22886_Cranium_preprocessed_mat_matspc_00031_s0004.obj",
+        "AMNH_22886_Cranium_preprocessed_mat_matspc_00031_s0011.obj",
+        "AMNH_22886_Cranium_preprocessed_mat_matspc_00031_s0016.obj",
+        "AMNH_22886_Cranium_preprocessed_mat_matspc_00031_s0018.obj"
+      ],
+      "mesh_quality": [
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.5396485627662251,
+          "faces": 691810
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.0059516417173115,
+          "faces": 26800
+        },
+        {
+          "watertight": false,
+          "winding": true,
+          "volume": 0.00012511748687616664,
+          "faces": 1660
+        },
+        {
+          "watertight": false,
+          "winding": true,
+          "volume": 5.456502160033333e-05,
+          "faces": 932
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.00019404710958516652,
+          "faces": 2134
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 2.7305316396333287e-05,
+          "faces": 710
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.00017716125958083315,
+          "faces": 3736
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.000871803397737167,
+          "faces": 6462
+        }
+      ],
+      "status": "excluded",
+      "reason": "mesh closure/winding/volume failed; no silent repair"
+    },
+    {
+      "name": "AMNH_24168_Cranium",
+      "split": "train",
+      "parts": [
+        "AMNH_24168_Cranium_preprocessed_mat_matspc_00018_s0000.obj",
+        "AMNH_24168_Cranium_preprocessed_mat_matspc_00018_s0001.obj",
+        "AMNH_24168_Cranium_preprocessed_mat_matspc_00018_s0002.obj",
+        "AMNH_24168_Cranium_preprocessed_mat_matspc_00018_s0003.obj",
+        "AMNH_24168_Cranium_preprocessed_mat_matspc_00018_s0010.obj",
+        "AMNH_24168_Cranium_preprocessed_mat_matspc_00018_s0014.obj"
+      ],
+      "mesh_quality": [
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.9081349556405716,
+          "faces": 624236
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.1193932999768973,
+          "faces": 241704
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 4.169212932066659e-05,
+          "faces": 708
+        },
+        {
+          "watertight": false,
+          "winding": true,
+          "volume": 4.306416711983337e-05,
+          "faces": 704
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 2.8379389063166663e-05,
+          "faces": 734
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.0011006299196698328,
+          "faces": 10038
+        }
+      ],
+      "status": "excluded",
+      "reason": "mesh closure/winding/volume failed; no silent repair"
+    },
+    {
+      "name": "AMNH_26594_Cranium",
+      "split": "train",
+      "parts": [
+        "AMNH_26594_Cranium_preprocessed_mat_matspc_00031_s0000.obj",
+        "AMNH_26594_Cranium_preprocessed_mat_matspc_00031_s0001.obj",
+        "AMNH_26594_Cranium_preprocessed_mat_matspc_00031_s0003.obj",
+        "AMNH_26594_Cranium_preprocessed_mat_matspc_00031_s0004.obj",
+        "AMNH_26594_Cranium_preprocessed_mat_matspc_00031_s0005.obj",
+        "AMNH_26594_Cranium_preprocessed_mat_matspc_00031_s0008.obj",
+        "AMNH_26594_Cranium_preprocessed_mat_matspc_00031_s0030.obj"
+      ],
+      "mesh_quality": [
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.4573612664257103,
+          "faces": 268458
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.5104322651855313,
+          "faces": 773322
+        },
+        {
+          "watertight": false,
+          "winding": true,
+          "volume": 0.00027757423248616665,
+          "faces": 3838
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.0002485592351586666,
+          "faces": 2960
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.0004493861821358326,
+          "faces": 4422
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.00010648272309633329,
+          "faces": 1386
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.00010678794673249995,
+          "faces": 1452
+        }
+      ],
+      "status": "excluded",
+      "reason": "mesh closure/winding/volume failed; no silent repair"
+    },
+    {
+      "name": "AMNH_26943_Skull",
+      "split": "val",
+      "parts": [
+        "AMNH_26943_Skull_preprocessed_mat_matspc_00021_s0000.obj",
+        "AMNH_26943_Skull_preprocessed_mat_matspc_00021_s0001.obj",
+        "AMNH_26943_Skull_preprocessed_mat_matspc_00021_s0002.obj",
+        "AMNH_26943_Skull_preprocessed_mat_matspc_00021_s0027.obj",
+        "AMNH_26943_Skull_preprocessed_mat_matspc_00021_s0028.obj",
+        "AMNH_26943_Skull_preprocessed_mat_matspc_00021_s0034.obj"
+      ],
+      "mesh_quality": [
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.8058403470556327,
+          "faces": 612224
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.42253585739828775,
+          "faces": 263202
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.0003188435938815002,
+          "faces": 3062
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.0031869736213118315,
+          "faces": 19590
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.00015999767234600002,
+          "faces": 1900
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 6.423619686799996e-05,
+          "faces": 1284
+        }
+      ],
+      "status": "ready",
+      "positive_fraction": 0.152,
+      "supervised_fraction": 0.9398,
+      "normal_roundtrip_max": 5.704129896200172e-08,
+      "point_roundtrip_max": 4.754467225476233e-08,
+      "positive_normal_dot_median": -0.9987141327137538,
+      "full_surface_distance_median_positive": 0.06668114655698523,
+      "full_surface_distance_median_negative": 5.255138457888291e-05,
+      "extent_model_units": 1.0494617716097685,
+      "model_unit_m": 0.10002250283580745
+    },
+    {
+      "name": "AMNH_269854_Cranium",
+      "split": "train",
+      "parts": [
+        "AMNH_269854_Cranium_preprocessed_mat_matspc_00031_s0000.obj",
+        "AMNH_269854_Cranium_preprocessed_mat_matspc_00031_s0001.obj",
+        "AMNH_269854_Cranium_preprocessed_mat_matspc_00031_s0002.obj",
+        "AMNH_269854_Cranium_preprocessed_mat_matspc_00031_s0011.obj",
+        "AMNH_269854_Cranium_preprocessed_mat_matspc_00031_s0018.obj",
+        "AMNH_269854_Cranium_preprocessed_mat_matspc_00031_s0024.obj",
+        "AMNH_269854_Cranium_preprocessed_mat_matspc_00031_s0026.obj",
+        "AMNH_269854_Cranium_preprocessed_mat_matspc_00031_s0028.obj"
+      ],
+      "mesh_quality": [
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.05672712535022184,
+          "faces": 151484
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.05858093396059833,
+          "faces": 129480
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.6338661924593816,
+          "faces": 838676
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.000248396740927,
+          "faces": 2618
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.00012286768015066664,
+          "faces": 1712
+        },
+        {
+          "watertight": false,
+          "winding": true,
+          "volume": 0.0020637131487476674,
+          "faces": 13072
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.0002319246426053332,
+          "faces": 2354
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.00044741693470833353,
+          "faces": 5276
+        }
+      ],
+      "status": "excluded",
+      "reason": "mesh closure/winding/volume failed; no silent repair"
+    },
+    {
+      "name": "AMNH_52226_Cranium",
+      "split": "train",
+      "parts": [
+        "AMNH_52226_Cranium_preprocessed_mat_matspc_00019_s0000.obj",
+        "AMNH_52226_Cranium_preprocessed_mat_matspc_00019_s0001.obj",
+        "AMNH_52226_Cranium_preprocessed_mat_matspc_00019_s0002.obj",
+        "AMNH_52226_Cranium_preprocessed_mat_matspc_00019_s0007.obj",
+        "AMNH_52226_Cranium_preprocessed_mat_matspc_00019_s0009.obj",
+        "AMNH_52226_Cranium_preprocessed_mat_matspc_00019_s0015.obj",
+        "AMNH_52226_Cranium_preprocessed_mat_matspc_00019_s0019.obj"
+      ],
+      "mesh_quality": [
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.49681490258850675,
+          "faces": 565970
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.16983459919473265,
+          "faces": 202632
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 3.4837432028999976e-05,
+          "faces": 796
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 3.814197098649998e-05,
+          "faces": 822
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 3.066099873299999e-05,
+          "faces": 776
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.0003006007330475001,
+          "faces": 3134
+        },
+        {
+          "watertight": false,
+          "winding": true,
+          "volume": 0.0004671826554456665,
+          "faces": 4498
+        }
+      ],
+      "status": "excluded",
+      "reason": "mesh closure/winding/volume failed; no silent repair"
+    },
+    {
+      "name": "AMNH_52228_Cranium",
+      "split": "train",
+      "parts": [
+        "AMNH_52228_Cranium_preprocessed_mat_matspc_00025_s0000.obj",
+        "AMNH_52228_Cranium_preprocessed_mat_matspc_00025_s0001.obj",
+        "AMNH_52228_Cranium_preprocessed_mat_matspc_00025_s0009.obj",
+        "AMNH_52228_Cranium_preprocessed_mat_matspc_00025_s0023.obj",
+        "AMNH_52228_Cranium_preprocessed_mat_matspc_00025_s0024.obj",
+        "AMNH_52228_Cranium_preprocessed_mat_matspc_00025_s0028.obj",
+        "AMNH_52228_Cranium_preprocessed_mat_matspc_00025_s0029.obj"
+      ],
+      "mesh_quality": [
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.6686791204388083,
+          "faces": 738416
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 9.771140216049996e-05,
+          "faces": 1216
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.00015569235644466656,
+          "faces": 2988
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 4.60467506501667e-05,
+          "faces": 866
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.0027379960701988328,
+          "faces": 12970
+        },
+        {
+          "watertight": false,
+          "winding": true,
+          "volume": 0.0008838384469011668,
+          "faces": 6220
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.00017789721948066663,
+          "faces": 2718
+        }
+      ],
+      "status": "excluded",
+      "reason": "mesh closure/winding/volume failed; no silent repair"
+    },
+    {
+      "name": "AMNH_54288_Skull",
+      "split": "train",
+      "parts": [
+        "AMNH_54288_Skull_preprocessed_mat_matspc_00024_s0000.obj",
+        "AMNH_54288_Skull_preprocessed_mat_matspc_00024_s0020.obj",
+        "AMNH_54288_Skull_preprocessed_mat_matspc_00024_s0022.obj",
+        "AMNH_54288_Skull_preprocessed_mat_matspc_00024_s0026.obj",
+        "AMNH_54288_Skull_preprocessed_mat_matspc_00024_s0027.obj",
+        "AMNH_54288_Skull_preprocessed_mat_matspc_00024_s0033.obj"
+      ],
+      "mesh_quality": [
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.5049502739452247,
+          "faces": 626800
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 4.754725904533325e-05,
+          "faces": 990
+        },
+        {
+          "watertight": false,
+          "winding": true,
+          "volume": 0.0006893000903819996,
+          "faces": 5758
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.00011883912404549996,
+          "faces": 2062
+        },
+        {
+          "watertight": false,
+          "winding": true,
+          "volume": 0.0005736745560656658,
+          "faces": 4654
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.0017729984786746661,
+          "faces": 13464
+        }
+      ],
+      "status": "excluded",
+      "reason": "mesh closure/winding/volume failed; no silent repair"
+    },
+    {
+      "name": "AMNH_71762_Cranium",
+      "split": "val",
+      "parts": [
+        "AMNH_71762_Cranium_preprocessed_mat_matspc_00023_s0000.obj",
+        "AMNH_71762_Cranium_preprocessed_mat_matspc_00023_s0001.obj",
+        "AMNH_71762_Cranium_preprocessed_mat_matspc_00023_s0006.obj",
+        "AMNH_71762_Cranium_preprocessed_mat_matspc_00023_s0007.obj",
+        "AMNH_71762_Cranium_preprocessed_mat_matspc_00023_s0008.obj",
+        "AMNH_71762_Cranium_preprocessed_mat_matspc_00023_s0013.obj",
+        "AMNH_71762_Cranium_preprocessed_mat_matspc_00023_s0017.obj"
+      ],
+      "mesh_quality": [
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.8746413143733208,
+          "faces": 748724
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.04856661549278016,
+          "faces": 98886
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.056813402168951165,
+          "faces": 113436
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.00014337185506733355,
+          "faces": 1710
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.004368261082648997,
+          "faces": 24418
+        },
+        {
+          "watertight": false,
+          "winding": true,
+          "volume": 0.0038642475297009974,
+          "faces": 21920
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.007988262595032498,
+          "faces": 32200
+        }
+      ],
+      "status": "excluded",
+      "reason": "mesh closure/winding/volume failed; no silent repair"
+    },
+    {
+      "name": "AMNH_74427_Cranium",
+      "split": "train",
+      "parts": [
+        "AMNH_74427_Cranium_preprocessed_mat_matspc_00031_s0000.obj",
+        "AMNH_74427_Cranium_preprocessed_mat_matspc_00031_s0020.obj",
+        "AMNH_74427_Cranium_preprocessed_mat_matspc_00031_s0021.obj",
+        "AMNH_74427_Cranium_preprocessed_mat_matspc_00031_s0022.obj",
+        "AMNH_74427_Cranium_preprocessed_mat_matspc_00031_s0027.obj",
+        "AMNH_74427_Cranium_preprocessed_mat_matspc_00031_s0030.obj"
+      ],
+      "mesh_quality": [
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 1.0299206019000238,
+          "faces": 652068
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.00010448535702666671,
+          "faces": 1564
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 5.5054439667166645e-05,
+          "faces": 890
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.0001615977925994999,
+          "faces": 1974
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.00010644827777366667,
+          "faces": 1952
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 4.563196325333333e-05,
+          "faces": 854
+        }
+      ],
+      "status": "ready",
+      "positive_fraction": 0.0064,
+      "supervised_fraction": 0.9952,
+      "normal_roundtrip_max": 5.292657456745786e-08,
+      "point_roundtrip_max": 4.6029923483903445e-08,
+      "positive_normal_dot_median": -0.9991758816815792,
+      "full_surface_distance_median_positive": 0.009187082420128544,
+      "full_surface_distance_median_negative": 0.00011115830945366293,
+      "extent_model_units": 1.0,
+      "model_unit_m": 0.10006103662543445
+    },
+    {
+      "name": "AMNH_76369_Skull",
+      "split": "train",
+      "parts": [
+        "AMNH_76369_Skull_preprocessed_mat_matspc_00029_s0000.obj",
+        "AMNH_76369_Skull_preprocessed_mat_matspc_00029_s0006.obj",
+        "AMNH_76369_Skull_preprocessed_mat_matspc_00029_s0007.obj",
+        "AMNH_76369_Skull_preprocessed_mat_matspc_00029_s0008.obj",
+        "AMNH_76369_Skull_preprocessed_mat_matspc_00029_s0011.obj",
+        "AMNH_76369_Skull_preprocessed_mat_matspc_00029_s0014.obj",
+        "AMNH_76369_Skull_preprocessed_mat_matspc_00029_s0023.obj",
+        "AMNH_76369_Skull_preprocessed_mat_matspc_00029_s0034.obj",
+        "AMNH_76369_Skull_preprocessed_mat_matspc_00029_s0036.obj"
+      ],
+      "mesh_quality": [
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 1.119200084258863,
+          "faces": 879028
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.14186408084643481,
+          "faces": 183070
+        },
+        {
+          "watertight": false,
+          "winding": true,
+          "volume": 0.000562285725374667,
+          "faces": 5202
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.0004202334484734998,
+          "faces": 4504
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.0017075897821069996,
+          "faces": 12242
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 3.8284516502333356e-05,
+          "faces": 694
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.003441327643453665,
+          "faces": 16212
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 2.9133278360499924e-05,
+          "faces": 822
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.00012522314371916668,
+          "faces": 1556
+        }
+      ],
+      "status": "excluded",
+      "reason": "mesh closure/winding/volume failed; no silent repair"
+    },
+    {
+      "name": "AMNH_76373_Cranium",
+      "split": "train",
+      "parts": [
+        "AMNH_76373_Cranium_preprocessed_mat_matspc_00031_s0000.obj",
+        "AMNH_76373_Cranium_preprocessed_mat_matspc_00031_s0002.obj",
+        "AMNH_76373_Cranium_preprocessed_mat_matspc_00031_s0008.obj",
+        "AMNH_76373_Cranium_preprocessed_mat_matspc_00031_s0009.obj",
+        "AMNH_76373_Cranium_preprocessed_mat_matspc_00031_s0010.obj",
+        "AMNH_76373_Cranium_preprocessed_mat_matspc_00031_s0013.obj",
+        "AMNH_76373_Cranium_preprocessed_mat_matspc_00031_s0030.obj",
+        "AMNH_76373_Cranium_preprocessed_mat_matspc_00031_s0043.obj"
+      ],
+      "mesh_quality": [
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 1.3625552505679315,
+          "faces": 838708
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.24458130505250344,
+          "faces": 335462
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.00048001699997066654,
+          "faces": 5130
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.002421745012435,
+          "faces": 19956
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.0024159859164801668,
+          "faces": 16242
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.027135358419515494,
+          "faces": 88938
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.0013728499757201668,
+          "faces": 12640
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.0031902565487673326,
+          "faces": 18910
+        }
+      ],
+      "status": "ready",
+      "positive_fraction": 0.1968,
+      "supervised_fraction": 0.9018,
+      "normal_roundtrip_max": 7.485226960479707e-08,
+      "point_roundtrip_max": 6.07098236127257e-08,
+      "positive_normal_dot_median": -0.9987345272807877,
+      "full_surface_distance_median_positive": 0.061815222870423264,
+      "full_surface_distance_median_negative": 0.00011109707264010172,
+      "extent_model_units": 0.9999999999999999,
+      "model_unit_m": 0.10008507449909639
+    },
+    {
+      "name": "AMNH_76373_Skull",
+      "split": "train",
+      "parts": [
+        "AMNH_76373_Skull_preprocessed_mat_matspc_00027_s0000.obj",
+        "AMNH_76373_Skull_preprocessed_mat_matspc_00027_s0001.obj",
+        "AMNH_76373_Skull_preprocessed_mat_matspc_00027_s0002.obj",
+        "AMNH_76373_Skull_preprocessed_mat_matspc_00027_s0003.obj",
+        "AMNH_76373_Skull_preprocessed_mat_matspc_00027_s0004.obj",
+        "AMNH_76373_Skull_preprocessed_mat_matspc_00027_s0008.obj",
+        "AMNH_76373_Skull_preprocessed_mat_matspc_00027_s0009.obj",
+        "AMNH_76373_Skull_preprocessed_mat_matspc_00027_s0037.obj",
+        "AMNH_76373_Skull_preprocessed_mat_matspc_00027_s0038.obj"
+      ],
+      "mesh_quality": [
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 1.5868201934701418,
+          "faces": 874236
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.0026374922605759987,
+          "faces": 19364
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.002188312506172499,
+          "faces": 14732
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.10886958869365297,
+          "faces": 190732
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 7.222012878749999e-05,
+          "faces": 960
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.0007769385936618334,
+          "faces": 5894
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.00012827519374199992,
+          "faces": 1502
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.00022187579563833314,
+          "faces": 2372
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.0001341118920686666,
+          "faces": 1638
+        }
+      ],
+      "status": "ready",
+      "positive_fraction": 0.1054,
+      "supervised_fraction": 0.952,
+      "normal_roundtrip_max": 7.356722178664121e-08,
+      "point_roundtrip_max": 6.115666650874374e-08,
+      "positive_normal_dot_median": -0.9984007514300297,
+      "full_surface_distance_median_positive": 0.05170808668016894,
+      "full_surface_distance_median_negative": 0.00010878261332628288,
+      "extent_model_units": 1.0,
+      "model_unit_m": 0.10006704650340945
+    },
+    {
+      "name": "AMNH_76374_Cranium",
+      "split": "train",
+      "parts": [
+        "AMNH_76374_Cranium_preprocessed_mat_matspc_00031_s0000.obj",
+        "AMNH_76374_Cranium_preprocessed_mat_matspc_00031_s0001.obj",
+        "AMNH_76374_Cranium_preprocessed_mat_matspc_00031_s0003.obj",
+        "AMNH_76374_Cranium_preprocessed_mat_matspc_00031_s0004.obj",
+        "AMNH_76374_Cranium_preprocessed_mat_matspc_00031_s0005.obj",
+        "AMNH_76374_Cranium_preprocessed_mat_matspc_00031_s0006.obj",
+        "AMNH_76374_Cranium_preprocessed_mat_matspc_00031_s0007.obj",
+        "AMNH_76374_Cranium_preprocessed_mat_matspc_00031_s0008.obj",
+        "AMNH_76374_Cranium_preprocessed_mat_matspc_00031_s0010.obj",
+        "AMNH_76374_Cranium_preprocessed_mat_matspc_00031_s0020.obj"
+      ],
+      "mesh_quality": [
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.15176967873847366,
+          "faces": 288376
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.7390387167388729,
+          "faces": 719210
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.008043620427214498,
+          "faces": 41960
+        },
+        {
+          "watertight": false,
+          "winding": true,
+          "volume": 0.0009205405374698323,
+          "faces": 8960
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.00011755775275233346,
+          "faces": 1284
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.027095782279917494,
+          "faces": 95074
+        },
+        {
+          "watertight": false,
+          "winding": true,
+          "volume": 0.0012048625346721663,
+          "faces": 8018
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.0003677455169226668,
+          "faces": 3348
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 4.046640201966665e-05,
+          "faces": 740
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.00010731167666633327,
+          "faces": 1436
+        }
+      ],
+      "status": "excluded",
+      "reason": "mesh closure/winding/volume failed; no silent repair"
+    },
+    {
+      "name": "AMNH_76378_Skull",
+      "split": "test",
+      "parts": [
+        "AMNH_76378_Skull_preprocessed_mat_matspc_00020_s0000.obj",
+        "AMNH_76378_Skull_preprocessed_mat_matspc_00020_s0001.obj",
+        "AMNH_76378_Skull_preprocessed_mat_matspc_00020_s0028.obj",
+        "AMNH_76378_Skull_preprocessed_mat_matspc_00020_s0029.obj",
+        "AMNH_76378_Skull_preprocessed_mat_matspc_00020_s0032.obj",
+        "AMNH_76378_Skull_preprocessed_mat_matspc_00020_s0034.obj",
+        "AMNH_76378_Skull_preprocessed_mat_matspc_00020_s0035.obj",
+        "AMNH_76378_Skull_preprocessed_mat_matspc_00020_s0063.obj"
+      ],
+      "mesh_quality": [
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 1.420965319348544,
+          "faces": 618302
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.0004435855342986665,
+          "faces": 4344
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 3.941717504416662e-05,
+          "faces": 724
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 4.758776484966663e-05,
+          "faces": 814
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.00033240202144833343,
+          "faces": 2912
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.00013715367458850004,
+          "faces": 1636
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.0004333429058843335,
+          "faces": 3626
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 4.895961472799981e-05,
+          "faces": 1290
+        }
+      ],
+      "status": "ready",
+      "positive_fraction": 0.0158,
+      "supervised_fraction": 0.9886,
+      "normal_roundtrip_max": 6.756982162681169e-08,
+      "point_roundtrip_max": 7.367957988169138e-08,
+      "positive_normal_dot_median": -0.9982546071811422,
+      "full_surface_distance_median_positive": 0.030381781346519872,
+      "full_surface_distance_median_negative": 5.785100074018935e-05,
+      "extent_model_units": 1.0,
+      "model_unit_m": 0.10006604381222324
+    },
+    {
+      "name": "AMNH_80081_Cranium",
+      "split": "train",
+      "parts": [
+        "AMNH_80081_Cranium_preprocessed_mat_matspc_00021_s0000.obj",
+        "AMNH_80081_Cranium_preprocessed_mat_matspc_00021_s0001.obj",
+        "AMNH_80081_Cranium_preprocessed_mat_matspc_00021_s0002.obj",
+        "AMNH_80081_Cranium_preprocessed_mat_matspc_00021_s0012.obj",
+        "AMNH_80081_Cranium_preprocessed_mat_matspc_00021_s0015.obj",
+        "AMNH_80081_Cranium_preprocessed_mat_matspc_00021_s0017.obj"
+      ],
+      "mesh_quality": [
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.042525162545215156,
+          "faces": 108100
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.631221640472207,
+          "faces": 599704
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.42983945542716356,
+          "faces": 291774
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.012012434713330496,
+          "faces": 57864
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.00013451198723866668,
+          "faces": 1744
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.005027775386807833,
+          "faces": 29154
+        }
+      ],
+      "status": "ready",
+      "positive_fraction": 0.2262,
+      "supervised_fraction": 0.9026,
+      "normal_roundtrip_max": 6.868282937527725e-08,
+      "point_roundtrip_max": 7.775940513710111e-08,
+      "positive_normal_dot_median": -0.9989380510900696,
+      "full_surface_distance_median_positive": 0.06819022786217839,
+      "full_surface_distance_median_negative": 6.005034042163093e-05,
+      "extent_model_units": 1.2227490123475202,
+      "model_unit_m": 0.10006354015618885
+    },
+    {
+      "name": "AMNH_80403_Cranium",
+      "split": "train",
+      "parts": [
+        "AMNH_80403_Cranium_preprocessed_mat_matspc_00010_s0000.obj",
+        "AMNH_80403_Cranium_preprocessed_mat_matspc_00010_s0006.obj",
+        "AMNH_80403_Cranium_preprocessed_mat_matspc_00010_s0014.obj",
+        "AMNH_80403_Cranium_preprocessed_mat_matspc_00010_s0023.obj",
+        "AMNH_80403_Cranium_preprocessed_mat_matspc_00010_s0034.obj",
+        "AMNH_80403_Cranium_preprocessed_mat_matspc_00010_s0036.obj",
+        "AMNH_80403_Cranium_preprocessed_mat_matspc_00010_s0037.obj",
+        "AMNH_80403_Cranium_preprocessed_mat_matspc_00010_s0045.obj"
+      ],
+      "mesh_quality": [
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 1.2742400002921626,
+          "faces": 483764
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 6.043900377500008e-05,
+          "faces": 1256
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.00046860868413683396,
+          "faces": 4320
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.00011242498240766664,
+          "faces": 1466
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.00023495344523,
+          "faces": 3152
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 3.822773498516667e-05,
+          "faces": 858
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 5.8496600608166686e-05,
+          "faces": 1672
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 6.623868434149998e-05,
+          "faces": 1836
+        }
+      ],
+      "status": "excluded",
+      "positive_fraction": 0.0026,
+      "supervised_fraction": 0.9992,
+      "normal_roundtrip_max": 6.857918899427773e-08,
+      "point_roundtrip_max": 6.925602624718863e-08,
+      "positive_normal_dot_median": -0.998896967007011,
+      "full_surface_distance_median_positive": 0.007767635961850678,
+      "full_surface_distance_median_negative": 5.0094717291093565e-05,
+      "extent_model_units": 0.9999999999999999,
+      "model_unit_m": 0.10008457297033076,
+      "reason": "insufficient positives or transform roundtrip failed"
+    },
+    {
+      "name": "AMNH_81070_Cranium",
+      "split": "train",
+      "parts": [
+        "AMNH_81070_Cranium_preprocessed_mat_matspc_00029_s0000.obj",
+        "AMNH_81070_Cranium_preprocessed_mat_matspc_00029_s0001.obj",
+        "AMNH_81070_Cranium_preprocessed_mat_matspc_00029_s0003.obj",
+        "AMNH_81070_Cranium_preprocessed_mat_matspc_00029_s0004.obj",
+        "AMNH_81070_Cranium_preprocessed_mat_matspc_00029_s0015.obj",
+        "AMNH_81070_Cranium_preprocessed_mat_matspc_00029_s0029.obj"
+      ],
+      "mesh_quality": [
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 1.2466198398914754,
+          "faces": 759960
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 7.955891622000002e-05,
+          "faces": 1358
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.00041436900006116656,
+          "faces": 3742
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.0031549776942306662,
+          "faces": 25486
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.002556533758074333,
+          "faces": 16328
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.0012706316339576662,
+          "faces": 9362
+        }
+      ],
+      "status": "ready",
+      "positive_fraction": 0.0284,
+      "supervised_fraction": 0.9788,
+      "normal_roundtrip_max": 7.709758144403e-08,
+      "point_roundtrip_max": 6.8666280272911e-08,
+      "positive_normal_dot_median": -0.9986116301892078,
+      "full_surface_distance_median_positive": 0.04521359939964466,
+      "full_surface_distance_median_negative": 0.000181772667264476,
+      "extent_model_units": 1.0,
+      "model_unit_m": 0.10012766306642616
+    },
+    {
+      "name": "AMNH_83595_Cranium",
+      "split": "train",
+      "parts": [
+        "AMNH_83595_Cranium_preprocessed_mat_matspc_00028_s0000.obj",
+        "AMNH_83595_Cranium_preprocessed_mat_matspc_00028_s0001.obj",
+        "AMNH_83595_Cranium_preprocessed_mat_matspc_00028_s0004.obj",
+        "AMNH_83595_Cranium_preprocessed_mat_matspc_00028_s0007.obj",
+        "AMNH_83595_Cranium_preprocessed_mat_matspc_00028_s0012.obj",
+        "AMNH_83595_Cranium_preprocessed_mat_matspc_00028_s0014.obj"
+      ],
+      "mesh_quality": [
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.07791879381178217,
+          "faces": 191450
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.3264783340055908,
+          "faces": 546702
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.0013071903269426665,
+          "faces": 13842
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.005243588591461999,
+          "faces": 31166
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.017409260838802332,
+          "faces": 55272
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 3.8763470756666614e-05,
+          "faces": 722
+        }
+      ],
+      "status": "ready",
+      "positive_fraction": 0.1366,
+      "supervised_fraction": 0.9478,
+      "normal_roundtrip_max": 5.8674289828662685e-08,
+      "point_roundtrip_max": 4.207748088846941e-08,
+      "positive_normal_dot_median": -0.9989932890721308,
+      "full_surface_distance_median_positive": 0.043882770987767265,
+      "full_surface_distance_median_negative": 0.00015936753891889984,
+      "extent_model_units": 1.3506091980708188,
+      "model_unit_m": 0.10012665916009872
+    },
+    {
+      "name": "AMNH_89002_Skull",
+      "split": "test",
+      "parts": [
+        "AMNH_89002_Skull_preprocessed_mat_matspc_00031_s0000.obj",
+        "AMNH_89002_Skull_preprocessed_mat_matspc_00031_s0002.obj",
+        "AMNH_89002_Skull_preprocessed_mat_matspc_00031_s0005.obj",
+        "AMNH_89002_Skull_preprocessed_mat_matspc_00031_s0010.obj",
+        "AMNH_89002_Skull_preprocessed_mat_matspc_00031_s0012.obj",
+        "AMNH_89002_Skull_preprocessed_mat_matspc_00031_s0015.obj",
+        "AMNH_89002_Skull_preprocessed_mat_matspc_00031_s0037.obj",
+        "AMNH_89002_Skull_preprocessed_mat_matspc_00031_s0038.obj"
+      ],
+      "mesh_quality": [
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.5992719905566671,
+          "faces": 606508
+        },
+        {
+          "watertight": false,
+          "winding": true,
+          "volume": 0.0001734042000765002,
+          "faces": 1920
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.01626012261099683,
+          "faces": 59908
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.0001381900773086667,
+          "faces": 1662
+        },
+        {
+          "watertight": false,
+          "winding": true,
+          "volume": 0.0006675623830518333,
+          "faces": 5592
+        },
+        {
+          "watertight": false,
+          "winding": true,
+          "volume": 0.0002797623651483333,
+          "faces": 4074
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.018447415787488985,
+          "faces": 58120
+        },
+        {
+          "watertight": true,
+          "winding": true,
+          "volume": 0.00011089275971899997,
+          "faces": 1490
+        }
+      ],
+      "status": "excluded",
+      "reason": "mesh closure/winding/volume failed; no silent repair"
+    }
+  ]
+}

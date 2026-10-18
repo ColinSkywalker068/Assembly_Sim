@@ -20,3 +20,22 @@ def test_rejected_set_never_selects_a_candidate():
     result=screen_result(meshes,{'candidates':[candidate]})
     assert result['geometry_status']=='all_candidates_rejected'
     assert result['selected_candidate'] is None and not result['motion_authorized']
+
+
+def test_thin_hollow_shell_contains_wall_but_not_cavity_at_multiple_units():
+    from tasks.dual_arm_crag_skull.tools.candidate_validation import SolidContainment
+    for scale in (.001,1.,1000.):
+        outer=trimesh.creation.box(extents=np.full(3,.2*scale))
+        inner=trimesh.creation.box(extents=np.full(3,.198*scale)); inner.invert()
+        shell=trimesh.util.concatenate([outer,inner])
+        result=SolidContainment(shell).contains(np.array([[0,0,0],[.0995,0,0],[.11,0,0]])*scale)
+        np.testing.assert_array_equal(result,[False,True,False])
+
+
+def test_tiny_fragment_contact_does_not_require_one_percent_of_large_part():
+    meshes={'large':trimesh.creation.box(extents=(.2,.2,.2)),
+            'small':trimesh.creation.box(extents=(.01,.01,.01))}
+    pose=np.eye(4); pose[0,3]=.105
+    result=score_candidate(meshes,{'large':np.eye(4),'small':pose},samples=512)
+    assert result['contact_components']==1
+    assert not result['rejected']
