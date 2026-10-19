@@ -1,0 +1,80 @@
+# ASPIRE (NVlabs/ASPIRE, Apache-2.0) at fa00f0ef2bc1d91d594b9aa502c22133c9f538f7: add a 6-DoF "fanuc_crx" embodiment.
+# Apply with `git apply` at that commit (baselines/aspire/checkout.py does this and checks the result).
+#
+# Hunk 1, src/cap_harness/contracts.py JOINT_DIMENSIONS: register "fanuc_crx" with 6 joints. Every contract that
+#   carries joints (RobotState, ArmCommand, Trajectory, SynchronizedTrajectory, IKResult, RobotPlanningContext)
+#   validates its embodiment against this mapping, and CapApi (api.py:108-111) silently replaces an embodiment
+#   missing from it with the 7-DoF "robosuite". SUPPORTED_JOINT_DIMENSIONS stays {6, 7}.
+# Hunk 2, src/cap_harness/contracts.py MotionStrategy: accept the IK solver name "crx_dls" (the CRX damped
+#   least-squares IK from tasks/dual_arm_crag_skull/s0/ik.py). MotionStrategy only accepts pyroki/curobo/mink, so
+#   without this the CRX solver is reachable from plan_motion()/move_to_pose() only by registering it under another
+#   solver's name, which would mislabel every plan in the run artifacts.
+# Hunk 3, src/cap_harness/api.py CapApi.register_tools: list "declare_contact" and "clear_contact" among the adapter
+#   extensions, so an adapter that has them (the skull task's) exposes them to programs as
+#   `fanuc_crx.declare_contact` / `fanuc_crx.clear_contact`: S0's contact phase (work close to the table only inside a
+#   declared window) needs a declaration, and ASPIRE's API has no other way to make one. Adapters without these methods
+#   are unaffected.
+# Hunk 4, src/cap_harness/registry.py: approve the "fanuc_crx." extension prefix and name its only public extensions,
+#   FANUC_CRX_PUBLIC_TOOL_NAMES = {fanuc_crx.declare_contact, fanuc_crx.clear_contact}; a ToolRegistry built with that
+#   allowlist (tasks/dual_arm_crag_skull/s2/aspire.py in direct mode) accepts them, every other registry refuses them
+#   as before.
+#
+# Nothing else changes: no CLI or benchmark changes.
+diff --git a/src/cap_harness/api.py b/src/cap_harness/api.py
+index 0b74fe3760cdd0691ebed98a345001feb0a6f473..208eb91ad58ca6b4598f04da6ffd30ab44d20445 100644
+--- a/src/cap_harness/api.py
++++ b/src/cap_harness/api.py
+@@ -1574,6 +1574,8 @@ class CapApi:
+             ("plan_standoff_pose", "geometry"),
+             ("plan_approach_pose", "geometry"),
+             ("base_pose_is_free", "geometry"),
++            ("declare_contact", "control"),
++            ("clear_contact", "control"),
+         )
+         for extension_name, capability in extensions:
+             function = getattr(self._adapter, extension_name, None)
+diff --git a/src/cap_harness/contracts.py b/src/cap_harness/contracts.py
+index 06d454daacbe67a04dcad294cd6a03286cf5f978..6979a81cc796ae199126dea8eefeaa7f0c3ad4d6 100644
+--- a/src/cap_harness/contracts.py
++++ b/src/cap_harness/contracts.py
+@@ -15,6 +15,7 @@ DEFAULT_EMBODIMENT = "robosuite"
+ JOINT_DIMENSIONS: Mapping[str, int] = MappingProxyType(
+     {
+         "behavior": 7,
++        "fanuc_crx": 6,
+         "libero": 7,
+         "robosuite": 7,
+         "yam_real": 6,
+@@ -990,8 +991,8 @@ class MotionStrategy:
+         ik_solver = _non_empty_string(self.ik_solver, "ik_solver")
+         trajectory_planner = _non_empty_string(self.trajectory_planner, "trajectory_planner")
+         pose_planner = _non_empty_string(self.pose_planner, "pose_planner")
+-        if ik_solver not in {"pyroki", "curobo", "mink"}:
+-            raise ValueError("ik_solver must be 'pyroki', 'curobo', or 'mink'")
++        if ik_solver not in {"pyroki", "curobo", "mink", "crx_dls"}:
++            raise ValueError("ik_solver must be 'pyroki', 'curobo', 'mink', or 'crx_dls'")
+         if trajectory_planner not in {"interpolation", "curobo"}:
+             raise ValueError("trajectory_planner must be 'interpolation' or 'curobo'")
+         if pose_planner not in {"composed", "curobo-integrated"}:
+diff --git a/src/cap_harness/registry.py b/src/cap_harness/registry.py
+index 61195fd66a77302438d192623ec59a716cf28f07..28a8417a93d88695e302cb4e77abf0ccdac3a850 100644
+--- a/src/cap_harness/registry.py
++++ b/src/cap_harness/registry.py
+@@ -75,11 +75,17 @@ YAM_REAL_PUBLIC_TOOL_NAMES = frozenset(
+     {"yam_real.get_task_metadata", "yam_real.get_controller_metadata"}
+ )
+ 
++FANUC_CRX_PUBLIC_TOOL_NAMES = frozenset(
++    {"fanuc_crx.declare_contact", "fanuc_crx.clear_contact"}
++)
++"""Contact declarations of the dual-CRX skull task: where an arm may work close to the table."""
++
+ _APPROVED_EMBODIMENT_PREFIXES = (
+     "behavior.",
+     "yam_real.",
+     "libero.",
+     "robosuite.",
++    "fanuc_crx.",
+ )
+ 
+ _NAME_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$")
