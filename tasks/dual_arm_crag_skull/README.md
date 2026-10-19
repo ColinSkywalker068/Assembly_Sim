@@ -6,30 +6,84 @@
 
 ## 当前状态
 
-**当前包含 CPU 几何准备与仿真启动入口，尚不是完整装配系统。** 已创建独立任务目录、配置、无 Isaac 依赖的检查入口、接口文档和实施 TODO。上游演示保持独立；没有宣称完成 YAM 适配、头骨导入、训练、物理成功验证或真实机器人部署。
+**当前包含 CPU 几何准备、GARF 工具、S2→S1→S0 契约以及三层的代码，尚不是完整装配系统。** S0（运动学、IK、约束执行）、S1（Diffusion Policy 数据管线与模型）、S2（Claude 规划器与编排状态机）都只在 CPU 测试、合成数据和离线回放上验证过，还没有接入 Isaac 中的闭环执行。DexAgent 与 ASPIRE 两个基线已离线接入 `baselines/`，尚未实跑，没有基线成绩（见文末「基线」一节）。上游演示保持独立；没有宣称完成 YAM 适配、头骨物理装配、真实示范上的训练或真实机器人部署。
 
-CRX-10iA/L 是用户批准的临时型号，尚未核实捐赠实机。YAM 具体夹爪型号、资产、TCP、相机标定、真实控制选项均待确认。原始 CRAG 数据已从用户服务器取得，权重、数据及生成结果均存放于仓库外。
+CRX-10iA/L 是用户批准的临时型号，尚未核实捐赠实机。YAM 夹爪型号已定为 I2RT `linear_4310`（10-18 用户确认），官方模型已放进仓库（见下文「YAM / 三相机 / UMI」）；CRX 法兰上的转接板、实测 TCP、相机标定、真实控制选项仍待确认。原始 CRAG 数据已从用户服务器取得，权重、数据及生成结果均存放于仓库外。
 
 ```bash
-python3 -m tasks.dual_arm_crag_skull inspect
-python3 -m tasks.dual_arm_crag_skull validate
-python3 -m unittest discover -s tasks/dual_arm_crag_skull/tests
+envs/asm/bin/python -B -m tasks.dual_arm_crag_skull inspect
+envs/asm/bin/python -B -m tasks.dual_arm_crag_skull validate
+PYTHONDONTWRITEBYTECODE=1 envs/asm/bin/python -B -m pytest -p no:cacheprovider tasks/dual_arm_crag_skull/tests core/tests
 ```
 
+`envs/`、`third_party/`、`runs/` 是仓库根目录下不进 git 的工作区目录，分别放 Python 环境、上游仓库和所有运行产物，结构见根目录 README 的「Workspace layout」。
+
+以上命令都从仓库根目录运行。旧写法 `python3 -m unittest discover -s tasks/dual_arm_crag_skull/tests` 只会发现 `test_config.py` 里 3 个 unittest 风格的测试，其余测试是 pytest 风格，会被静默跳过。
+
 `validate` 成功只表示配置结构一致；输出明确报告 `simulator_ready: false`，不会启动机器人。配置中的空值必须被真实测量或验证结果替代，不能默认为零。
+
+## 夹爪选择
+
+头骨任务默认选择 **YAM**（`jing.json` 的 `workcell.gripper_family`），可用
+`--gripper robotiq` 显式选择 **Robotiq 2F-85** 代理。`launch` 与 `smoke`
+使用相同的选择规则；旧参数 `--allow-robotiq-proxy` 保留为 Robotiq 选择的兼容别名，
+不能与 `--gripper yam` 同时使用。
+
+YAM 的具体模型、场景适配和 TCP 标定尚未接入，因此默认 YAM 启动会明确报错。
+选择 Robotiq 可运行现有代理场景：
+
+```bash
+python -m tasks.dual_arm_crag_skull launch --assembly runs/PATH/layout.json --gripper robotiq
+python -m tasks.dual_arm_crag_skull.smoke --assembly runs/PATH/layout.json --output runs/smoke --gripper robotiq
+```
+
+这一选择针对头骨任务；共享 core 的现有场景资产仍为 Robotiq。
 
 ## S2 / S1 / S0 架构
 
 | 层 | 选择 | 输入 | 输出 | 调度 |
 |---|---|---|---|---|
-| S2 | 用户指定 Claude Opus 5.5 | 三视角关键帧、可观测零件状态、CRAG 预测装配关系、执行反馈 | 结构化 skill request | 子任务结束、失败或重规划事件 |
+| S2 | ASPIRE Python 程序（默认 skills，可选 direct） | 可观测场景、候选与执行反馈 | skills：技能请求；direct：CAP 运动 API | skills 随事件重跑；direct 执行冻结程序 |
 | S1 | 条件 1D U-Net Diffusion Policy | 图像历史、双 TCP/开口状态、双手相对位姿、skill 与可观测目标 | 双臂末端动作块 | 滚动时域 |
 | S0 | FANUC 原生伺服（实机）/ PhysX drives（仿真）+ 外部运动适配 | 动作块、机器人状态、碰撞环境 | 12 轴位置目标与两个夹爪宽度目标 | 初始仿真目标 60 Hz |
 | 物理 | Isaac Sim 4.5 / PhysX | 关节驱动、接触几何、质量和材料参数 | 实际运动与接触 | 初始 240 Hz |
 
-S2 的显示名称保留为 `Claude Opus 5.5`，`api_model_id` 留空。该名称来自用户要求，不代表已经核实服务可用性；接入时核实供应商 API 标识，密钥用环境变量管理。没有发送邮件或私有资料给外部模型。
+S2 默认与 ASPIRE 共用程序运行器，配置为 `s2.planner = aspire_program`、
+`s2.execution_mode = skills`。两种执行方式：
 
-S2 不直接输出电机命令。请求必须通过 schema、目标可观测性、技能支持范围和 S0 可执行性检查。无模型服务时可用人工编排请求验证 S1/S0，不自动替换模型。
+| 模式 | 程序可用接口 | 执行路径 |
+|---|---|---|
+| `skills`（默认） | `get_observation`、`get_task_context`、`propose_assembly_candidates`、`submit_skill_request` | 程序 → 校验后的 SkillRequest → 编排器 → S1 → S0 |
+| `direct` | ASPIRE 的 CapApi，如 `move_to_pose`、`set_gripper` | 程序 → ASPIRE CRX 适配器 → S0 检查 → AssemblyBackend |
+
+实现见 `s2/aspire.py`。两个模式共用上游 `ToolRegistry` / `ProgramExecutor`；
+`baselines/aspire/runner.py` 也调用这一入口。skills 不注册运动 API，direct 不注册技能提交接口。
+skills 每次基于新 observation 执行同一份冻结程序，至多提交一个请求；目标仍从通过筛选的
+候选 ID 解析，仍检查训练过的技能/手臂组合。提交后的错误或再次调用工具会使请求作废。
+程序 SHA256、模式和工具调用记录在 trace；direct trial 的 artifacts 也记录模式。
+
+`AspirePlanner` 可直接作为 `AssemblyOrchestrator` 的 planner；`build_planner(config, program_path=...)`
+按配置构造。程序在加载时冻结。默认 `program_path` 为空，必须提供程序，不自动换用旧规划器。
+原 Claude 工具调用规划器保留为显式的 `planner = claude_tools`（仅 skills），配置中仍保存其模型参数；
+它尚未做真实 API 验证。`preview` 子命令专门预览这个旧客户端的请求。
+
+```bash
+# skills：仅输出计划，不执行机器人；示例请求重新观察。
+PYTHONDONTWRITEBYTECODE=1 envs/aspire/bin/python -B -m tasks.dual_arm_crag_skull.s2 program \
+  --program tasks/dual_arm_crag_skull/s2/programs/reobserve.py --observation OBSERVATION.json
+
+# direct：使用与 ASPIRE 基线完全相同的 trial runner；目前仅有无物理测试后端。
+PYTHONDONTWRITEBYTECODE=1 envs/aspire/bin/python -B -m tasks.dual_arm_crag_skull.s2 program \
+  --execution-mode direct --program tasks/dual_arm_crag_skull/baselines/aspire/reference_program.py \
+  --task runs/baseline_tasks/skull_base.json --seed 101 --backend kinematic \
+  --output-root runs/s2_direct --max-steps 1000 --no-videos
+```
+
+第二条是调用格式示例：参考程序只在测试用高盒子上通过，真实头骨仍可能被接触阶段检查拒绝。
+direct 结果记为 `method=aspire`，避免把同一条 ASPIRE 路径另算作 S1 方法成绩。
+程序作者可使用 ASPIRE 的 coding-agent 工作流，但本项目尚未接通头骨任务的自动生成—试跑—修正循环。
+本次统一的是程序接口和运行器。Isaac 后端已经写好并通过检验（`sim/backend.py`），但还没有接到 ASPIRE 运行器上；真实 S1 执行器和物理闭环仍待实现。
+上游运行器的 AST 检查不提供进程隔离或硬墙钟超时，沿用基线的隔离运行要求。
 
 ### S0 优先使用 FANUC 原生伺服
 
@@ -66,6 +120,8 @@ S0 做局部跟踪，不能解决全局绕障。远距离搬运需要独立的�
 5. 对训练集统计归一化；用噪声预测损失 `E[||epsilon - epsilon_theta(A_k, k, observation)||²]` 训练 DP。
 6. 在未见过的初始摆放上闭环评估，不仅看离线 loss；额外报告抓取、单块放置、整件装配成功率与碰撞/失败分类。
 
+数据格式、模型与训练的实现见 [s1/README.md](s1/README.md)。2026-10-18 用合成数据做了 GPU 冒烟（不是头骨任务）。审查修复后的代码用默认的确定性 DDIM-16 时，事先定好的 10 项判据有 2 项没过：搬运前撞障碍 21.7%，本应静止的手原始输出移动 2.0 cm。按预登记改用 `sampler_eta = 1`、训练加到 16000 步、换一批新数据后，这两项都通过（命中 0、2.7 mm）；但这次共享 GPU 被其他用户占满，DDIM-16 单次 315 ms，两项延迟判据没过，这个 FAIL 照旧保留。同一代码包在不争用的 torch L40S 上（作业 20232734，单独预登记）十项全过：DDIM-16 单次 52 ms，部署路径 54 ms，训练损失与 maxwell 逐值相同，说明 maxwell 上的延迟失败来自 GPU 争用。结果见 [reports/s1_smoke/README.md](reports/s1_smoke/README.md)。这还没有用到仿真专家示范。
+
 GT 物体位姿仅供专家/评估，默认不进入 S1/S2 的正式观测。可以做明确标注的 oracle 消融。随机目标必须通过标记、目标位姿条件或可观测几何表达，不能要求策略复现隐藏随机点。
 
 ## CRAG 与可打印几何
@@ -80,7 +136,41 @@ GT 物体位姿仅供专家/评估，默认不进入 S1/S2 的正式观测。可
 
 ## YAM / 三相机 / UMI
 
-重构上游 Robotiq 固定路径与 mimic 逻辑为夹爪描述接口；YAM 模型确定后再实现安装变换、宽度-电机映射、接触模型、质量和驱动限值。腕相机相对工具的安装变换必须与 UMI 手持工具尽量一致，第三视角同时在 UMI 采集中录制。
+YAM 夹爪是 I2RT `linear_4310`（产品页 i2rt.com/products/yam-gripper-1 原文是 "the 'Linear 4310' gripper in Github Readme"，行程 95 mm）。
+- **资产**：`core/assets/robots/i2rt_linear_4310/` 是官方仓库 i2rt-robotics/i2rt（MIT，`120c3c8`）里未改动的 MJCF、网格和许可证，`SOURCE.json` 按 sha256 钉住，文件不一致就拒绝加载。官方没有这款夹爪单独的 URDF。
+- **描述**：`core/robots/linear_4310.py` 按 MuJoCo 的约定读这份 MJCF，网格位置与 MuJoCo 自己算的逐项一致（2 µm 内，`core/tests/test_linear_4310.py`）。
+  - TCP 是官方的 `grasp_site`，在两个指尖端面的中点，离安装面 144.65 mm。手指横向滑动，所以开口变化时 TCP 不动，指尖只比 TCP 多伸出 0.07 mm（Robotiq 代理是 27.8 mm）。
+  - 宽度是两个指垫内侧面之间的距离：关节为 0 时两个指垫互相穿插 1.04 mm（MJCF 排除了两指之间的接触），每指 0.52 mm 时相碰，最大开口 93.96 mm。
+  - 本体伸到安装面后面 10.5 mm。
+- **S0**：`s0/kinematics.py` 的 `yam_model` 把夹爪装在一块**暂定的** 15 mm 转接板上，安装角度让 TCP 保持代理的约定（+x 接近方向，手指沿 y 开合）。工具盒拆成本体加转接板、两指全行程两部分。种子 101 的贴桌检验在这套几何下也是 7/7（`reports/s0_contact_yam_2026-10-18.json`）。转接板没有设计，所以 `jing.json` 的 `s0.flange_T_tcp` 仍为 null。
+- **Isaac**：`sim/yam_usd.py` 用 pxr 搭出夹爪：本体和两指是三个刚体，网格只做显示，碰撞体是不可见的凸块。
+  - 指尖只有最末 15 mm 是实心，往上是两根侧梁，中间是沿合拢方向完全没有材料的贯通窗口（离指端 16 mm 处 ±2 mm 宽，35 mm 处 ±9.5 mm，50 mm 处超过 ±15 mm）。碰撞体按接近方向切成 2 mm 薄片，每片按片内连通性拆开（窗口两侧各一块，不填平）。
+  - 每块不超过 64 个顶点、64 个面，这是 PhysX 的 GPU 上限：超过时 PhysX 会自己简化成更小的凸包。顶点多的块先减点，误差只向内、最多 0.05 mm，不够就沿顶点中位数精确切半。本体同样处理。
+  - 烹制时 PhysX 会丢掉离平面 0.7 mm 以内的点（网格自身单位），所以碰撞体按 100 倍坐标写入、再缩放 0.01，这个容差在世界里就是 7 µm。接触偏移显式设为 2 mm：自动值随形状尺寸缩小，小块会被高速手指穿透。
+  - `check_yam` 用 `request_convex_collision_representation` 读回每个碰撞体烹制后的形状：704 块都有效，最多 60 个顶点，向外凸出 0，向内最多 0.083 mm（PhysX 合并近共面的面时丢点）。
+  - 已知限制：离指端 57 mm 以上的手指根部截面呈 L 形，凸包会填住内角（74–80 mm 处向内多伸 48 mm）。本任务里可移动碎片最高 48 mm，指尖离桌 3 mm，碰不到。
+  - 两指各挂一个滑动关节，范围从指垫相碰到全开，带线性位置驱动（刚度、阻尼、最大力、最大速度都是**暂定值**：最大力 20 N，最大速度 0.1 m/s。只有驱动时合拢速度约等于 刚度/阻尼×误差，从全开一步指令到合拢实测 1.5 m/s，会撞穿方块），两指之间不碰撞（与 MJCF 一样）；一个固定关节把本体装在法兰上。两指没有耦合，靠下发同一个目标代替 MJCF 的 1:1 约束，所以一指先碰到物体时另一指会自己继续合拢。上游给 Robotiq 用的组装代码没改，YAM 只在头骨任务里使用。
+  - `sim/check_yam.py` 在 maxwell 的 Isaac 5.1 上通过（`runs/check_yam_*`，判据写在脚本里，跑之前就定好了）：两只手臂在 0、30、60、93.96 mm 四个开口下，误差都不超过 0.0003 mm；5 组构型下 PhysX 里的法兰、本体、两指尖与 S0 模型相差不到 0.001 mm 和 0.0001°；S0 的 TCP 与 PhysX 里两指垫给出的抓取点相差 0.08–0.11 mm（这个估计在网格上与官方 `grasp_site` 本来就差 0.09 mm），这一项不依赖 `flange_T_tcp` 自己的常数。FANUC 资产的关节驱动刚度极高，手臂几乎是运动学跟踪，所以这里验证的是几何和装配关系，不是夹持力或抓取。
+- **单片物理抓放验收（P2）已通过**（10-19，`sim/check_grasp.py`）。在 Isaac 后端上，左臂用脚本经 S0 抓起种子 101 的一片碎片（72×56×48 mm），上提 10 cm、保持 2 s、平移 5 cm、放回、松手、撤离。
+  - 最终一次（`runs/isaac_checks_20261019_024300`，三项检查都通过）：
+    - 两指被碎片挡在指令宽度外 5.98 mm（夹住的是 56.41 mm，弦长 56.43 mm）；
+    - 从挤压到搬运结束，相对 TCP 最大偏移 0.039 mm / 0.012°；
+    - 平移误差 0.09 mm；放回后位置差 0.11 mm、高度差 0.0004 mm，并且静止；
+    - 没有物理关节连到碎片，碎片一直是动态刚体；其他碎片不动；三相机有效。
+  - 判据：首跑之前写定。审查发现「夹空」和「打滑」两条根本不可能失败，首跑之后收紧了。首跑的逐步日志在收紧后的判据下仍然通过。
+  - 前提：S0 用测试值；转接板和夹持驱动是暂定值；位姿是仿真真值；抓取是脚本，不是 S1；只验了一片、一个种子。
+  - 为此修了三处物理问题：
+    - 手臂驱动只给位置目标时有 0.1 s 一阶滞后，改为速度前馈；
+    - PhysX 默认凸分解让指垫每侧鼓出 1.8 mm，改为自己把指尖切成 2 mm 薄片取凸包；
+    - 选抓取时只用网格顶点会把体素碎片量窄，改为密集表面采样。
+  - 10-19 独立审查又查出两处，均已修：
+    - 薄片凸包把手指的贯通窗口填成了实心板。我原来把它当成「0.48 mm 浅槽」，那是 12 mm 宽的方块足迹正好跨在两根侧梁上造成的误读。
+    - 大多数薄片超过 PhysX 的 64 顶点上限，会被重新烹制。
+    - 抓取规划改用网格算出的手指内伸量图（`sim/fingers.py`）：弦长取合拢时最先接触的宽度，TCP 平移到两指同时接触，张开宽度要让开下降途中整根手指扫过的范围。
+    - `check_grasp` 的两条判据原来根本不可能失败（「夹空」和「打滑」），已收紧，附着改为结构检查。
+- **还没做**：宽度-电机映射、实际夹持力与驱动参数、实测开口与 TCP、腕部相机按 YAM 重新安装（现在看不到被夹碎片）。
+
+腕相机相对工具的安装变换必须与 UMI 手持工具尽量一致，第三视角同时在 UMI 采集中录制。
 
 UMI 是离线手持示范来源，不是 FANUC 控制驱动。使用 UMI SLAM/标定管线恢复相机轨迹、转换到 TCP，标定开口并统一双手坐标系；标记追踪失败、时钟偏移与不确定性。导入后进行双臂可达性和碰撞回放验证。UMI 没有关节角，不补造关节数据；公共策略接口使用 TCP 与开口，机器人关节数据作为可选诊断通道。
 
@@ -211,3 +301,69 @@ python -m tasks.dual_arm_crag_skull.smoke \
 `export_points` 现在额外输出同局部坐标的 PLY 和 `mesh_registry.json`；JSONL 工具加 `--mesh-registry PATH` 可执行不依赖 GT 的穿透/接触筛选。无合格候选时明确返回 `all_candidates_rejected`；几何评分不授权机器人运动。原有四个 noise 候选全部拒绝。理想两片合并实验也没有恢复剩余六片的装配精度，不能作为自动安装成功。
 
 本轮另修复了多候选随机性混杂：PointTransformer 在 eval 模式仍随机打乱序列，且固定 seed 后重复编码也未保证相同指纹。现在同一批几何只编码一次，缓存按几何内容失效；四个候选已验证共享相同特征，平均位置误差仍约52–60 mm。该修复保证实验可比性，不代表头骨装配精度已解决。
+
+## 2026-10-18 进展：S0/S1/S2 代码、相机内参更正与上游修复
+
+本轮基于 origin/jing `707223c`，所有结论都来自 CPU 测试、合成数据、离线回放或下面列出的 GPU 运行。系统仍未在 Isaac 中闭环执行，也没有在真实示范上训练。
+
+| 模块 | 内容 | 验证 |
+|---|---|---|
+| `contracts/` | ActionChunk（20D 双 TCP、时效与观测年龄、非活动臂保持）和 SkillRequest（技能表、目标来源、完成判据、support 规则） | 单元测试；关键检查经变异验证 |
+| `s0/` | CRX 运动学（probe 关节帧，`configs/crx10ial_kinematics.json`）、雅可比、拒绝式 DLS IK、动作块→60 Hz 关节轨迹、制动轨迹、胶囊体与夹爪包围盒检查、盒约束速度 QP | FK 对 Isaac 参考位姿最大 0.093 mm / 0.0089°；单元测试与变异检查 |
+| `s1/` | Episode 格式与数据集、conditional U-Net1D Diffusion Policy（原生 DDPM/DDIM、EMA）、训练 CLI、预测→ActionChunk、运行时 | 单元测试与变异检查；合成数据 GPU 冒烟：v4 未过 C3/C10，v5（eta=1、16000 步）在被占满的共享 GPU 上只有延迟两项未过，在不争用的 torch L40S 上十项全过（`reports/s1_smoke/README.md`） |
+| `s2/` | Claude 规划器、候选簿、GARF 进程客户端、编排状态机（可按 S1 训练过的 (skill, arms) 组合把关）、`preview` 命令 | 假模型客户端测试；跨层测试接真实 S0；变异检查；真实 API 调用尚未做 |
+| `camera_calibration.py`、`smoke.py` | 渲染器投影矩阵求内参、深度拟合交叉验证、渲染器外参、失败退出码 | Isaac Sim 5.1 实测（见下） |
+| `baselines/` | 所有方法共用的任务定义、种子初始条件与三段种子、评分与运行记录、仿真后端接口；ASPIRE 适配（补丁、CRX 适配器、逐命令 S0 检查）；DexAgent 适配（原生机器人、只跑 Stage 3、我们构造的输入、带美元上限的模型中转） | 单元与集成测试、变异检查；只在运动学替身和 DexAgent 的 mock LLM 上跑通，没有基线成绩 |
+
+测试：从仓库根目录运行 `envs/asm/bin/python -B -m pytest -p no:cacheprovider tasks/dual_arm_crag_skull/tests core/tests`。`envs/asm` 按 `requirements-cpu.txt` 安装，安装任何包时都要钉住 `numpy==1.26.4`。
+
+**相机内参更正。** 10-14 报告中的 fy 偏大 2.782%。相机只设了焦距，USD 胶片背保持默认 20.955 × 15.2908 mm，而渲染器按 1920×1440 的宽高比使用方像素。实测 render product 投影矩阵给出 fx = fy（agent 2290.6228，腕相机 1649.2485），同帧光学 Z 与射线距离的拟合与之相差 ≤ 5e-7。K 现在采用 OpenCV 像素中心约定（cx = 959.5，cy = 719.5），外参取渲染器 view 矩阵。证据：`reports/2026-10-18_camera_intrinsics.json`。
+
+**smoke 静默失败已修。** 旧版把 `app.close()` 放在 `finally`。在 Isaac Sim 5.1 上中途强制抛异常，进程以退出码 0 结束，日志里没有 traceback，只剩一张 agent.png。新版先写 `smoke_failed.json` 并打印 `SMOKE FAIL`，再以退出码 1 结束；`smoke.json` 最后写入，它存在即表示通过。两种情况都已实测。
+
+**S0 回放旧故事板。** `04_intermediate/choreo.json` 两侧都没有超关节限位。但右臂有 42 帧超过资产声明的关节速度，最坏是 J6 −13.68 rad/s，为上限的 4.36 倍；两臂胶囊体最小间隙 0.128 m。按原速执行会被 S0 拒绝，若要拿它做专家示范需要重新定时。
+
+**真实 GARF 候选的几何筛选（为 S2 实测准备的场景数据）。** 用 `export_points` 重新导出的局部坐标与 10-14 记录的候选逐位一致（重算误差与报告相同）。缓存特征后的 4 个真实候选，每片 128 个采样：seed 44/42/41/43 的最大穿透比例为 11.7% / 14.8% / 25.0% / 94.5%，全部拒绝。作对照的 GT 位姿候选 0 穿透、接触图连通，通过筛选。CPU 用时 27.7 分钟，峰值 RSS 15.8 GB。
+
+**上游问题。** `Arm`/`Gripper` 现在接受路径或已加载的映射，修复了 `teleop.py:40` 传 dict 时的 `TypeError`。small shulker 的 `config.py` 从一个从未存在的模块导入，改为本任务内导入后 5 项失败恢复。`core.robots.teleop`（`CartesianInput`、`KeyboardSubscription`）在全部历史中都不存在，`teleop.py`/`scripted.py` 仍无法导入，需要原作者补回实现。
+
+**独立代码审查。** 第一轮审查给出 Block：6 条 HIGH 都是文档承诺的安全性质在代码里没有落实，另有 13 条 MEDIUM/LOW，全部修复，每条都补了能失败的测试。主要包括：编排器在执行前重新校验并限制规划时长；失败计数不再被 reobserve 清零；合并已验证簇的条件更严格；GARF 客户端能检测并恢复 stdout 失步，超时时杀掉整个进程组；S0 拒绝时给出可执行的制动轨迹；桌面检查纳入夹爪包围盒；校验 anchor 与观测时刻 TCP 的一致性；拒绝重放的动作块；S0 自行限制观测年龄；修正内参的半像素约定；按 fallback 规则回填历史。
+
+**S1 冒烟（合成数据，不是头骨任务）。** 最早两次 torch L40S 作业（20219996、20221507）用的是审查前的代码和更简单的合成数据，已作废。审查修复后的合成数据改为：每个 episode 随机用左臂或右臂，两块外观相同的碎片，分 pick/place/retreat 三段；判据 v3 在运行前写定。v4（maxwell 共享 GPU，确定性 DDIM-16，训练 8000 步）未过 C3、C10：开始搬运前的采样轨迹撞障碍 21.7%（上限 15%），本应静止的手在原始输出里移动 2.0 cm（上限 1 cm，部署时会被覆盖为精确保持）。事后诊断指向确定性采样器。v5 按预登记只改配置（eta 0→1、训练 16000 步、换新数据种子），这两项大幅通过：命中 0，30/30 个 episode 都出现两种绕行模式，静止手 2.7 mm，pick 240/240 次选对碎片。但 GPU5 全程被其他用户占到 99–100%，DDIM-16 单次 315 ms（预算 100 ms），部署路径 395 ms，超过 250 ms 的有效期，所以 C5、C6 不过。与 eta 无关的 DDPM-100 也慢了 5.8 倍，延迟失败很可能来自争用，但判定仍记 FAIL。同一代码包（20 个文件逐一核对 sha256）随后在不争用的 torch L40S 上运行（20232734，运行前另写预登记），十项全过：DDIM-16 中位 52.2 ms，部署路径 53.5 ms，64 个块全部可执行；训练损失曲线与 maxwell 逐值相同，228 个评估数值前 13 位有效数字一致，只有延迟不同，这证实了争用是原因。v4 包在 L40S 上（20226851）同样 C3、C10 不过，数值与 maxwell 相同，说明 v4 的失败属于那套配置，与硬件无关。图像只有 32×32，没有用预训练编码器。
+
+**仍待完成**：S1 在仿真专家示范上的训练、Isaac 中的 S1/S0 执行器与放手后核验器、YAM 型号与标定、关节加速度上限等 S0 参数（`jing.json` 中为 null）、连续碰撞与单臂自碰撞、可打印几何修复、基线实跑所需的 Isaac 后端与 S0 接触阶段（见下一节），以及 GARF 在真实头骨上的精度问题（另一路审计）。
+
+## 基线：DexAgent 与 ASPIRE（2026-10-18，离线接入，尚未实跑）
+
+两个外部方法作为基线接入 `baselines/`，与我们的 S2/S1/S0 使用同一份任务、同一套种子和同一个评分。英文细节见 [`baselines/README.md`](baselines/README.md)、[`baselines/aspire/README.md`](baselines/aspire/README.md) 和 [`baselines/dexagent/README.md`](baselines/dexagent/README.md)。**目前没有任何基线成绩**：两个基线都没有调用过模型 API，ASPIRE 的学习循环没有运行，Isaac 后端也还没写。
+
+- **公共层**：
+  - `AssemblyTask`：来自真实 8 片头骨布局，锚点从目标位姿开始，其余碎片从摆放区开始；
+  - 每个种子的初始条件：平移 ≤ 3 cm、偏航 ≤ 30°，互不重叠；
+  - 种子三段：练习 101–125、挑选 126–130、留出 1–100（暂定）；
+  - `score_assembly`：用仿真真值，相对锚点判定，容差取 place 的 3 mm / 3°，缺失或非有限的位姿判失败；
+  - `RunRecord`：记录费用、调用次数、耗时和仿真次数，按 Wilson 区间统计；
+  - 仿真后端接口 `AssemblyBackend` 与测试用的 `KinematicBackend`；
+  - S0 的 `check_joint_path`：非有限的实测状态直接拒绝，按匀加速度检查加速度，末端必须能在限位内制动。
+  - 协议（种子分段、摆放参数、成功判据）固定为 `jing.json`，每次试验前都从 layout 重建任务核对。
+  - 评分前所有方法统一收尾：两爪张开，静置 1 s。
+  - 留出种子在试验前原子占用，同一变体在同一任务的同一种子上只跑一次；中途崩溃或被中断也记为 `error`，换记录文件也不能重跑。
+  - 公共层做过一次独立审查（4 个高危、6 个中等问题），全部修复并补了测试。
+- **ASPIRE**（NVlabs，Apache-2.0，`fa00f0e`）：
+  - 两处补丁，注册 6 轴 `fanuc_crx` 和我们的 IK `crx_dls`；
+  - 适配器把双 CRX 工作台接到 ASPIRE 的 `EnvironmentAdapter`，每条关节命令先过 S0 检查，被拒时什么都不动；
+  - 冻结的程序在留出种子上评估，产物由 ASPIRE 自己的 RunRecorder 写出。
+  - 已在运动学替身上用手写参考程序端到端跑通，这不是基线成绩。
+- **DexAgent**（MIT，`e29bdad`）：
+  - 保持原样：它自己的双 YAM 臂加 Sharpa 五指手、MuJoCo，只跑 Stage 3；
+  - Stage 1/2 的输入和一段替身视频（没有手，碎片在各自的时间窗内滑到目标位）由我们从任务构造，全部通过 DexAgent 自己的门禁；
+  - 模型调用走我们的中转：Claude Opus 5.5，effort high，保留 thinking，每次调用前按最坏情况检查美元上限，密钥不进入 DexAgent 的进程；
+  - 交付先用新的克隆复核，再把末帧位姿换回世界坐标系，用我们的评分。
+  - DexAgent 的 venv 与克隆位置由 `DEXAGENT_PYTHON`、`DEXAGENT_SOURCE` 指定，默认值记录在 `jing.json`。
+  - **移植到同一套硬件（10-19 用户决定，进行中）**：`--bench crx_yam` 让 DexAgent 在用同一套机器人模型搭的 CRX + YAM MuJoCo 工位上规划（代码补丁 21 个文件），门禁里由 S0 检查每个交付；交付再经 S0 在 `AssemblyBackend` 上执行（`execute`），收尾与 ASPIRE 相同。一条脚本交付（不是 agent 运行）已在 Isaac 上经 S0 跑通：被搬动的橙色碎片最终位姿与 DexAgent 自己的 MuJoCo 结果差 0.49 mm / 0.08°；两边落定的起点一致（≤0.09 mm / 0.17°）。平行夹爪改为沿碎片实际材料的弦对捏后，种子 101 的 7 片都有 20 个以上候选、前两名都能抓起。门禁分诊查出两个导出 bug（锚点写成 released、可视网格不水密，原生工位同样受影响），已修。还剩：放到目标位的脚本交付、更多 MuJoCo↔Isaac 配对探针和 mock 端到端。
+- **会挡住所有方法实跑的问题**：
+  - **ASPIRE 还不能声明接触**：S0 的接触阶段已经实现。动作块声明 `ContactWindow` 后，只在声明的区域里、只对手指、而且限速，手臂才可以比 `table_clearance_m` 更靠近桌面；我们的 S1 动作块按技能自动声明。ASPIRE 适配器还没有传声明，它的程序仍然不能贴桌抓取，正式比较前必须补上。用测试值在种子 101 上检验（`experiments/s0_contact_check.py`）：7 片移动碎片上方竖直、指尖离桌 3 mm 的位姿，不声明全拒，声明后每片至少一只手通过。
+  - **锚点单独放在装配位姿上不稳**：MuJoCo 里 1 秒内倾斜 4.8°（Isaac 的刚体初始休眠，所以看不出来）；另有一片碎片在摆放区落定时倾倒 18°。已决定（10-18）：所有方法的锚点都由夹具固定在目标位姿，写进协议（`baselines.anchor = "fixture"`）。运动学替身、DexAgent 试验和 ASPIRE 任务说明已经按此处理；Isaac 后端还要实现（锚点设为运动学刚体），并且要先让碎片落定、再记录起始状态。
+  - Isaac 后端已有（`sim/backend.py`，检验通过），但还没接到基线上；S0 的真实参数（加速度上限、间隙）仍为 null，YAM 转接板是暂定值。
+- **混杂因素**：原生 DexAgent 用的是另一套机器人和物理引擎（移植版只剩 MuJoCo 规划、Isaac 开环执行这一差别），成功的前提是通过它自己的整套门禁；它自己的放手检查只静置 0.3 s（4 mm / 10°），我们是 1 s（3 mm / 3°）。与我们比较时必须写明这些差别。
+- **安全**：两个基线都会执行模型写的代码，没有沙箱。实跑只能在独立用户或容器中、不存放任何凭据的机器上进行，并且先由用户确认预算。
