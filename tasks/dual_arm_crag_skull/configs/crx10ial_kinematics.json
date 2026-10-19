@@ -1,0 +1,634 @@
+{
+ "schema_version": 1,
+ "model": "FANUC CRX-10iA/L, Isaac Sim 4.5 asset library USD",
+ "provenance": {
+  "arm_usd": "core/assets/robots/fanuc_crx10ial/crx10ial.usd",
+  "arm_usd_sha256": "c27b8cb17303842f0f8ccd2be24b8d1e099c62cdf5c9d987658a3c15c2db068d",
+  "gripper_usd": "core/assets/robots/robotiq_2f85/Robotiq_2F_85_flattened.usd",
+  "gripper_usd_sha256": "8de1c760f36a714550381103c306ecbcb40e4868e4e131097b5435185f170d76",
+  "probe": "fanuc_probe.py dump (Isaac Sim 4.5) from the FANUC CRAG skull demo bundle, 04_intermediate/probe/fanuc_probe.json",
+  "probe_sha256": "cc0829f04807949307aec855d52da2564588342a6d73ce3214007ace23ac4f1a",
+  "probe_vs_usd_joint_frame_max_abs_diff": 0.0,
+  "generated": "2026-10-19",
+  "generator": "python -m tasks.dual_arm_crag_skull.s0.export_kinematics"
+ },
+ "arm": {
+  "dof_names": [
+   "joint_1",
+   "joint_2",
+   "joint_3",
+   "joint_4",
+   "joint_5",
+   "joint_6"
+  ],
+  "limits": [
+   [
+    -3.1416,
+    -3.1416,
+    -4.7124,
+    -3.3161,
+    -3.1416,
+    -3.3161
+   ],
+   [
+    3.1416,
+    3.1416,
+    4.7124,
+    3.3161,
+    3.1416,
+    3.3161
+   ]
+  ],
+  "joints": [
+   {
+    "path": "/World/arm/base_link/joint_1",
+    "type": "PhysicsRevoluteJoint",
+    "body0": [
+     "/World/arm/base_link"
+    ],
+    "body1": [
+     "/World/arm/link_1"
+    ],
+    "pos0": [
+     0.0,
+     0.0,
+     0.24500000476837158
+    ],
+    "rot0": [
+     0.0,
+     -0.7071067690849304,
+     0.0,
+     0.7071067690849304
+    ],
+    "pos1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "rot1": [
+     0.0,
+     -0.7071067690849304,
+     0.0,
+     0.7071067690849304
+    ],
+    "axis": "X",
+    "lower": -180.0,
+    "upper": 180.0
+   },
+   {
+    "path": "/World/arm/link_1/joint_2",
+    "type": "PhysicsRevoluteJoint",
+    "body0": [
+     "/World/arm/link_1"
+    ],
+    "body1": [
+     "/World/arm/link_2"
+    ],
+    "pos0": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "rot0": [
+     0.0,
+     0.0,
+     0.7071067690849304,
+     0.7071067690849304
+    ],
+    "pos1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "rot1": [
+     0.0,
+     0.0,
+     0.7071067690849304,
+     0.7071067690849304
+    ],
+    "axis": "X",
+    "lower": -180.0,
+    "upper": 180.0
+   },
+   {
+    "path": "/World/arm/link_2/joint_3",
+    "type": "PhysicsRevoluteJoint",
+    "body0": [
+     "/World/arm/link_2"
+    ],
+    "body1": [
+     "/World/arm/link_3"
+    ],
+    "pos0": [
+     0.0,
+     0.0,
+     0.7099999785423279
+    ],
+    "rot0": [
+     0.0,
+     0.0,
+     -0.7071067690849304,
+     0.7071067690849304
+    ],
+    "pos1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "rot1": [
+     0.0,
+     0.0,
+     -0.7071067690849304,
+     0.7071067690849304
+    ],
+    "axis": "X",
+    "lower": -270.0,
+    "upper": 270.0
+   },
+   {
+    "path": "/World/arm/link_3/joint_4",
+    "type": "PhysicsRevoluteJoint",
+    "body0": [
+     "/World/arm/link_3"
+    ],
+    "body1": [
+     "/World/arm/link_4"
+    ],
+    "pos0": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "rot0": [
+     0.0,
+     1.0,
+     0.0,
+     -4.371138828673793e-08
+    ],
+    "pos1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "rot1": [
+     0.0,
+     1.0,
+     0.0,
+     -4.371138828673793e-08
+    ],
+    "axis": "X",
+    "lower": -190.0,
+    "upper": 190.0
+   },
+   {
+    "path": "/World/arm/link_4/joint_5",
+    "type": "PhysicsRevoluteJoint",
+    "body0": [
+     "/World/arm/link_4"
+    ],
+    "body1": [
+     "/World/arm/link_5"
+    ],
+    "pos0": [
+     0.5400000214576721,
+     -0.15000000596046448,
+     0.0
+    ],
+    "rot0": [
+     0.0,
+     0.0,
+     -0.7071067690849304,
+     0.7071067690849304
+    ],
+    "pos1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "rot1": [
+     0.0,
+     0.0,
+     -0.7071067690849304,
+     0.7071067690849304
+    ],
+    "axis": "X",
+    "lower": -180.0,
+    "upper": 180.0
+   },
+   {
+    "path": "/World/arm/link_5/joint_6",
+    "type": "PhysicsRevoluteJoint",
+    "body0": [
+     "/World/arm/link_5"
+    ],
+    "body1": [
+     "/World/arm/link_6"
+    ],
+    "pos0": [
+     0.1599999964237213,
+     0.0,
+     0.0
+    ],
+    "rot0": [
+     0.0,
+     1.0,
+     0.0,
+     -4.371138828673793e-08
+    ],
+    "pos1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "rot1": [
+     0.0,
+     1.0,
+     0.0,
+     -4.371138828673793e-08
+    ],
+    "axis": "X",
+    "lower": -190.0,
+    "upper": 190.0
+   },
+   {
+    "path": "/World/arm/link_6/joint_6_flange",
+    "type": "PhysicsFixedJoint",
+    "body0": [
+     "/World/arm/link_6"
+    ],
+    "body1": [
+     "/World/arm/flange"
+    ],
+    "pos0": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "rot0": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "pos1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "rot1": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   }
+  ]
+ },
+ "max_joint_velocity_rad_s": [
+  2.0943951023931953,
+  2.0943951023931953,
+  3.141592653589793,
+  3.141592653589793,
+  3.141592653589793,
+  3.141592653589793
+ ],
+ "max_joint_velocity_source": "USD physxJoint:maxJointVelocity (deg/s); asset-declared, not hardware-verified",
+ "max_joint_acceleration_rad_s2": null,
+ "max_joint_acceleration_note": "not declared by the asset or the public datasheet; must be measured",
+ "link_capsules": {
+  "base_link": {
+   "p0": [
+    -0.01649071153980843,
+    -1.3010426069826053e-18,
+    0.04250000044703482
+   ],
+   "p1": [
+    0.0010517540184098264,
+    -1.3010426069826053e-18,
+    0.04250000044703482
+   ],
+   "radius": 0.1040444278241111,
+   "vertices": 1554,
+   "source": "usd collision mesh"
+  },
+  "link_1": {
+   "p0": [
+    -0.00043538495450305345,
+    -0.016060766397066713,
+    -0.07055836249581265
+   ],
+   "p1": [
+    0.0016134522785541806,
+    -0.021169235253015166,
+    0.00022401904062728864
+   ],
+   "radius": 0.12676528912303586,
+   "vertices": 10482,
+   "source": "usd collision mesh"
+  },
+  "link_2": {
+   "p0": [
+    1.5178830414797062e-18,
+    -0.1872047744691372,
+    0.031208216963407143
+   ],
+   "p1": [
+    1.5178830414797062e-18,
+    -0.1872047744691372,
+    0.7119156718254089
+   ],
+   "radius": 0.12904910865015584,
+   "vertices": 10878,
+   "source": "usd collision mesh"
+  },
+  "link_3": {
+   "p0": [
+    -0.00021309383993487266,
+    -0.005555901676416397,
+    -2.212822437287895e-06
+   ],
+   "p1": [
+    0.07718300494864087,
+    -0.005555901676416397,
+    -2.212822437287895e-06
+   ],
+   "radius": 0.09552273089879466,
+   "vertices": 20286,
+   "source": "usd collision mesh"
+  },
+  "link_4": {
+   "p0": [
+    0.20659893013302316,
+    -0.0029506441205739958,
+    1.2852251530008022e-07
+   ],
+   "p1": [
+    0.5402256832381189,
+    -0.0029506441205739958,
+    1.2852251530008022e-07
+   ],
+   "radius": 0.07642846611178739,
+   "vertices": 8898,
+   "source": "usd collision mesh"
+  },
+  "link_5": {
+   "p0": [
+    0.04753104066264278,
+    0.012084496229510562,
+    -0.008529210251174835
+   ],
+   "p1": [
+    0.005407628019102677,
+    0.023787000723984153,
+    -0.0008352553708085963
+   ],
+   "radius": 0.07997586564824173,
+   "vertices": 18486,
+   "source": "usd collision mesh"
+  },
+  "link_6": {
+   "p0": [
+    -0.03119077979886187,
+    0.00034978038423514105,
+    0.0007908387568114181
+   ],
+   "p1": [
+    -0.03145451612396688,
+    -0.0001527819421445163,
+    -0.0003454335538369612
+   ],
+   "radius": 0.053805772031022915,
+   "vertices": 2862,
+   "source": "usd collision mesh"
+  }
+ },
+ "robotiq_proxy_capsule": {
+  "p0": [
+   0.0668594301991256,
+   -5.0663032796771645e-14,
+   9.846290449644357e-15
+  ],
+  "p1": [
+   0.09708406879255306,
+   -5.0663032796771645e-14,
+   9.846290449644357e-15
+  ],
+  "radius": 0.0770955597521592,
+  "vertices": 42997,
+  "source": "robotiq 2F-85 collision meshes, authored open pose"
+ },
+ "robotiq_proxy_tool_box": {
+  "min": [
+   -0.0035984339391893706,
+   -0.07619860539390345,
+   -0.03750000149010629
+  ],
+  "max": [
+   0.16282772154482722,
+   0.07619860539380212,
+   0.03750000149012598
+  ],
+  "parts": {
+   "body": {
+    "min": [
+     -0.0035984339391893706,
+     -0.04244335368280748,
+     -0.03750000149010629
+    ],
+    "max": [
+     0.08975810788440641,
+     0.04244334995741507,
+     0.03750000149012598
+    ],
+    "links": [
+     "base_link"
+    ]
+   },
+   "fingers": {
+    "min": [
+     0.04464621140153061,
+     -0.07619860539390345,
+     -0.01750000007451588
+    ],
+    "max": [
+     0.16282772154482722,
+     0.07619860539380212,
+     0.017500000074515618
+    ],
+    "links": [
+     "left_inner_finger",
+     "left_inner_knuckle",
+     "left_outer_finger",
+     "left_outer_knuckle",
+     "right_inner_finger",
+     "right_inner_knuckle",
+     "right_outer_finger",
+     "right_outer_knuckle"
+    ]
+   }
+  },
+  "open_pose_min": [
+   -0.0035984339391893706,
+   -0.07619860539390347,
+   -0.03750000149010629
+  ],
+  "open_pose_max": [
+   0.14909991890483235,
+   0.07619860539380213,
+   0.03750000149012598
+  ],
+  "finger_angles_rad": [
+   0.0,
+   0.8
+  ],
+  "samples": 81,
+  "vertices": 42997,
+  "open_pose_model_vs_usd_max_abs_m": 2.7755575615628914e-17,
+  "frame": "gripper base_link, mounted on the flange with identity local poses",
+  "source": "robotiq 2F-85 collision meshes swept over the finger stroke with core Gripper kinematics (probe)"
+ },
+ "fk_check": {
+  "q": [
+   0.3,
+   -0.4,
+   0.5,
+   0.2,
+   0.6,
+   0.1
+  ],
+  "links": {
+   "/World/arm/base_link": {
+    "pos": [
+     -0.0,
+     0.0,
+     -0.0
+    ],
+    "quat_wxyz": [
+     1.0,
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "/World/arm/base": {
+    "pos": [
+     0.0,
+     0.0,
+     0.245
+    ],
+    "quat_wxyz": [
+     1.0,
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "/World/arm/link_1": {
+    "pos": [
+     0.0,
+     -0.0,
+     0.245
+    ],
+    "quat_wxyz": [
+     0.9888,
+     0.0,
+     0.0,
+     0.1494
+    ]
+   },
+   "/World/arm/link_2": {
+    "pos": [
+     0.0,
+     0.0,
+     0.245
+    ],
+    "quat_wxyz": [
+     0.9691,
+     0.0297,
+     -0.1964,
+     0.1465
+    ]
+   },
+   "/World/arm/link_3": {
+    "pos": [
+     -0.2641,
+     -0.0817,
+     0.899
+    ],
+    "quat_wxyz": [
+     0.8903,
+     0.065,
+     -0.4301,
+     0.1346
+    ]
+   },
+   "/World/arm/link_4": {
+    "pos": [
+     -0.2641,
+     -0.0817,
+     0.899
+    ],
+    "quat_wxyz": [
+     0.8924,
+     -0.0242,
+     -0.4414,
+     0.0909
+    ]
+   },
+   "/World/arm/link_5": {
+    "pos": [
+     0.0777,
+     -0.1298,
+     1.3405
+    ],
+    "quat_wxyz": [
+     0.7221,
+     0.0037,
+     -0.6854,
+     0.094
+    ]
+   },
+   "/World/arm/link_6": {
+    "pos": [
+     0.0846,
+     -0.1089,
+     1.4989
+    ],
+    "quat_wxyz": [
+     0.7214,
+     -0.0323,
+     -0.6892,
+     0.0597
+    ]
+   },
+   "/World/arm/flange": {
+    "pos": [
+     0.0846,
+     -0.1089,
+     1.4989
+    ],
+    "quat_wxyz": [
+     0.7214,
+     -0.0323,
+     -0.6892,
+     0.0597
+    ]
+   },
+   "/World/arm/tool0": {
+    "pos": [
+     0.0846,
+     -0.1089,
+     1.4989
+    ],
+    "quat_wxyz": [
+     -0.0193,
+     0.0228,
+     0.0651,
+     0.9974
+    ]
+   }
+  },
+  "note": "Isaac Sim world poses with the arm root at the origin, rounded by the probe to 1e-4"
+ },
+ "sim_fidelity_warning": "USD angular drives declare stiffness 1e+15 and damping 1e+14 per degree on every arm joint. With zero velocity targets the damping makes PhysX follow position targets like a first-order lag of damping/stiffness = 0.1 s (in Isaac a 1.5 rad/s move ran 50 mm behind), so a simulator backend must feed the commanded velocity forward, as sim/backend.py does. Simulated tracking error and latency are not evidence about the real FANUC servo."
+}

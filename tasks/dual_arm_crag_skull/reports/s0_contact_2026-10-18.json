@@ -1,0 +1,305 @@
+{
+ "task_id": "view_gt-78b9204e3da1-anchor-fragment_45266904a743c03b",
+ "seed": 101,
+ "fingertip_height_m": 0.003,
+ "fingertip_reach_past_tcp_m": 0.02783,
+ "limits": "TEST values, configs/jing.json has none",
+ "contact_region_radius_m": 0.12,
+ "fragments": [
+  {
+   "fragment_id": "fragment_038755611176a8c9",
+   "box_centre_m": [
+    -0.4385,
+    -0.1095,
+    0.77
+   ],
+   "height_m": 0.04,
+   "arms": {
+    "left": [
+     {
+      "yaw_deg": 0,
+      "without_contact": "left:tool box is 0.003 m from the table at t=1.017 s (needs 0.01 m; no contact declared for left)",
+      "with_contact": "accepted"
+     }
+    ],
+    "right": [
+     {
+      "yaw_deg": 30,
+      "without_contact": "right:tool box is 0.003 m from the table at t=1.017 s (needs 0.01 m; no contact declared for right)",
+      "with_contact": "accepted"
+     }
+    ]
+   }
+  },
+  {
+   "fragment_id": "fragment_36d5ca6a07ba2b2f",
+   "box_centre_m": [
+    -0.4263,
+    -0.0018,
+    0.766
+   ],
+   "height_m": 0.032,
+   "arms": {
+    "left": [
+     {
+      "yaw_deg": 0,
+      "without_contact": "left:tool box is 0.003 m from the table at t=1.017 s (needs 0.01 m; no contact declared for left)",
+      "with_contact": "accepted"
+     }
+    ],
+    "right": [
+     {
+      "yaw_deg": 30,
+      "without_contact": "arm-arm clearance -0.037 m < 0.02 m between left:tool and right:link_5 at t=1.017 s",
+      "with_contact": "arm-arm clearance -0.037 m < 0.02 m between left:tool and right:link_5 at t=1.017 s"
+     },
+     {
+      "yaw_deg": 60,
+      "without_contact": "arm-arm clearance -0.037 m < 0.02 m between left:tool and right:link_5 at t=1.017 s",
+      "with_contact": "arm-arm clearance -0.037 m < 0.02 m between left:tool and right:link_5 at t=1.017 s"
+     },
+     {
+      "yaw_deg": 90,
+      "without_contact": "arm-arm clearance -0.037 m < 0.02 m between left:tool and right:link_5 at t=1.017 s",
+      "with_contact": "arm-arm clearance -0.037 m < 0.02 m between left:tool and right:link_5 at t=1.017 s"
+     },
+     {
+      "yaw_deg": 120,
+      "without_contact": "arm-arm clearance -0.037 m < 0.02 m between left:tool and right:link_5 at t=1.017 s",
+      "with_contact": "arm-arm clearance -0.037 m < 0.02 m between left:tool and right:link_5 at t=1.017 s"
+     },
+     {
+      "yaw_deg": 150,
+      "without_contact": "arm-arm clearance -0.037 m < 0.02 m between left:tool and right:link_5 at t=1.017 s",
+      "with_contact": "arm-arm clearance -0.037 m < 0.02 m between left:tool and right:link_5 at t=1.017 s"
+     }
+    ]
+   }
+  },
+  {
+   "fragment_id": "fragment_3b11f6f1187b8b2b",
+   "box_centre_m": [
+    -0.4384,
+    0.0851,
+    0.774
+   ],
+   "height_m": 0.048,
+   "arms": {
+    "left": [
+     {
+      "yaw_deg": 0,
+      "without_contact": "left:tool box is 0.003 m from the table at t=1.017 s (needs 0.01 m; no contact declared for left)",
+      "with_contact": "accepted"
+     }
+    ],
+    "right": [
+     {
+      "yaw_deg": 30,
+      "without_contact": "arm-arm clearance -0.030 m < 0.02 m between left:tool and right:link_4 at t=1.017 s",
+      "with_contact": "arm-arm clearance -0.030 m < 0.02 m between left:tool and right:link_4 at t=1.017 s"
+     },
+     {
+      "yaw_deg": 60,
+      "without_contact": "arm-arm clearance -0.030 m < 0.02 m between left:tool and right:link_4 at t=1.017 s",
+      "with_contact": "arm-arm clearance -0.030 m < 0.02 m between left:tool and right:link_4 at t=1.017 s"
+     },
+     {
+      "yaw_deg": 90,
+      "without_contact": "arm-arm clearance -0.030 m < 0.02 m between left:tool and right:link_4 at t=1.017 s",
+      "with_contact": "arm-arm clearance -0.030 m < 0.02 m between left:tool and right:link_4 at t=1.017 s"
+     },
+     {
+      "yaw_deg": 120,
+      "without_contact": "arm-arm clearance -0.030 m < 0.02 m between left:tool and right:link_4 at t=1.017 s",
+      "with_contact": "arm-arm clearance -0.030 m < 0.02 m between left:tool and right:link_4 at t=1.017 s"
+     },
+     {
+      "yaw_deg": 150,
+      "without_contact": "arm-arm clearance -0.030 m < 0.02 m between left:tool and right:link_4 at t=1.017 s",
+      "with_contact": "arm-arm clearance -0.030 m < 0.02 m between left:tool and right:link_4 at t=1.017 s"
+     }
+    ]
+   }
+  },
+  {
+   "fragment_id": "fragment_3c8c3298c2b4e704",
+   "box_centre_m": [
+    -0.4339,
+    0.1759,
+    0.77
+   ],
+   "height_m": 0.04,
+   "arms": {
+    "left": [
+     {
+      "yaw_deg": 0,
+      "without_contact": "left:tool box is 0.003 m from the table at t=1.017 s (needs 0.01 m; no contact declared for left)",
+      "with_contact": "accepted"
+     }
+    ],
+    "right": [
+     {
+      "yaw_deg": 30,
+      "without_contact": "arm-arm clearance -0.043 m < 0.02 m between left:tool and right:link_4 at t=1.017 s",
+      "with_contact": "arm-arm clearance -0.043 m < 0.02 m between left:tool and right:link_4 at t=1.017 s"
+     },
+     {
+      "yaw_deg": 60,
+      "without_contact": "arm-arm clearance -0.043 m < 0.02 m between left:tool and right:link_4 at t=1.017 s",
+      "with_contact": "arm-arm clearance -0.043 m < 0.02 m between left:tool and right:link_4 at t=1.017 s"
+     },
+     {
+      "yaw_deg": 90,
+      "without_contact": "arm-arm clearance -0.043 m < 0.02 m between left:tool and right:link_4 at t=1.017 s",
+      "with_contact": "arm-arm clearance -0.043 m < 0.02 m between left:tool and right:link_4 at t=1.017 s"
+     },
+     {
+      "yaw_deg": 120,
+      "without_contact": "arm-arm clearance -0.043 m < 0.02 m between left:tool and right:link_4 at t=1.017 s",
+      "with_contact": "arm-arm clearance -0.043 m < 0.02 m between left:tool and right:link_4 at t=1.017 s"
+     },
+     {
+      "yaw_deg": 150,
+      "without_contact": "arm-arm clearance -0.043 m < 0.02 m between left:tool and right:link_4 at t=1.017 s",
+      "with_contact": "arm-arm clearance -0.043 m < 0.02 m between left:tool and right:link_4 at t=1.017 s"
+     }
+    ]
+   }
+  },
+  {
+   "fragment_id": "fragment_48c51df7e1148345",
+   "box_centre_m": [
+    0.4372,
+    -0.0138,
+    0.77
+   ],
+   "height_m": 0.04,
+   "arms": {
+    "left": [
+     {
+      "yaw_deg": 0,
+      "without_contact": "arm-arm clearance -0.038 m < 0.02 m between left:link_5 and right:tool at t=1.017 s",
+      "with_contact": "arm-arm clearance -0.038 m < 0.02 m between left:link_5 and right:tool at t=1.017 s"
+     },
+     {
+      "yaw_deg": 30,
+      "without_contact": "arm-arm clearance -0.038 m < 0.02 m between left:link_5 and right:tool at t=1.017 s",
+      "with_contact": "arm-arm clearance -0.038 m < 0.02 m between left:link_5 and right:tool at t=1.017 s"
+     },
+     {
+      "yaw_deg": 60,
+      "without_contact": "arm-arm clearance -0.038 m < 0.02 m between left:link_5 and right:tool at t=1.017 s",
+      "with_contact": "arm-arm clearance -0.038 m < 0.02 m between left:link_5 and right:tool at t=1.017 s"
+     },
+     {
+      "yaw_deg": 90,
+      "without_contact": "arm-arm clearance -0.038 m < 0.02 m between left:link_5 and right:tool at t=1.017 s",
+      "with_contact": "arm-arm clearance -0.038 m < 0.02 m between left:link_5 and right:tool at t=1.017 s"
+     },
+     {
+      "yaw_deg": 120,
+      "without_contact": "arm-arm clearance -0.038 m < 0.02 m between left:link_5 and right:tool at t=1.017 s",
+      "with_contact": "arm-arm clearance -0.038 m < 0.02 m between left:link_5 and right:tool at t=1.017 s"
+     },
+     {
+      "yaw_deg": 150,
+      "without_contact": "arm-arm clearance -0.038 m < 0.02 m between left:link_5 and right:tool at t=1.017 s",
+      "with_contact": "arm-arm clearance -0.038 m < 0.02 m between left:link_5 and right:tool at t=1.017 s"
+     }
+    ],
+    "right": [
+     {
+      "yaw_deg": 30,
+      "without_contact": "right:tool box is 0.003 m from the table at t=1.017 s (needs 0.01 m; no contact declared for right)",
+      "with_contact": "accepted"
+     }
+    ]
+   }
+  },
+  {
+   "fragment_id": "fragment_b4a2653675d3ae95",
+   "box_centre_m": [
+    0.4065,
+    0.0659,
+    0.774
+   ],
+   "height_m": 0.048,
+   "arms": {
+    "left": [
+     {
+      "yaw_deg": 0,
+      "without_contact": "arm-arm clearance -0.008 m < 0.02 m between left:link_5 and right:tool at t=1.017 s",
+      "with_contact": "arm-arm clearance -0.008 m < 0.02 m between left:link_5 and right:tool at t=1.017 s"
+     },
+     {
+      "yaw_deg": 30,
+      "without_contact": "arm-arm clearance -0.008 m < 0.02 m between left:link_5 and right:tool at t=1.017 s",
+      "with_contact": "arm-arm clearance -0.008 m < 0.02 m between left:link_5 and right:tool at t=1.017 s"
+     },
+     {
+      "yaw_deg": 60,
+      "without_contact": "arm-arm clearance -0.008 m < 0.02 m between left:link_5 and right:tool at t=1.017 s",
+      "with_contact": "arm-arm clearance -0.008 m < 0.02 m between left:link_5 and right:tool at t=1.017 s"
+     },
+     {
+      "yaw_deg": 90,
+      "without_contact": "arm-arm clearance -0.008 m < 0.02 m between left:link_5 and right:tool at t=1.017 s",
+      "with_contact": "arm-arm clearance -0.008 m < 0.02 m between left:link_5 and right:tool at t=1.017 s"
+     },
+     {
+      "yaw_deg": 120,
+      "without_contact": "arm-arm clearance -0.008 m < 0.02 m between left:link_5 and right:tool at t=1.017 s",
+      "with_contact": "arm-arm clearance -0.008 m < 0.02 m between left:link_5 and right:tool at t=1.017 s"
+     },
+     {
+      "yaw_deg": 150,
+      "without_contact": "arm-arm clearance -0.008 m < 0.02 m between left:link_5 and right:tool at t=1.017 s",
+      "with_contact": "arm-arm clearance -0.008 m < 0.02 m between left:link_5 and right:tool at t=1.017 s"
+     }
+    ],
+    "right": [
+     {
+      "yaw_deg": 30,
+      "without_contact": "right:tool box is 0.003 m from the table at t=1.017 s (needs 0.01 m; no contact declared for right)",
+      "with_contact": "accepted"
+     }
+    ]
+   }
+  },
+  {
+   "fragment_id": "fragment_b99c0e66e050d6ef",
+   "box_centre_m": [
+    0.4019,
+    0.1955,
+    0.77
+   ],
+   "height_m": 0.04,
+   "arms": {
+    "left": [
+     {
+      "yaw_deg": 0,
+      "without_contact": "left:tool box is 0.003 m from the table at t=1.017 s (needs 0.01 m; no contact declared for left)",
+      "with_contact": "accepted"
+     }
+    ],
+    "right": [
+     {
+      "yaw_deg": 30,
+      "without_contact": "right:tool box is 0.003 m from the table at t=1.017 s (needs 0.01 m; no contact declared for right)",
+      "with_contact": "accepted"
+     }
+    ]
+   }
+  }
+ ],
+ "accepted_with_contact": [
+  "fragment_038755611176a8c9",
+  "fragment_36d5ca6a07ba2b2f",
+  "fragment_3b11f6f1187b8b2b",
+  "fragment_3c8c3298c2b4e704",
+  "fragment_48c51df7e1148345",
+  "fragment_b4a2653675d3ae95",
+  "fragment_b99c0e66e050d6ef"
+ ],
+ "moving_fragments": 7
+}
