@@ -1,0 +1,41 @@
+{
+ "repository": "https://github.com/i2rt-robotics/i2rt",
+ "commit": "120c3c81400171174604e503943f8d1ebc891058",
+ "release": "v1.3.6 (2026-09-17)",
+ "license": "MIT",
+ "retrieved": "2026-10-18",
+ "product": "I2RT Linear Gripper, \"the Linear 4310 gripper in Github Readme\" (https://i2rt.com/products/yam-gripper-1)",
+ "note": "Unmodified upstream files. The meshes are the decimated ones of the standalone gripper model.",
+ "files": {
+  "linear_4310.xml": {
+   "upstream_path": "i2rt/robot_models/gripper/linear_4310/linear_4310.xml",
+   "bytes": 2401,
+   "sha256": "b30cf347d35b72dfc0e1c32d57f1c868e4d79a02d916d6dc5b48222a80544c64",
+   "git_blob": "0afe9f29b8875708b0bbf705f0489f8b0f81e02a"
+  },
+  "assets/gripper.stl": {
+   "upstream_path": "i2rt/robot_models/gripper/linear_4310/assets/gripper.stl",
+   "bytes": 400084,
+   "sha256": "d949c401186197d842ca8f9b23bfcbf24bed8461b421df06093c65e4ead21f5d",
+   "git_blob": "4eb296bec95a128de5dc3d52c3750db7b01bb956"
+  },
+  "assets/tip_left.stl": {
+   "upstream_path": "i2rt/robot_models/gripper/linear_4310/assets/tip_left.stl",
+   "bytes": 400084,
+   "sha256": "03d94f53d7b5e9e1871ea6f3925c68d7a2f894b08e0c575fa0b9ed4024684ff7",
+   "git_blob": "745e8b6f73b87c67918fefde86557b5c3548ebaa"
+  },
+  "assets/tip_right.stl": {
+   "upstream_path": "i2rt/robot_models/gripper/linear_4310/assets/tip_right.stl",
+   "bytes": 400084,
+   "sha256": "8f620aae9c15e00e2ea4e5bf5e9a49e7edb2d23128b8955cfacc0da8da45c72f",
+   "git_blob": "0ec1224df779136c1b5bfb53af1267f45e832f12"
+  },
+  "LICENSE": {
+   "upstream_path": "LICENSE",
+   "bytes": 1073,
+   "sha256": "7cd0a0224a287ebd6c45703eb6623d264c7810f8958d65de8f99e87ccd9f4891",
+   "git_blob": "89d5ec310495d20a13bf27a322801883902b1eee"
+  }
+ }
+}
