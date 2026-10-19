@@ -164,10 +164,14 @@ review's surviving mutations and the new behaviour, 54 mutations are now caught.
 - **S0 values and the gripper are provisional.** `configs/jing.json` has no S0 values yet (acceleration limit,
   clearances, contact phase), so every record is `test_only`; the YAM adapter plate and its finger drive (20 N,
   0.1 m/s) are provisional.
-- **No protective stop on Isaac.** The CRX drives push without a force limit: a held fragment lowered onto the fixed
-  anchor jammed, the joints oscillated at 1–5 rad/s, and on release joint 5 reached 16.7 rad/s. The real CRX would
-  stop on the collision. One stop rule (tracking error or joint effort) must hold for every method before physics
-  runs.
+- **Protective stop (done 2026-10-19, user decision).** The CRX drives push without a force limit, so a held fragment
+  lowered onto the fixed anchor jammed (joints oscillating at 1-5 rad/s, joint 5 at 16.7 rad/s on release) where the
+  real CRX would stop. The Isaac backend now applies one rule for every method each control period
+  (`configs/jing.json` `s0.protective_stop`, frozen; `backend.StopMonitor`): a joint more than 10 mrad from the target
+  it was commanded to for 3 periods in a row, or faster than 1.1 x its maximum speed, raises `ProtectiveStop`; the
+  trial ends there, unscored, recorded as `protective_stop` (a failure) with the periods before it. Normal
+  pick-and-place on Isaac lags 0.32 mrad at most (the DexAgent orange delivery with its set-down; ASPIRE's reference
+  0.18; a free 1.2 rad/s ramp 0.07); the jam reached 279 mrad, and the rule would have stopped it 0.3 s after contact.
 - **DexAgent's port is not finished** (above): its tool library on the bench, the MuJoCo <-> Isaac calibration, a
   mock end-to-end trial.
 - **One step budget** for every method (ASPIRE's default 18,000 control steps is provisional).

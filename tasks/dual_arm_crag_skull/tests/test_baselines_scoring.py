@@ -191,6 +191,18 @@ def seeded_records(task, seeds, *, success=True, method='aspire', variant='v1', 
     return out
 
 
+def test_a_protective_stop_is_a_recorded_failure(task, tmp_path):
+    """configs/jing.json s0.protective_stop: the trial ends where the robot stopped, unscored, and counts as a
+    failure in every summary."""
+    stopped = record(task_id=task.task_id, status='protective_stop')
+    assert not stopped.success and stopped.score is None
+    finished = record(task_id=task.task_id, score=score_assembly(task, task.goal_poses(), settled=True))
+    append_records(tmp_path / 'runs.jsonl', [stopped, finished])
+    loaded = [json.loads(line) for line in (tmp_path / 'runs.jsonl').read_text().splitlines()]
+    (row,) = summarize(loaded)
+    assert (row['runs'], row['successes'], row['statuses']) == (2, 1, {'protective_stop': 1, 'completed': 1})
+
+
 def test_summary_groups_methods_variants_tasks_backends_and_splits(task, tmp_path):
     good = score_assembly(task, task.goal_poses(), settled=True)
     bad = score_assembly(task, task.initial_poses(), settled=True)

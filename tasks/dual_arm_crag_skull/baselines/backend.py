@@ -24,6 +24,7 @@ reported as baseline performance.
 from __future__ import annotations
 
 import numbers
+from collections import deque
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Mapping, Protocol, runtime_checkable
@@ -154,6 +155,73 @@ def checked_targets(model, width_range_m, joints, widths):
             raise ValueError(f'{arm}: width {widths[arm]} outside [{low}, {high}] m')
         targets[arm] = target
     return targets
+
+
+class ProtectiveStop(RuntimeError):
+    """A backend stopped the robot, as the real CRX's contact stop would (StopMonitor): the trial ends there and counts
+    as a failure (RunRecord status `protective_stop`); `log` holds the control periods that led to it."""
+
+    def __init__(self, reason, log):
+        super().__init__(reason)
+        self.reason, self.log = reason, tuple(log)
+
+
+@dataclass(frozen=True)
+class StopRule:
+    """configs/jing.json s0.protective_stop, the same for every method: a joint whose measured position stays more than
+    `tracking_error_rad` from the target it was commanded to for `periods` control periods in a row, or that moves
+    faster than `speed_factor` times its maximum speed, stops the robot. Frozen 2026-10-19 from normal pick-and-place
+    on Isaac (0.32 mrad at most; 279 mrad when a held fragment jammed on the anchor)."""
+
+    tracking_error_rad: float
+    periods: int
+    speed_factor: float
+
+    def __post_init__(self):
+        error, periods, factor = self.tracking_error_rad, self.periods, self.speed_factor
+        if isinstance(error, bool) or not isinstance(error, numbers.Real) or not (np.isfinite(error) and error > 0):
+            raise ValueError('tracking_error_rad must be a positive, finite angle')
+        if isinstance(periods, bool) or not isinstance(periods, int) or periods < 1:
+            raise ValueError('periods must be a positive integer')
+        if isinstance(factor, bool) or not isinstance(factor, numbers.Real) or not (np.isfinite(factor) and factor > 1):
+            raise ValueError('speed_factor must be finite and above 1')
+
+    @classmethod
+    def from_config(cls, config):
+        rule = config['s0']['protective_stop']
+        return cls(rule['tracking_error_rad'], rule['periods'], rule['speed_factor'])
+
+
+class StopMonitor:
+    """A StopRule applied period by period: `check(targets, state)` after each control period (the joints commanded for
+    its end, the snapshot measured then) raises ProtectiveStop; the last `history` periods are kept for its log."""
+
+    def __init__(self, rule, max_joint_velocity_rad_s, history=60):
+        self.rule = rule
+        self.max_speed = {arm: np.asarray(max_joint_velocity_rad_s[arm], dtype=float) for arm in ARMS}
+        self.over = {arm: 0 for arm in ARMS}
+        self.log = deque(maxlen=int(history))
+
+    def check(self, targets, state):
+        errors = {arm: np.abs(np.asarray(targets[arm], dtype=float) - np.asarray(state.joints[arm], dtype=float))
+                  for arm in ARMS}
+        speeds = {arm: np.abs(np.asarray(state.joint_velocities[arm], dtype=float)) for arm in ARMS}
+        self.log.append({'time_s': state.time_s,
+                         **{arm: {'tracking_error_rad': errors[arm].tolist(), 'speed_rad_s': speeds[arm].tolist()}
+                            for arm in ARMS}})
+        for arm in ARMS:
+            ratio = speeds[arm] / self.max_speed[arm]
+            joint = int(np.argmax(ratio))
+            if ratio[joint] > self.rule.speed_factor:
+                raise ProtectiveStop(f'{arm} joint_{joint + 1} moved at {speeds[arm][joint]:.2f} rad/s, over '
+                                     f'{self.rule.speed_factor:g} x its {self.max_speed[arm][joint]:.2f} rad/s maximum',
+                                     self.log)
+            joint = int(np.argmax(errors[arm]))
+            self.over[arm] = self.over[arm] + 1 if errors[arm][joint] > self.rule.tracking_error_rad else 0
+            if self.over[arm] >= self.rule.periods:
+                raise ProtectiveStop(f'{arm} joint_{joint + 1} lagged its target by {1000 * errors[arm][joint]:.1f} mrad '
+                                     f'for {self.rule.periods} control periods (the limit is '
+                                     f'{1000 * self.rule.tracking_error_rad:g} mrad)', self.log)
 
 
 @runtime_checkable

@@ -8,7 +8,7 @@ import pytest
 from scipy.spatial.transform import Rotation
 
 from core.robots.linear_4310 import load_linear_4310
-from tasks.dual_arm_crag_skull.baselines.backend import KinematicBackend
+from tasks.dual_arm_crag_skull.baselines.backend import KinematicBackend, ProtectiveStop
 from tasks.dual_arm_crag_skull.baselines.dexagent import executor
 from tasks.dual_arm_crag_skull.baselines.task import task_from_layout
 from tasks.dual_arm_crag_skull.contracts.actions import ARMS
@@ -351,6 +351,35 @@ def test_a_steady_acceleration_across_chunk_boundaries_reads_as_it_does_in_one_p
     assert result.status == status, result.reason
     if status == 'rejected':
         assert 'acceleration exceeded on joint_6' in result.reason
+
+
+class Stopping(KinematicBackend):
+    """The robot stops (ProtectiveStop) at its `at`-th step, as the Isaac backend's StopMonitor would stop it."""
+
+    def __init__(self, at):
+        super().__init__(MODEL, home_joints={arm: HOME for arm in ARMS}, width_range_m=WIDTHS, control_hz=60)
+        self.at, self.count = at, 0
+
+    def step(self, joints, widths):
+        self.count += 1
+        if self.count == self.at:
+            raise ProtectiveStop('left joint_2 lagged its target by 20.0 mrad for 3 control periods',
+                                 [{'time_s': self.time_s}])
+        return super().step(joints, widths)
+
+
+@pytest.mark.parametrize('extra', [-20, 10])  # inside the delivery; in the release-and-settle hold after it
+def test_a_protective_stop_ends_the_execution_where_the_robot_stopped(task, extra):
+    """No release, no settle, no score: the trial ends there as a failure, with the stop's log."""
+    left = ramp(HOME, HOME + np.array([0.0, 0.05, 0.0, 0.0, 0.0, 0.0]), 1.0)
+    commands = executor.servo_commands(delivery(left, ['left: wait'] * len(left)), GRIPPER, 60, OBJECTS)
+    at = len(commands.time_s) + extra
+    sim = Stopping(at)
+    sim.reset(task)
+    result = executor.execute(sim, task, MODEL, LIMITS, commands)
+    assert result.status == 'protective_stop' and result.score is None and not result.settled
+    assert 'lagged its target' in result.reason and result.stop_log == [{'time_s': pytest.approx((at - 1) / 60)}]
+    assert sim.count == at and result.steps == min(at - 1, len(commands.time_s))
 
 
 class Carrying(KinematicBackend):

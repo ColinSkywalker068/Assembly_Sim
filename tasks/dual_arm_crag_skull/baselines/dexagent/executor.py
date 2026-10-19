@@ -36,6 +36,7 @@ import numpy as np
 
 from ...contracts.actions import ARMS, ContactWindow
 from ...s0.adapter import Rejected, check_joint_path
+from ..backend import ProtectiveStop
 from ..scoring import score_assembly
 
 CHUNK_S = 1.0
@@ -152,13 +153,14 @@ def servo_commands(delivery, gripper, servo_hz, objects):
 
 @dataclass
 class Execution:
-    status: str  # 'completed' | 'rejected' | 'refused'
+    status: str  # 'completed' | 'rejected' | 'refused' | 'protective_stop'
     steps: int
     reason: str | None = None
     windows: list | None = None  # the windows declared, in order: (time, arm, kind, fragment, centre)
     score: object | None = None
     settled: bool = False
     settle_error: str | None = None
+    stop_log: list | None = None  # the control periods before a protective stop (backend.ProtectiveStop.log)
 
 
 def band_samples(model, limits, commands):
@@ -242,37 +244,41 @@ def execute(backend, task, model, limits, commands, chunk_s=CHUNK_S):
     windows, declared, steps, rejection = [], {}, 0, None
     targets = {arm: np.asarray(state.joints[arm], dtype=float).copy() for arm in ARMS}
     samples = band_samples(model, limits, commands)
-    for start, stop in _chunks(commands, chunk_s, band_entries(model, limits, commands, samples)):
-        state = backend.robot_state()
-        path = {arm: commands.joints[arm][start:stop] for arm in ARMS}
-        pending, new = dict(declared), []  # the chunk's windows, kept only if S0 accepts it
-        for arm in ARMS:
-            first = np.flatnonzero(samples[0][arm][start:stop])
-            if not len(first) and not in_band(model, limits, arm, state.joints[arm]):
-                pending.pop(arm, None)  # out of the band: no window needed
-                continue
-            label = commands.contacts[arm][start + int(first[0]) if len(first) else start]
-            if arm in pending or label is None:
-                continue  # a window stays while the arm is in the band; without a labelled contact S0 decides
-            window = pending[arm] = contact_window(backend, task, limits, arm, *label)
-            new.append((float(state.time_s), arm, window.kind, window.fragment_id, window.center_xy))
-        times = state.time_s + (commands.time_s[start:stop] - (commands.time_s[start - 1] if start else 0.0))
-        widths = {arm: commands.widths[arm][start:stop] for arm in ARMS}
-        try:
-            _check_widths(limits, widths)
-            check_joint_path(model, limits, now=state.time_s, q_now=state.joints, qd_now=state.joint_velocities,
-                             qd_window_s=state.velocity_window_s, times=times, joints=path,
-                             contacts=tuple(pending.values()))
-        except Rejected as exc:
-            rejection = f'S0 rejected the delivery at t={state.time_s:.3f} s: {exc}'
-            break
-        declared = pending
-        windows.extend(new)
-        for k in range(stop - start):
-            targets = {arm: path[arm][k] for arm in ARMS}
-            backend.step(targets, {arm: float(widths[arm][k]) for arm in ARMS})
-            steps += 1
-    settled, settle_error = release_and_settle(backend, task, model, limits, targets, declared)
+    try:
+        for start, stop in _chunks(commands, chunk_s, band_entries(model, limits, commands, samples)):
+            state = backend.robot_state()
+            path = {arm: commands.joints[arm][start:stop] for arm in ARMS}
+            pending, new = dict(declared), []  # the chunk's windows, kept only if S0 accepts it
+            for arm in ARMS:
+                first = np.flatnonzero(samples[0][arm][start:stop])
+                if not len(first) and not in_band(model, limits, arm, state.joints[arm]):
+                    pending.pop(arm, None)  # out of the band: no window needed
+                    continue
+                label = commands.contacts[arm][start + int(first[0]) if len(first) else start]
+                if arm in pending or label is None:
+                    continue  # a window stays while the arm is in the band; without a labelled contact S0 decides
+                window = pending[arm] = contact_window(backend, task, limits, arm, *label)
+                new.append((float(state.time_s), arm, window.kind, window.fragment_id, window.center_xy))
+            times = state.time_s + (commands.time_s[start:stop] - (commands.time_s[start - 1] if start else 0.0))
+            widths = {arm: commands.widths[arm][start:stop] for arm in ARMS}
+            try:
+                _check_widths(limits, widths)
+                check_joint_path(model, limits, now=state.time_s, q_now=state.joints, qd_now=state.joint_velocities,
+                                 qd_window_s=state.velocity_window_s, times=times, joints=path,
+                                 contacts=tuple(pending.values()))
+            except Rejected as exc:
+                rejection = f'S0 rejected the delivery at t={state.time_s:.3f} s: {exc}'
+                break
+            declared = pending
+            windows.extend(new)
+            for k in range(stop - start):
+                targets = {arm: path[arm][k] for arm in ARMS}
+                backend.step(targets, {arm: float(widths[arm][k]) for arm in ARMS})
+                steps += 1
+        settled, settle_error = release_and_settle(backend, task, model, limits, targets, declared)
+    except ProtectiveStop as halt:  # the robot stopped (configs/jing.json s0.protective_stop): the trial ends
+        return Execution('protective_stop', steps, f'protective stop: {halt.reason}', windows,
+                         stop_log=list(halt.log))
     score = score_assembly(task, backend.privileged_fragment_poses(), settled=settled)
     return Execution('rejected' if rejection else 'completed', steps, rejection, windows, score, settled, settle_error)
 

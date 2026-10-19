@@ -34,7 +34,7 @@ from ..workspace import repo_path
 from .task import SPLITS, canonical_protocol, canonical_split, split_of
 
 METHODS = ('s2_s1_s0', 'dexagent', 'aspire', 'scripted')
-STATUSES = ('completed', 'blocked', 'budget_exhausted', 'timeout', 'rejected', 'error')
+STATUSES = ('completed', 'blocked', 'budget_exhausted', 'timeout', 'rejected', 'protective_stop', 'error')
 CLAIMS_ENV = 'ASSEMBLY_BASELINE_CLAIMS_DIR'
 
 

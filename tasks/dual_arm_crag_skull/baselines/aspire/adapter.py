@@ -51,6 +51,7 @@ from cap_harness.errors import ApiError, ErrorCode
 
 from ...contracts.actions import ARMS, ContactWindow
 from ...s0.adapter import Rejected, check_geometry, check_joint_path
+from ..backend import ProtectiveStop
 from ..scoring import score_assembly
 from ..task import (AssemblyTask, canonical_split, configured_initial_condition, pose_to_wxyz, require_canonical,
                     verify_task)
@@ -165,6 +166,7 @@ class SkullAssemblyAdapter:
         self.rejected_commands = 0
         self._contacts = {}
         self._closed = False
+        self.protective_stop = None  # backend.ProtectiveStop that ended the trial, if one did
 
     @property
     def embodiment(self):
@@ -267,6 +269,7 @@ class SkullAssemblyAdapter:
                              f'{task.table_top_z_m} m')
         snapshot = self.backend.reset(task)
         self.task, self.last_score, self.settle_error, self.rejected_commands = task, None, None, 0
+        self.protective_stop = None
         self._contacts = {}
         self._home = {arm: np.array(snapshot.joints[arm], dtype=float) for arm in ARMS}
         self._targets = {arm: np.array(snapshot.joints[arm], dtype=float) for arm in ARMS}
@@ -426,6 +429,9 @@ class SkullAssemblyAdapter:
     def _run(self, samples):
         """Check the (joints, widths) samples, one per control period, as one path from the measured state; step
         through them only if the whole path passes."""
+        if self.protective_stop is not None:
+            return Executed(False, 0, None, _failure(ErrorCode.SAFETY_INTERLOCK, 'the robot stopped (protective stop: '
+                                                     f'{self.protective_stop.reason}); the trial is over'))
         snapshot = self.backend.robot_state()
         times = snapshot.time_s + self.control_period_s * np.arange(1, len(samples) + 1)
         path = {arm: np.array([joints[arm] for joints, _ in samples], dtype=float) for arm in ARMS}
@@ -442,6 +448,15 @@ class SkullAssemblyAdapter:
                 self._run_observer.before_step(action)
             try:
                 self.backend.step(joints, widths)
+            except ProtectiveStop as halt:  # the robot stopped (configs/jing.json s0.protective_stop): the trial ends
+                self.protective_stop = halt
+                observation = self.get_observation()
+                if self._run_observer is not None:  # the environment ended the episode at this step (ASPIRE's record
+                    # reads termination from executed steps only)
+                    self._run_observer.after_step(action, StepResult(ok=True, observation=observation, terminated=True,
+                                                                     diagnostics={'protective_stop': halt.reason}))
+                return Executed(False, index, observation,
+                                _failure(ErrorCode.SAFETY_INTERLOCK, f'protective stop: {halt.reason}'))
             except Exception as exc:  # a backend failure reaches the program as a typed result, not a traceback
                 result = StepResult(ok=False, error=_failure(ErrorCode.ADAPTER_FAILED, f'backend step failed: {exc}',
                                                              exception_type=type(exc).__name__))
@@ -484,7 +499,8 @@ class SkullAssemblyAdapter:
                 widths[arm] = self._width(arm, command.gripper_position)
         executed = self._run([(joints, widths)])
         if not executed.ok:
-            return StepResult(ok=False, observation=executed.observation, error=executed.error)
+            return StepResult(ok=False, observation=executed.observation, error=executed.error,
+                              terminated=self.protective_stop is not None)
         return StepResult(ok=True, observation=executed.observation,
                           diagnostics={'control_period_s': self.control_period_s})
 
@@ -592,7 +608,14 @@ class SkullAssemblyAdapter:
         kept in `last_score`, and why settling was refused, if it was, in `settle_error` (the score is then not
         settled and not a success)."""
         task = self._require_task()
-        settled = self._release_and_settle(task)
+        if self.protective_stop is None:
+            try:
+                settled = self._release_and_settle(task)
+            except ProtectiveStop as halt:
+                self.protective_stop = halt
+        if self.protective_stop is not None:  # the trial ended where the robot stopped: a failure, unscored
+            self.last_score = None
+            return False
         self.last_score = score_assembly(task, self.backend.privileged_fragment_poses(), settled=settled)
         return self.last_score.success
 

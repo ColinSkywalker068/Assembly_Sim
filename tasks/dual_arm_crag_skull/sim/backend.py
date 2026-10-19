@@ -21,6 +21,10 @@ reset(task):
   at most max_settle_s, and refuses a start that did not come to rest. `start` records the settled poses, which are
   the trial's start (`start.to_record()` for a run record); the clock restarts at 0.
 
+Protective stop (configs/jing.json s0.protective_stop, the same for every method): at the end of each control period
+the measured joints are checked against the targets commanded for it and their maximum speeds (baselines.backend.
+StopMonitor); a stop raises ProtectiveStop and the trial ends there, as the real CRX's contact stop would end it.
+
 State: joints and joint velocities are PhysX's; widths are the pad gap from the measured finger joints; TCPs are
 the S0 model's FK of the measured joints (s0.kinematics.yam_model; sim/check_yam.py measured PhysX within 0.001 mm
 of it). Observed fragment poses are simulator truth labelled 'oracle_sim'; privileged poses are the same truth, for
@@ -43,7 +47,7 @@ import numpy as np
 
 from core.robots.linear_4310 import load_linear_4310
 
-from ..baselines.backend import CameraFrame, ObservedPose, RobotSnapshot, checked_targets
+from ..baselines.backend import CameraFrame, ObservedPose, RobotSnapshot, StopMonitor, StopRule, checked_targets
 from ..contracts.actions import ARMS
 from ..s0.kinematics import YAM_PROVISIONAL_ADAPTER_THICKNESS_M, yam_flange_T_mount, yam_model, yam_width_range_m
 from .yam_usd import FingerDrive, author_linear_4310
@@ -198,6 +202,7 @@ class IsaacAssemblyBackend:
         self.physics_hz, self.control_hz, self.camera_hz = (float(s0[key]) for key in
                                                              ('physics_hz', 'servo_hz', 'camera_hz'))
         self.substeps = control_substeps(self.physics_hz, self.control_hz)
+        self.stop_rule = StopRule.from_config(config)  # the real CRX's contact stop, the same for every method
         frames = self.control_hz / self.camera_hz
         if not (math.isfinite(frames) and frames >= 1 and abs(frames - round(frames)) <= 1e-9):
             raise ValueError(f'control rate {self.control_hz} Hz is not a whole multiple of the camera rate '
@@ -331,6 +336,7 @@ class IsaacAssemblyBackend:
             self.task = None
         self.start = checked_start(start)
         self._steps = 0
+        self._stop = StopMonitor(self.stop_rule, {arm: self.model.arms[arm].max_velocity for arm in ARMS})
         return self.robot_state()
 
     def _settle(self, task):
@@ -394,7 +400,9 @@ class IsaacAssemblyBackend:
             self.world.step(render=False)
         self._targets = targets
         self._steps += self.substeps
-        return self.robot_state()
+        state = self.robot_state()
+        self._stop.check(targets, state)  # ProtectiveStop: the trial ends here (configs/jing.json s0.protective_stop)
+        return state
 
     @property
     def time_s(self):

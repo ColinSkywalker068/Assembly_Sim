@@ -33,7 +33,7 @@ from .export import VARIANTS, load_manifest, pose_matrix
 from .s0_check import contact_objects, limits_from_record
 
 VARIANT = VARIANTS['crx_yam']
-STATUS = {'completed': 'completed', 'rejected': 'rejected', 'refused': 'error'}
+STATUS = {'completed': 'completed', 'rejected': 'rejected', 'refused': 'error', 'protective_stop': 'protective_stop'}
 START_GAP_M, START_GAP_DEG = 1e-3, 1.0
 
 
@@ -147,6 +147,7 @@ def _execute(trial, result, manifest, task, limits, commands, backend, model, la
     (trial / 'execution.json').write_text(json.dumps({
         'record': record.to_record(), 'status': execution.status, 'reason': execution.reason, 'steps': execution.steps,
         'settled': execution.settled, 'settle_error': execution.settle_error, 'start_gap': gap, 'final_poses': final,
+        'protective_stop_log': execution.stop_log,
         'windows': [{'time_s': t, 'arm': arm, 'kind': kind, 'fragment': fragment, 'center_xy': list(centre)}
                     for t, arm, kind, fragment, centre in execution.windows or []]}, indent=1, default=str) + '\n')
     if records is not None:

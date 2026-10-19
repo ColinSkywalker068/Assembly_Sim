@@ -30,6 +30,11 @@ def validate(config):
         raise ValueError("simulation rates must align on integer step boundaries")
     if control["hardware_execution_enabled"]:
         raise ValueError("this scaffold cannot authorize or execute hardware motion")
+    from .baselines.backend import StopRule
+    try:
+        StopRule.from_config(config)
+    except (KeyError, TypeError) as exc:
+        raise ValueError(f"s0.protective_stop is incomplete or malformed: {exc!r}") from exc
     validate_s2(config["s2"])
     validate_baselines(config)
 

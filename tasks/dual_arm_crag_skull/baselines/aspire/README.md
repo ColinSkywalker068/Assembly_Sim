@@ -198,10 +198,11 @@ with access to robot hardware.
 
 - Real S0 limits in `configs/jing.json` (all records are `test_only` until then), the YAM adapter plate and finger
   force (provisional), and one step budget for every compared method.
-- A protective stop on Isaac, the same for every method: the CRX drives push without a force limit, so
-  `reference_program_physics.py` lowering a fragment straight onto the fixed anchor jammed there
-  (`runs/aspire_isaac_ref_20261019_005140`: grasp, lift and carry worked; the arm oscillated against the anchor and
-  S0 refused the final hold at 16.7 rad/s on joint 5).
+- (Done 2026-10-19) the protective stop, the same for every method (`configs/jing.json` `s0.protective_stop`): the
+  adapter turns a `ProtectiveStop` into a terminated episode (ASPIRE records `environment_terminated`), refuses every
+  later command, does not release, settle or score, and the runner records `protective_stop` with the stop's log in
+  the run directory (`protective_stop.json`). `reference_program_physics.py` jammed on the fixed anchor before
+  (`runs/aspire_isaac_ref_20261019_005140`), because the fragments interlock (`../README.md`).
 - The planner slows both arms while either has a contact declared (ASPIRE reads one joint bound for all arms).
 - The adapter takes an observation, cameras included, after every control step; on Isaac the backend re-renders at
   most at 10 Hz, but three 1920x1440 RTX cameras still cost wall time.

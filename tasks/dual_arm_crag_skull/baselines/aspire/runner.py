@@ -11,7 +11,8 @@ program makes no model calls; what writing it cost is not metered here).
 
 RunRecord.status from ASPIRE's termination_reason: program_completed and task_succeeded -> 'completed', step_limit ->
 'budget_exhausted', environment_truncated -> 'timeout', program_error -> 'error' (the program raised, or ASPIRE's
-runtime refused it before it ran), environment_terminated -> 'error' (this adapter never terminates an episode).
+runtime refused it before it ran), environment_terminated -> 'error' (the adapter terminates an episode only on a
+protective stop, which is recorded as 'protective_stop', unscored, with its log in protective_stop.json).
 Success is the score's, whatever the status. A harness failure (adapter, backend, recorder) and an interrupt are
 re-raised after the run directory is closed, as in run.py: they are not method outcomes.
 
@@ -192,14 +193,21 @@ def run_program(program_path, task, seed, *, config, backend, output_root, mode,
         if start is not None:
             (recorder.root / 'settled_start.json').write_text(json.dumps(start.to_record(), indent=1) + '\n')
             artifacts['settled_start'] = str(recorder.root / 'settled_start.json')
-        score = adapter.last_score
+        score, status = adapter.last_score, STATUS_BY_TERMINATION[termination_reason]
+        halt = adapter.protective_stop
+        if halt is not None:  # the robot stopped (configs/jing.json s0.protective_stop): a failure, with its log
+            score, status = None, 'protective_stop'
+            (recorder.root / 'protective_stop.json').write_text(
+                json.dumps({'reason': halt.reason, 'log': list(halt.log)}, indent=1) + '\n')
+            artifacts['protective_stop'] = str(recorder.root / 'protective_stop.json')
         notes = '; '.join([f'termination={termination_reason}', f'program_ok={program_ok}',
+                           *([f'protective_stop={halt.reason}'] if halt is not None else []),
                            f'steps={recorder.step_count}/{max_steps}', f's0_rejections={adapter.rejected_commands}',
                            f'settled={None if score is None else score.settled}',
                            *([f'settle_error={adapter.settle_error}'] if adapter.settle_error else []),
                            f'harness={harness.commit[:12]}+{harness.patch.name}',
                            *([f'program_error={error}'] if error else [])])
-        record = RunRecord(status=STATUS_BY_TERMINATION[termination_reason], score=score, cost_usd=None,
+        record = RunRecord(status=status, score=score, cost_usd=None,
                            llm_calls=None, wall_s=time.monotonic() - started, sim_trials=1, notes=notes,
                            artifacts=artifacts, **identity)
     except BaseException as exc:

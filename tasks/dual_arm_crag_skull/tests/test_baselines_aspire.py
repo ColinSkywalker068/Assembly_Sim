@@ -31,7 +31,7 @@ from tasks.dual_arm_crag_skull.baselines.aspire.adapter import (BASE_FRAME, EMBO
 from tasks.dual_arm_crag_skull.baselines.aspire.ik import IK_SOLVER, CrxIKProvider  # noqa: E402
 from tasks.dual_arm_crag_skull.baselines.aspire.runner import (evaluate_frozen_program, installed_harness,  # noqa: E402
                                                                run_program)
-from tasks.dual_arm_crag_skull.baselines.backend import KinematicBackend, ObservedPose  # noqa: E402
+from tasks.dual_arm_crag_skull.baselines.backend import KinematicBackend, ObservedPose, ProtectiveStop  # noqa: E402
 from tasks.dual_arm_crag_skull.baselines.task import task_from_layout  # noqa: E402
 from tasks.dual_arm_crag_skull.contracts.actions import ARMS  # noqa: E402
 from tasks.dual_arm_crag_skull.s0.ik import IK_FAILURES  # noqa: E402
@@ -633,6 +633,49 @@ def test_a_settle_hold_that_s0_refuses_leaves_the_trial_unsettled(task, tmp_path
     record = trial(task, tmp_path, racing, capture_videos=False)
     assert record.status == 'completed' and not record.score.settled and not record.success
     assert 'settle_error=S0 rejected the release-and-settle hold' in record.notes
+
+
+class Stopping(KinematicBackend):
+    """The robot stops (ProtectiveStop) at its `at`-th step, as the Isaac backend's StopMonitor would stop it."""
+
+    def __init__(self, at):
+        super().__init__(MODEL, home_joints={arm: HOME for arm in ARMS}, width_range_m=WIDTHS, control_hz=20)
+        self.at, self.count = at, 0
+
+    def step(self, joints, widths):
+        self.count += 1
+        if self.count == self.at:
+            raise ProtectiveStop('left joint_2 lagged its target by 20.0 mrad for 3 control periods',
+                                 [{'time_s': self.time_s}])
+        return super().step(joints, widths)
+
+
+def test_a_protective_stop_ends_the_trial_where_the_robot_stopped(task):
+    """The command fails, the episode is terminated, nothing moves after it, and the trial is not scored."""
+    sim = Stopping(at=2)
+    env = adapter(sim)
+    env.reset(task, 101)
+    api = api_for(env)
+    assert api.step(command(HOME + SHOULDER)).ok
+    stopped = api.step(command(HOME + 2 * SHOULDER))
+    assert not stopped.ok and stopped.terminated and 'protective stop' in stopped.error.message
+    assert env.protective_stop is not None and sim.count == 2
+    later = api.step(command(HOME + 2 * SHOULDER))
+    assert not later.ok and 'trial is over' in later.error.message and sim.count == 2
+    assert env.check_success() is False and env.last_score is None and sim.count == 2  # no release, no settle
+
+
+def test_a_protective_stop_is_recorded_as_one_with_its_log(task, tmp_path):
+    moving = ("state = get_robot_state()\nq = [float(v) for v in state.joint_positions['left']]\n"
+              "for rise in (0.0225, 0.045, 0.0675):\n    target = list(q)\n    target[1] += rise\n"
+              "    step(RobotAction({'left': ArmCommand('joint_position', target, None, embodiment='fanuc_crx')}))\n"
+              "result = {}\n")
+    record = trial(task, tmp_path, moving, sim=Stopping(at=2), capture_videos=False)
+    assert record.status == 'protective_stop' and record.score is None and not record.success
+    assert 'protective_stop=left joint_2 lagged its target' in record.notes
+    assert 'termination=environment_terminated' in record.notes  # ASPIRE's own record ends the episode there
+    written = json.loads((Path(record.artifacts['run_dir']) / 'protective_stop.json').read_text())
+    assert written['reason'].startswith('left joint_2 lagged') and written['log'] == [{'time_s': pytest.approx(0.05)}]
 
 
 class Interrupting(KinematicBackend):

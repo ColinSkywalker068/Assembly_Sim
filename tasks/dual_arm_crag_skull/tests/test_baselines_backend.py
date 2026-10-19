@@ -4,7 +4,8 @@ import numpy as np
 import pytest
 
 from tasks.dual_arm_crag_skull.baselines.backend import (AssemblyBackend, CameraFrame, KinematicBackend,
-                                                         ObservedPose, RobotSnapshot)
+                                                         ObservedPose, ProtectiveStop, RobotSnapshot, StopMonitor,
+                                                         StopRule)
 from tasks.dual_arm_crag_skull.baselines.task import task_from_layout
 from tasks.dual_arm_crag_skull.contracts.actions import ARMS
 from tasks.dual_arm_crag_skull.s0.kinematics import ROBOTIQ_PROXY_MAX_WIDTH_M, robotiq_proxy_model
@@ -235,3 +236,53 @@ def test_a_reused_command_buffer_does_not_move_the_robot_afterwards(task):
     sim.step(command, {arm: ROBOTIQ_PROXY_MAX_WIDTH_M for arm in ARMS})
     command['left'][0] += 0.5
     np.testing.assert_allclose(sim.robot_state().joints['left'], HOME + NUDGE)
+
+
+# -- the protective stop (configs/jing.json s0.protective_stop) -------------------------------------------------------
+RULE = StopRule(tracking_error_rad=0.01, periods=3, speed_factor=1.1)
+MAX_SPEED = {arm: MODEL.arms[arm].max_velocity for arm in ARMS}
+
+
+def measured(lag=0.0, speed=0.0, time_s=0.0, joint=1):
+    """A snapshot whose left joint `joint` lags its HOME target by `lag` rad and moves at `speed` rad/s."""
+    joints = {arm: HOME.copy() for arm in ARMS}
+    velocities = {arm: np.zeros(6) for arm in ARMS}
+    joints['left'][joint] -= lag
+    velocities['left'][joint] = speed
+    return RobotSnapshot(time_s, joints, velocities, {arm: 0.05 for arm in ARMS},
+                         {arm: MODEL.arms[arm].tcp(joints[arm]) for arm in ARMS}, 1 / 60)
+
+
+def test_the_stop_rule_comes_from_the_protocol_and_is_checked():
+    import json
+    from tasks.dual_arm_crag_skull.__main__ import DEFAULT_CONFIG
+    rule = StopRule.from_config(json.loads(DEFAULT_CONFIG.read_text()))
+    assert rule == RULE
+    for bad in ({'tracking_error_rad': 0.0}, {'tracking_error_rad': float('nan')}, {'periods': 0}, {'periods': 1.5},
+                {'speed_factor': 1.0}, {'speed_factor': True}):
+        with pytest.raises(ValueError):
+            StopRule(**{**RULE.__dict__, **bad})
+
+
+def test_a_lag_must_last_the_rules_periods_to_stop_the_robot():
+    monitor = StopMonitor(RULE, MAX_SPEED)
+    targets = {arm: HOME.copy() for arm in ARMS}
+    for k in range(2):  # 12 mrad for two periods, then back on target: no stop, and the count starts again
+        monitor.check(targets, measured(lag=0.012, time_s=k / 60))
+    monitor.check(targets, measured(lag=0.0, time_s=2 / 60))
+    for k in range(2):
+        monitor.check(targets, measured(lag=0.012, time_s=(3 + k) / 60))
+    with pytest.raises(ProtectiveStop, match='left joint_2 lagged its target by 12.0 mrad for 3 control periods') as stop:
+        monitor.check(targets, measured(lag=0.012, time_s=5 / 60))
+    assert len(stop.value.log) == 6 and stop.value.log[-1]['time_s'] == pytest.approx(5 / 60)
+    quiet = StopMonitor(RULE, MAX_SPEED)
+    for k in range(20):  # a normal pick-and-place on Isaac lags 0.32 mrad at most
+        quiet.check(targets, measured(lag=0.009, time_s=k / 60))
+
+
+def test_a_joint_faster_than_the_arm_can_move_stops_it_at_once():
+    targets = {arm: HOME.copy() for arm in ARMS}
+    vmax = MAX_SPEED['left'][1]
+    StopMonitor(RULE, MAX_SPEED).check(targets, measured(speed=1.09 * vmax))
+    with pytest.raises(ProtectiveStop, match='left joint_2 moved at'):
+        StopMonitor(RULE, MAX_SPEED).check(targets, measured(speed=-1.11 * vmax))

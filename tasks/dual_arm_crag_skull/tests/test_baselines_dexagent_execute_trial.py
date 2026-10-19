@@ -63,6 +63,20 @@ def test_a_delivery_s0_refuses_is_recorded_as_rejected(task, tmp_path):
     assert record.status == 'rejected' and record.score is not None and 'S0 rejected' in record.notes
 
 
+def test_a_protective_stop_is_recorded_as_one_with_its_log(task, tmp_path):
+    from tasks.dual_arm_crag_skull.tests.test_baselines_dexagent_executor import Stopping
+    left = np.vstack([ramp(HOME, HOME + 0.1, 1.0), ramp(HOME + 0.1, HOME, 1.0)[1:]])
+    folder = trial(tmp_path, task, left, ['left: wait'] * len(left))
+    records = tmp_path / 'runs.jsonl'
+    record = execute_trial.execute_trial(folder, Stopping(at=30), MODEL, test_only=True, records=records)
+    assert record.status == 'protective_stop' and record.score is None and not record.success
+    assert 'protective stop: left joint_2 lagged its target' in record.notes
+    written = json.loads((folder / 'execution.json').read_text())
+    assert written['status'] == 'protective_stop' and written['steps'] == 29
+    assert written['protective_stop_log'] == [{'time_s': pytest.approx(29 / 60)}]
+    assert [json.loads(line)['status'] for line in records.read_text().splitlines()] == ['protective_stop']
+
+
 def test_only_a_trial_awaiting_execution_runs(task, tmp_path):
     folder = trial(tmp_path, task, np.repeat(HOME[None], 3, axis=0), ['left: wait'] * 3)
     result = json.loads((folder / 'result.json').read_text())

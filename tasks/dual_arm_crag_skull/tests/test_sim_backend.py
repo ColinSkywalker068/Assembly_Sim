@@ -70,7 +70,7 @@ def test_cameras_render_at_their_own_rate():
 # -- IsaacAssemblyBackend with fakes in place of Isaac --------------------------------------------------------------
 from types import SimpleNamespace  # noqa: E402
 
-from tasks.dual_arm_crag_skull.baselines.backend import checked_targets  # noqa: E402
+from tasks.dual_arm_crag_skull.baselines.backend import ProtectiveStop, StopMonitor, StopRule, checked_targets  # noqa: E402
 from tasks.dual_arm_crag_skull.baselines.task import task_from_layout  # noqa: E402
 from tasks.dual_arm_crag_skull.contracts.actions import ARMS  # noqa: E402
 from tasks.dual_arm_crag_skull.s0.kinematics import yam_model, yam_width_range_m  # noqa: E402
@@ -118,7 +118,16 @@ class FakeWorld:
         self.playing = True
 
 
-def bare_backend():
+class JammedRobot(FakeRobot):
+    """Its arm's joint 2 stays where it is, whatever it is told: a held part pressed against something fixed."""
+
+    def _apply(self, action):
+        stuck = self.q[1]
+        super()._apply(action)
+        self.q[1] = stuck
+
+
+def bare_backend(robot=FakeRobot):
     backend = IsaacAssemblyBackend.__new__(IsaacAssemblyBackend)
     backend.gripper, backend.model = GRIPPER, yam_model()
     backend.width_range = {arm: yam_width_range_m(GRIPPER) for arm in ARMS}
@@ -126,8 +135,10 @@ def bare_backend():
     backend.world = FakeWorld()
     backend._action = lambda joint_positions, joint_velocities, joint_indices: SimpleNamespace(
         joint_positions=joint_positions, joint_velocities=joint_velocities, joint_indices=joint_indices)
-    backend.robots = {arm: SimpleNamespace(robot=FakeRobot(), arm_indices=np.arange(6), finger_indices=np.array([6, 7]),
+    backend.robots = {arm: SimpleNamespace(robot=robot(), arm_indices=np.arange(6), finger_indices=np.array([6, 7]),
                                            home=HOME.copy()) for arm in ARMS}
+    backend.stop_rule = StopRule(tracking_error_rad=0.01, periods=3, speed_factor=1.1)
+    backend._stop = StopMonitor(backend.stop_rule, {arm: backend.model.arms[arm].max_velocity for arm in ARMS})
     backend.task, backend._steps = object(), 0
     backend._targets = {arm: HOME.copy() for arm in ARMS}
     return backend
@@ -145,6 +156,22 @@ def test_step_interpolates_the_arm_and_sets_the_fingers_once():
     np.testing.assert_allclose(actions[0][0][6:], [GRIPPER.joint_for_width(0.03)] * 2)
     assert state.widths['left'] == pytest.approx(0.03) and state.widths['right'] == pytest.approx(GRIPPER.max_width_m)
     np.testing.assert_allclose(state.tcp['left'], backend.model.arms['left'].tcp(HOME + delta))
+
+
+def test_a_joint_held_off_its_target_stops_the_robot_after_the_rules_periods():
+    """configs/jing.json s0.protective_stop on the backend every method runs on: 20 mrad off target for three control
+    periods ends the trial; the stop carries the periods that led to it."""
+    backend = bare_backend(JammedRobot)
+    target = {'left': HOME + np.array([0.0, 0.02, 0.0, 0.0, 0.0, 0.0]), 'right': HOME}
+    widths = {arm: GRIPPER.max_width_m for arm in ARMS}
+    for _ in range(2):
+        backend.step(target, widths)
+    with pytest.raises(ProtectiveStop, match='left joint_2 lagged its target by 20.0 mrad for 3 control periods') as stop:
+        backend.step(target, widths)
+    assert len(stop.value.log) == 3
+    free = bare_backend()
+    for _ in range(10):
+        free.step(target, widths)
 
 
 def test_its_snapshots_say_the_velocities_are_each_period_s():

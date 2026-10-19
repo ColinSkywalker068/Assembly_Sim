@@ -155,6 +155,19 @@ class ConfigTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate(config)
 
+    def test_the_protective_stop_is_part_of_the_protocol(self):
+        rule = self.config['s0']['protective_stop']
+        self.assertEqual((rule['tracking_error_rad'], rule['periods'], rule['speed_factor']), (0.01, 3, 1.1))
+        for key, bad in (('tracking_error_rad', 0), ('periods', 0), ('speed_factor', 1.0), ('periods', None)):
+            config = json.loads(json.dumps(self.config))
+            config['s0']['protective_stop'][key] = bad
+            with self.assertRaises(ValueError):
+                validate(config)
+        config = json.loads(json.dumps(self.config))
+        del config['s0']['protective_stop']
+        with self.assertRaises(ValueError):
+            validate(config)
+
     def test_missing_baseline_section_is_a_value_error(self):
         del self.config['baselines']['seed_splits']
         with self.assertRaises(ValueError):

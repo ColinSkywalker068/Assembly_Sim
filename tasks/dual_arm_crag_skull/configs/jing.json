@@ -109,7 +109,13 @@
     "anchor_rotation_tolerance_rad": null,
     "contact_table_clearance_m": null,
     "contact_region_radius_m": null,
-    "contact_max_speed_m_s": null
+    "contact_max_speed_m_s": null,
+    "protective_stop": {
+      "tracking_error_rad": 0.01,
+      "periods": 3,
+      "speed_factor": 1.1,
+      "status": "frozen 2026-10-19 (user decision): every method, in simulation, as the real CRX contact stop; a joint more than tracking_error_rad from the target it was commanded to for periods control periods in a row, or faster than speed_factor x its maximum speed, ends the trial as protective_stop (a failure). Normal pick-and-place on Isaac lagged 0.32 mrad at most (DexAgent orange delivery incl. set-down; ASPIRE reference 0.18; free 1.2 rad/s ramp 0.07); a held fragment jammed on the anchor reached 279 mrad and 4.9 rad/s (10 mrad x 3 periods fires 0.3 s after contact)"
+    }
   },
   "garf": {
     "repository": "https://github.com/ai4ce/GARF",
