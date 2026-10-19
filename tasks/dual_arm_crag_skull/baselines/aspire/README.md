@@ -78,8 +78,11 @@ the task context):
 
 - a joint target is reached in one control period, so `step()`/`move_to_joints()` only work for small moves; large
   moves go through `plan_motion`/`move_to_pose`, whose joint interpolation is sized by the adapter's
-  `action_bounds`, 90 % of min(v_max, a_max dt / 2): ASPIRE's interpolation starts and stops within one period dt,
-  and reaching speed v from rest in one period needs 2 v / dt with constant acceleration;
+  `action_bounds`, 90 % of min(v_max, a_max (w + dt) / 2): ASPIRE's interpolation starts and stops within one period
+  dt, and S0 reads that step over half the period plus the window w the measured velocity averages over (the
+  backends report each period's velocity, w = dt: a_max dt; until 2026-10-19 S0 read every first step as from an
+  instantaneous velocity, a_max dt / 2, so ASPIRE's joint speeds have doubled, 0.15 -> 0.30 rad/s at 60 Hz and the
+  TEST 20 rad/s^2);
   the adapter's `go_home` hook moves to the reset joints the same way (CapApi's fallback would jump in one period);
 - every trajectory gets one extra hold period at its last waypoint, checked with it, so the commanded motion ends at
   rest;

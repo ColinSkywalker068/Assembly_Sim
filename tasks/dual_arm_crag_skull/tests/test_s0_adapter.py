@@ -433,11 +433,14 @@ def joint_path(steps=10, hz=60.0, step=np.array([0.0, 0.002, -0.002, 0.0, 0.002,
     return times, {'left': path, 'right': np.repeat(HOME[None], steps, axis=0)}
 
 
-def check_path(times, joints, *, qd_now=None, **limit_overrides):
+PERIOD = 1 / 60  # the backends report the velocity of the period just commanded (RobotSnapshot.velocity_window_s)
+
+
+def check_path(times, joints, *, qd_now=None, qd_window_s=PERIOD, **limit_overrides):
     q_now = {arm: HOME.copy() for arm in ARMS}
     qd_now = qd_now or {arm: np.zeros(6) for arm in ARMS}
     adapter_module.check_joint_path(MODEL, limits(**limit_overrides), now=1.0, q_now=q_now, qd_now=qd_now,
-                                    times=times, joints=joints)
+                                    qd_window_s=qd_window_s, times=times, joints=joints)
 
 
 def test_direct_joint_path_within_the_limits_is_accepted():
@@ -481,10 +484,11 @@ def test_direct_joint_path_rejects_a_measured_state_or_clock_it_cannot_trust(now
         adapter_module.check_joint_path(MODEL, limits(max_joint_acceleration_rad_s2=np.full(6, 200.0)), now=now,
                                         q_now={'left': q_left, 'right': HOME}, qd_now={'left': qd_left,
                                                                                        'right': np.zeros(6)},
-                                        times=times, joints=joints)
+                                        qd_window_s=PERIOD, times=times, joints=joints)
     with pytest.raises(adapter_module.Rejected, match='both arms'):
         adapter_module.check_joint_path(MODEL, limits(max_joint_acceleration_rad_s2=np.full(6, 200.0)), now=1.0,
-                                        q_now={'left': HOME}, qd_now={'left': np.zeros(6)}, times=times, joints=joints)
+                                        q_now={'left': HOME}, qd_now={'left': np.zeros(6)}, qd_window_s=PERIOD,
+                                        times=times, joints=joints)
 
 
 def test_direct_joint_path_measures_the_first_step_from_the_current_joints():
@@ -517,15 +521,20 @@ def single_joint_path(times, positions, *, q_now, qd_now):
                                                           'right': np.zeros(6)}
 
 
-def test_first_step_from_rest_needs_twice_the_finite_difference_acceleration():
-    """0.25 rad/s reached in one 1/60 s step from rest: 15 rad/s^2 as a difference, 30 with constant acceleration."""
+@pytest.mark.parametrize('window, speeds', [(PERIOD, ((0.30, True), (0.36, False))),  # a period's average: dv/dt
+                                             (0.0, ((0.15, True), (0.25, False)))])  # instantaneous: 2 dv/dt
+def test_the_first_step_reads_the_measured_velocity_as_the_backend_declares_it(window, speeds):
+    """From rest to `speed` in one 1/60 s step under 20 rad/s^2, then held: as the velocity of the period before
+    (what every simulated backend reports) the step is speed / dt (0.30 -> 18, 0.36 -> 21.6); as an instantaneous
+    velocity it needs constant acceleration over the step, 2 speed / dt (0.15 -> 18, 0.25 -> 30). The hold reads
+    speed / dt either way (0.36 -> 21.6 rejects there too, which is why 0.30 is the one the window decides)."""
     dt = 1 / 60
-    for speed, accepted in ((0.15, True), (0.25, False)):
-        joints, q_now, qd_now = single_joint_path(np.array([1.0 + dt, 1.0 + 2 * dt]),
-                                                  [HOME[0] + speed * dt, HOME[0] + speed * dt], q_now=HOME[0],
+    for speed, accepted in speeds:
+        times = np.array([1.0 + dt, 1.0 + 2 * dt])
+        joints, q_now, qd_now = single_joint_path(times, [HOME[0] + speed * dt, HOME[0] + speed * dt], q_now=HOME[0],
                                                   qd_now=0.0)
         call = lambda: adapter_module.check_joint_path(MODEL, limits(), now=1.0, q_now=q_now, qd_now=qd_now,
-                                                       times=np.array([1.0 + dt, 1.0 + 2 * dt]), joints=joints)
+                                                       qd_window_s=window, times=times, joints=joints)
         if accepted:
             call()
         else:
@@ -533,15 +542,59 @@ def test_first_step_from_rest_needs_twice_the_finite_difference_acceleration():
                 call()
 
 
+@pytest.mark.parametrize('window', [None, -PERIOD, float('nan'), float('inf'), True, '0.0167'])
+def test_a_velocity_whose_meaning_is_not_declared_is_rejected(window):
+    times, joints = joint_path()
+    with pytest.raises(adapter_module.Rejected, match='velocity'):
+        check_path(times, joints, qd_window_s=window, max_joint_acceleration_rad_s2=np.full(6, 200.0))
+
+
+def test_a_motion_split_into_two_checks_reads_as_it_does_in_one():
+    """A constant-acceleration ramp sampled at the servo rate, checked whole or as two paths (the second from the
+    state the first ends in, its velocity the last period's): the same accelerations, none doubled at the split."""
+    dt, accel, n = 1 / 60, 18.0, 6  # up to 1.65 rad/s, under joint 1's 2.09
+    velocity = accel * (np.arange(n) + 0.5) * dt  # each period's velocity, as a sampled ramp from rest has it
+    positions = HOME[0] + np.cumsum(velocity) * dt
+    times = 1.0 + np.arange(1, n + 1) * dt
+    for limit, accepted in ((18.0 + 1e-6, True), (17.9, False)):
+        whole = lambda: adapter_module.check_joint_path(
+            MODEL, limits(max_joint_acceleration_rad_s2=np.full(6, limit)), now=1.0,
+            **_single_state(HOME[0], 0.0), qd_window_s=dt, times=times, joints=_single_joints(positions))
+        split = 3
+        second = lambda: adapter_module.check_joint_path(
+            MODEL, limits(max_joint_acceleration_rad_s2=np.full(6, limit)), now=times[split - 1],
+            **_single_state(positions[split - 1], velocity[split - 1]), qd_window_s=dt, times=times[split:],
+            joints=_single_joints(positions[split:]))
+        for call in (whole, second):
+            if accepted:
+                call()
+            else:
+                with pytest.raises(adapter_module.Rejected, match='left acceleration exceeded on joint_1'):
+                    call()
+
+
+def _single_state(q, qd):
+    start = HOME.copy()
+    start[0] = q
+    return {'q_now': {'left': start, 'right': HOME.copy()},
+            'qd_now': {'left': np.array([qd, 0, 0, 0, 0, 0]), 'right': np.zeros(6)}}
+
+
+def _single_joints(positions):
+    joints = {'left': np.repeat(HOME[None], len(positions), axis=0), 'right': np.repeat(HOME[None], len(positions), axis=0)}
+    joints['left'][:, 0] = positions
+    return joints
+
+
 def test_uneven_steps_judge_acceleration_over_the_mean_spacing():
     """1 rad/s for 10 ms, then at rest for 100 ms: -1 / 0.055 = -18.2 rad/s^2, not -1 / 0.1 = -10."""
     times = np.array([1.01, 1.11])
     joints, q_now, qd_now = single_joint_path(times, [HOME[0] + 0.01, HOME[0] + 0.01], q_now=HOME[0], qd_now=1.0)
     adapter_module.check_joint_path(MODEL, limits(max_joint_acceleration_rad_s2=np.full(6, 19.0)), now=1.0,
-                                    q_now=q_now, qd_now=qd_now, times=times, joints=joints)
+                                    q_now=q_now, qd_now=qd_now, qd_window_s=PERIOD, times=times, joints=joints)
     with pytest.raises(adapter_module.Rejected, match='left acceleration exceeded on joint_1'):
         adapter_module.check_joint_path(MODEL, limits(max_joint_acceleration_rad_s2=np.full(6, 15.0)), now=1.0,
-                                        q_now=q_now, qd_now=qd_now, times=times, joints=joints)
+                                        q_now=q_now, qd_now=qd_now, qd_window_s=PERIOD, times=times, joints=joints)
 
 
 def test_direct_joint_path_must_be_able_to_brake_inside_the_joint_limits():
@@ -550,7 +603,7 @@ def test_direct_joint_path_must_be_able_to_brake_inside_the_joint_limits():
         end = upper - margin
         joints, q_now, qd_now = single_joint_path(np.array([1.0 + dt]), [end], q_now=end - speed * dt, qd_now=speed)
         call = lambda: adapter_module.check_joint_path(MODEL, limits(), now=1.0, q_now=q_now, qd_now=qd_now,
-                                                       times=np.array([1.0 + dt]), joints=joints)
+                                                       qd_window_s=PERIOD, times=np.array([1.0 + dt]), joints=joints)
         if accepted:
             call()
         else:

@@ -178,9 +178,11 @@ review's surviving mutations and the new behaviour, 54 mutations are now caught.
   PhysX velocity is the commanded segment's to 0.3 mrad/s RMS, not that plus a dt/2 as a smooth motion's end
   velocity would be; a step from rest reads at once, through the velocity feed-forward). So every path or chunk
   boundary reads twice the acceleration the same motion reads inside one path, for every method (S1 chunks, ASPIRE
-  commands, DexAgent chunks). Decided 2026-10-19: S0 takes the velocity's meaning from the backend (the period it
-  averages over) and uses the matching formula, limits unchanged; historical verdicts that change are to be
-  reported. The real FANUC backend has no code yet.
+  commands, DexAgent chunks). Done 2026-10-19 (user decision): every backend declares what its velocity averages
+  over (`RobotSnapshot.velocity_window_s`) and S0 reads a first step over half the step plus that window, limits
+  unchanged; the new reading is never stricter, and no recorded verdict changes (every recorded command passed the
+  old one; the only refusal, ASPIRE's final hold at 16.7 rad/s, is a velocity check). ASPIRE's speed bound doubles
+  with it (`aspire/README.md`). The real FANUC backend has no code yet: it declares its own window when written.
 - **The fragments interlock: the task cannot be assembled as it stands (found 2026-10-19, every method).** The
   fragments are 8 mm voxels (their collision boxes' smallest edge is 8 mm), so neighbours meet in 8 mm steps and
   hook into each other by about one voxel. Moving straight out of its goal (rotation fixed, the DexAgent export's

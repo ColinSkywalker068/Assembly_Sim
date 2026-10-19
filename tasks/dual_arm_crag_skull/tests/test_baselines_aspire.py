@@ -50,7 +50,7 @@ HEIGHT = 0.12
 GOALS = {'frag_a': [0.03, 0.0, 0.0], 'frag_b': [-0.03, 0.0, 0.0]}
 STAGING = {'frag_a': [0.42, 0.25, 0.75], 'frag_b': [-0.42, 0.10, 0.75]}
 NUDGE = np.array([0.0, 0.02, -0.02, 0.0, 0.02, 0.02])
-SHOULDER = np.array([0.0, 0.0225, 0.0, 0.0, 0.0, 0.0])  # one period: 0.45 rad/s, from rest 2 * 0.45 / 0.05 = 18 rad/s^2
+SHOULDER = np.array([0.0, 0.0225, 0.0, 0.0, 0.0, 0.0])  # one period: 0.45 rad/s, from rest 0.45 / 0.05 = 9 rad/s^2
 
 
 def write_layout(directory):
@@ -333,7 +333,7 @@ def test_rejected_commands_move_nothing_and_return_typed_failures(task):
     np.testing.assert_allclose(sim.robot_state().joints['left'], HOME + SHOULDER)
     np.testing.assert_array_equal(sim.robot_state().joints['right'], HOME)
     assert observer.calls[1:] == [('before', ARMS), ('after', True)]
-    reverse = api.step(command(HOME))  # 0.45 rad/s now; reversing in one period: 2 * -0.9 / 0.05 = -36 rad/s^2
+    reverse = api.step(command(HOME - SHOULDER))  # 0.45 rad/s now; -0.9 in one period: -1.35 / 0.05 = -27 rad/s^2
     assert not reverse.ok and 'acceleration exceeded' in reverse.error.message
     low = SkullAssemblyAdapter(backend(), MODEL, limits(tcp_min_height_m=0.5), config=CONFIG, mode='practice')
     low.reset(task, 101)  # the TCPs at home are 0.40 m above the table: S0's geometry checks refuse even a small step
@@ -363,8 +363,9 @@ def test_refused_gripper_commands_are_not_replayed_by_later_motions(task):
     env = adapter(sim)
     env.reset(task, 101)
     api = api_for(env)
-    assert api.step(command(HOME + SHOULDER)).ok and api.step(command(HOME + 3 * SHOULDER)).ok  # now 0.9 rad/s
-    with pytest.raises(ApiError, match='safety_interlock'):  # holding still would decelerate at 2 * 0.9 / 0.05
+    for k in (1, 3, 6):  # 0.45, 0.9, 1.35 rad/s: 9 rad/s^2 a period
+        assert api.step(command(HOME + k * SHOULDER)).ok
+    with pytest.raises(ApiError, match='safety_interlock'):  # holding still would decelerate at 1.35 / 0.05 = 27
         env.set_gripper(0.0, arm='left')
     refused = api.set_gripper(0.0, arm='left')
     assert not refused.ok and refused.steps_executed == 0 and 'safety_interlock' in refused.error.message
@@ -372,7 +373,8 @@ def test_refused_gripper_commands_are_not_replayed_by_later_motions(task):
     homing = api.go_home(arm='left')
     assert not homing.ok and homing.error.code is ErrorCode.SAFETY_INTERLOCK and homing.steps_executed == 0
     assert sim.robot_state().widths['left'] == ROBOTIQ_PROXY_MAX_WIDTH_M
-    assert api.step(command(HOME + 4 * SHOULDER)).ok and api.step(command(HOME + 4 * SHOULDER)).ok  # slow down
+    for k in (8, 9, 9):  # slow down: 0.9, 0.45, 0 rad/s
+        assert api.step(command(HOME + k * SHOULDER)).ok
     plan = api.plan_motion(HOME, arm='left')
     assert plan.ok and np.all(plan.trajectory.gripper_positions == 1.0)  # the refused close was not latched
     assert api.execute_trajectory(plan.trajectory).ok
@@ -624,7 +626,7 @@ def test_scoring_happens_after_the_grippers_release_and_the_task_settle_time(tas
 
 def test_a_settle_hold_that_s0_refuses_leaves_the_trial_unsettled(task, tmp_path):
     racing = ("state = get_robot_state()\nq = [float(v) for v in state.joint_positions['left']]\n"
-              "for rise in (0.0225, 0.0675):\n    target = list(q)\n    target[1] += rise\n"
+              "for rise in (0.0225, 0.0675, 0.135):\n    target = list(q)\n    target[1] += rise\n"
               "    outcome = step(RobotAction({'left': ArmCommand('joint_position', target, None, "
               "embodiment='fanuc_crx')}))\n    if not outcome.ok:\n        raise ValueError(str(outcome.error))\n"
               "result = {}\n")
@@ -757,6 +759,21 @@ def test_motion_slows_down_while_a_contact_is_declared(task):
     assert slow.max() * env.contact_lever_m('left') <= 0.8 * CONTACT['contact_max_speed_m_s'] + 1e-12
     assert env.clear_contact(arm='left').ok
     np.testing.assert_allclose(env.action_bounds[1], normal)
+
+
+def test_action_bounds_follow_the_meaning_of_the_backends_velocity(task):
+    """ASPIRE's interpolation reaches its speed in one control period. S0 reads that step from rest over half a period
+    plus the period the measured velocity averages over (RobotSnapshot.velocity_window_s): for the backends, which
+    report each period's velocity, a_max dt; for an instantaneous velocity, a_max dt / 2."""
+    sim, env, _ = yam_rig()
+    env.reset(task, 101)
+    dt, limits = env.control_period_s, env.limits
+    assert sim.velocity_window_s == pytest.approx(dt)
+    expected = 0.9 * np.minimum(limits.max_joint_velocity_rad_s, limits.max_joint_acceleration_rad_s2 * dt)
+    np.testing.assert_allclose(env.action_bounds[1], expected)
+    sim.velocity_window_s = 0.0
+    np.testing.assert_allclose(env.action_bounds[1], 0.9 * np.minimum(limits.max_joint_velocity_rad_s,
+                                                                      limits.max_joint_acceleration_rad_s2 * dt / 2))
 
 
 def test_contact_motions_need_a_backend_at_s0_servo_rate(task):

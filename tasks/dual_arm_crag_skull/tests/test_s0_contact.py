@@ -83,8 +83,9 @@ def direct(left, *, start=Q_LOW, dt=DT, contacts=(window(),), right=None, right_
     right = np.repeat(right_start[None], len(left), axis=0) if right is None else right
     adapter_module.check_joint_path(MODEL, limits(**{**FAST, **overrides}), now=now,
                                     q_now={'left': start, 'right': right_start},
-                                    qd_now={arm: np.zeros(6) for arm in ARMS}, times=now + dt * np.arange(1, len(left) + 1),
-                                    joints={'left': left, 'right': right}, contacts=contacts)
+                                    qd_now={arm: np.zeros(6) for arm in ARMS}, qd_window_s=DT,
+                                    times=now + dt * np.arange(1, len(left) + 1), joints={'left': left, 'right': right},
+                                    contacts=contacts)
 
 
 def proxy_model(tool_box, flange_T_tcp=ROBOTIQ_PROXY_FLANGE_T_TCP):
@@ -449,7 +450,8 @@ def test_contact_samples_must_be_servo_rate():
     up = tcp_joints([-.42, 0, LOW + .008], seed=Q_LOW)
     with pytest.raises(adapter_module.Rejected, match='apart'):  # the interval leaving the contact counts as well
         adapter_module.check_joint_path(MODEL, limits(**FAST), now=1.0, q_now={'left': Q_LOW, 'right': HOME},
-                                        qd_now={arm: np.zeros(6) for arm in ARMS}, times=1.0 + np.array([DT, DT + 1.0]),
+                                        qd_now={arm: np.zeros(6) for arm in ARMS}, qd_window_s=DT,
+                                        times=1.0 + np.array([DT, DT + 1.0]),
                                         joints={'left': np.array([Q_LOW, up]), 'right': np.array([HOME, HOME])},
                                         contacts=(window(),))
 

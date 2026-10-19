@@ -400,6 +400,13 @@ class IsaacAssemblyBackend:
     def time_s(self):
         return self._steps / self.physics_hz
 
+    @property
+    def velocity_window_s(self):
+        """PhysX's joint velocity at a period's end is the velocity that period commanded (the targets' feed-forward):
+        on a constant-acceleration ramp of joint 1 it matched the commanded segment to 0.3 mrad/s RMS, not that plus
+        a dt / 2 as a smooth motion's end velocity would be (2026-10-19). So it is the period's average."""
+        return 1.0 / self.control_hz
+
     def robot_state(self):
         self._require_reset()
         joints, velocities, widths, tcp = {}, {}, {}, {}
@@ -410,7 +417,7 @@ class IsaacAssemblyBackend:
             joints[arm], velocities[arm] = q, qd
             widths[arm] = measured_width(self.gripper, *fingers)
             tcp[arm] = self.model.arms[arm].tcp(q)
-        return RobotSnapshot(self.time_s, joints, velocities, widths, tcp)
+        return RobotSnapshot(self.time_s, joints, velocities, widths, tcp, self.velocity_window_s)
 
     def privileged_fragment_poses(self):
         self._require_reset()

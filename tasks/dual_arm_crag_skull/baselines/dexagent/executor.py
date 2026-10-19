@@ -15,11 +15,12 @@ observed; carrying, setting it down, letting go of it or settling after it opens
 within S0's contact radius of its goal (setting it down there), else on the fragment (setting it down where it is,
 which S0 treats as a grasp contact); any other phase (a retreat, a return home) keeps the arm's last fragment. The
 fixture-held anchor is never a contact. The commands run through S0 as ASPIRE's do, in chunks each checked as one path
-from the measured state (s0.adapter.check_joint_path, and the width range) before any of it is stepped. S0 reads a
-chunk's first segment from the measured velocity, as a constant acceleration twice the velocity change over one period,
-so a chunk starts where the commanded velocity changes least (on DexAgent's 30 fps ramp, halfway between frames, where
-nothing changes): one starts at, or one command before, each command where an arm enters the band, whichever changes
-less, and its window is declared then, from the label of the arm's first command in the band, on what is observed;
+from the measured state (s0.adapter.check_joint_path, with the backend's velocity window, and the width range) before
+any of it is stepped. A chunk starts where the commanded velocity changes least (on DexAgent's 30 fps ramp, halfway
+between frames, where nothing changes; S0 read a chunk's first step as twice the velocity change until it took the
+backends' velocities as each period's average, and the cut is kept): one starts at, or one command before, each command
+where an arm enters the band, whichever changes less, and its window is declared then, from the label of the arm's
+first command in the band, on what is observed;
 the others are at most CHUNK_S long and end in their second half. A chunk S0 rejects changes nothing: S0
 rejects, never re-times, and the execution ends where it stands. Then, rejected or not, the ending every method gets:
 both grippers fully open and the arms held for the task's settle time with the windows they had, checked the same
@@ -260,7 +261,8 @@ def execute(backend, task, model, limits, commands, chunk_s=CHUNK_S):
         try:
             _check_widths(limits, widths)
             check_joint_path(model, limits, now=state.time_s, q_now=state.joints, qd_now=state.joint_velocities,
-                             times=times, joints=path, contacts=tuple(pending.values()))
+                             qd_window_s=state.velocity_window_s, times=times, joints=path,
+                             contacts=tuple(pending.values()))
         except Rejected as exc:
             rejection = f'S0 rejected the delivery at t={state.time_s:.3f} s: {exc}'
             break
@@ -286,7 +288,8 @@ def release_and_settle(backend, task, model, limits, targets, contacts=None):
     times = state.time_s + period * np.arange(1, periods + 1)
     try:
         check_joint_path(model, limits, now=state.time_s, q_now=state.joints, qd_now=state.joint_velocities,
-                         times=times, joints=hold, contacts=tuple((contacts or {}).values()))
+                         qd_window_s=state.velocity_window_s, times=times, joints=hold,
+                         contacts=tuple((contacts or {}).values()))
     except Rejected as exc:
         return False, f'S0 rejected the release-and-settle hold: {exc}'
     for k in range(periods):

@@ -71,7 +71,8 @@ def check_fragment(model, limits, home, fragment, reach, height):
 
             def check(contacts):
                 return reason(lambda: check_joint_path(model, limits, now=1.0, q_now=q_now,
-                                                       qd_now={a: np.zeros(6) for a in ARMS}, times=times,
+                                                       qd_now={a: np.zeros(6) for a in ARMS},
+                                                       qd_window_s=1.0 / limits.servo_hz, times=times,
                                                        joints=hold, contacts=contacts))
 
             attempts.append({'yaw_deg': yaw, 'without_contact': check(()), 'with_contact': check((contact,))})

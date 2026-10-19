@@ -147,6 +147,14 @@ def test_step_interpolates_the_arm_and_sets_the_fingers_once():
     np.testing.assert_allclose(state.tcp['left'], backend.model.arms['left'].tcp(HOME + delta))
 
 
+def test_its_snapshots_say_the_velocities_are_each_period_s():
+    """PhysX's velocity at a period's end is that period's commanded velocity (measured on Isaac 2026-10-19), so the
+    snapshots declare one control period as its window, which S0 reads a path's first step with."""
+    backend = bare_backend()
+    state = backend.step({'left': HOME, 'right': HOME}, {arm: GRIPPER.max_width_m for arm in ARMS})
+    assert state.velocity_window_s == pytest.approx(1 / 60) == backend.velocity_window_s
+
+
 def test_step_feeds_the_period_velocity_forward_to_the_arm_drives():
     """The asset's arm drives have damping/stiffness = 0.1 s: with zero velocity targets the damping holds a moving
     arm back (measured: 50 mm behind a 1.5 rad/s move), and S0 then sees it still moving after the plan stopped."""

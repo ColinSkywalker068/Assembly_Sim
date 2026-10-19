@@ -330,6 +330,29 @@ def test_s0s_verdict_does_not_depend_on_where_the_executor_cuts_its_chunks(task,
     assert verdicts == ['completed', 'completed']
 
 
+@pytest.mark.parametrize('accel, status', [(1.4, 'completed'), (1.6, 'rejected')])
+def test_a_steady_acceleration_across_chunk_boundaries_reads_as_it_does_in_one_piece(task, accel, status):
+    """Joint 6 of the left arm accelerates at `accel` for 1.5 s and decelerates for 1.5 s at 60 fps, under a
+    1.5 rad/s^2 limit: the first 1 s chunk can only end inside the constant acceleration, so the next starts from a
+    velocity the backend reports as the last period's. S0 reads that first step as it reads every other one: 1.4
+    passes (twice 1.4, the reading for an instantaneous velocity, would not) and 1.6 fails on its acceleration."""
+    fps, a = 60.0, accel
+    t = np.arange(0, round(3.5 * fps) + 1) / fps
+    up, down = np.minimum(t, 1.5), np.clip(t - 1.5, 0, 1.5)
+    left = np.repeat(HOME[None], len(t), axis=0)
+    left[:, 5] += 0.5 * a * up ** 2 + a * 1.5 * down - 0.5 * a * down ** 2  # 3.15 rad at most, 2.1 rad/s at most
+    deliv = executor.Delivery(t, {'left': left, 'right': np.repeat(HOME[None], len(t), axis=0)},
+                              {arm: np.zeros((len(t), 2)) for arm in ARMS}, tuple(['left: wait'] * len(t)))
+    slow = limits(gripper_width_range_m=WIDTHS, max_joint_acceleration_rad_s2=np.full(6, 1.5), **CONTACT)
+    sim = backend()
+    sim.reset(task)
+    commands = executor.servo_commands(deliv, GRIPPER, 60, OBJECTS)
+    result = executor.execute(sim, task, MODEL, slow, commands, chunk_s=1.0)
+    assert result.status == status, result.reason
+    if status == 'rejected':
+        assert 'acceleration exceeded on joint_6' in result.reason
+
+
 class Carrying(KinematicBackend):
     """frag_b observed at `start_xy` until the carry starts at 3 s, then moving with it to its goal over `carry_s`."""
 

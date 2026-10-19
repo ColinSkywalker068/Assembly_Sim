@@ -63,9 +63,10 @@ BENCHMARK = 'dual_arm_crag_skull'
 SUITE = 'fragment_assembly'
 FAMILY = 'bimanual_assembly'
 DEFAULT_CAMERA = 'agent'
-# ASPIRE's joint interpolation starts and stops within one control period. From rest, reaching speed v over one period
-# dt needs 2 v / dt with constant acceleration, so its speed bound is this fraction of min(v_max, a_max dt / 2) and its
-# own trajectories pass the S0 checks with a margin.
+# ASPIRE's joint interpolation starts and stops within one control period. S0 reads that step from rest over half the
+# period plus the time the measured velocity averages over (RobotSnapshot.velocity_window_s; the backends report each
+# period's velocity, so a_max dt; an instantaneous velocity would allow a_max dt / 2), so its speed bound is this
+# fraction of min(v_max, a_max (window + dt) / 2) and its own trajectories pass the S0 checks with a margin.
 INTERPOLATION_FRACTION = 0.9
 CONTACT_SPEED_FRACTION = 0.8
 CONTACT_KINDS = ('grasp', 'place')
@@ -174,8 +175,9 @@ class SkullAssemblyAdapter:
         """Joint speed bounds (rad/s) ASPIRE's joint interpolation divides by control_frequency to size its steps; while
         a contact is declared, low enough that no finger corner of an arm with one exceeds CONTACT_SPEED_FRACTION of
         S0's contact speed (both arms slow down: ASPIRE reads one bound for every arm)."""
+        span = (float(self.backend.velocity_window_s) + self.control_period_s) / 2
         bound = INTERPOLATION_FRACTION * np.minimum(
-            self.limits.max_joint_velocity_rad_s, self.limits.max_joint_acceleration_rad_s2 * self.control_period_s / 2)
+            self.limits.max_joint_velocity_rad_s, self.limits.max_joint_acceleration_rad_s2 * span)
         if self._contacts:
             lever = max(self.contact_lever_m(arm) for arm in self._contacts)
             bound = np.minimum(bound, CONTACT_SPEED_FRACTION * self.limits.contact_max_speed_m_s / lever)
@@ -405,7 +407,8 @@ class SkullAssemblyAdapter:
                     raise Rejected(f'{arm} width {widths[arm]:.4f} m outside [{low}, {high}] m')
         contacts = tuple(self._contacts.values())
         check_joint_path(self.model, self.limits, now=snapshot.time_s, q_now=snapshot.joints,
-                         qd_now=snapshot.joint_velocities, times=times, joints=path, contacts=contacts)
+                         qd_now=snapshot.joint_velocities, qd_window_s=snapshot.velocity_window_s, times=times,
+                         joints=path, contacts=contacts)
         factor = int(np.ceil(self.limits.servo_hz * self.control_period_s - 1e-9))
         if factor > 1:
             fractions = np.arange(1, factor) / factor

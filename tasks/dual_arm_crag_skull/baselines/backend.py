@@ -23,6 +23,7 @@ reported as baseline performance.
 """
 from __future__ import annotations
 
+import numbers
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Mapping, Protocol, runtime_checkable
@@ -55,16 +56,23 @@ def _joint_vector(value, name):
 
 @dataclass(frozen=True)
 class RobotSnapshot:
-    """Measured robot state: joints (rad), joint velocities (rad/s), gripper openings (m) and TCPs (world)."""
+    """Measured robot state: joints (rad), joint velocities (rad/s), gripper openings (m) and TCPs (world).
+    `velocity_window_s` says what the velocities are: their average over that time up to `time_s` (0 for an
+    instantaneous velocity). S0 reads a path's first step with it (s0.adapter.check_joint_path)."""
 
     time_s: float
     joints: Mapping[str, np.ndarray]
     joint_velocities: Mapping[str, np.ndarray]
     widths: Mapping[str, float]
     tcp: Mapping[str, np.ndarray]
+    velocity_window_s: float
 
     def __post_init__(self):
         object.__setattr__(self, 'time_s', _finite_time(self.time_s, 'time_s'))
+        window = self.velocity_window_s
+        if isinstance(window, bool) or not isinstance(window, numbers.Real) or not (np.isfinite(window) and window >= 0):
+            raise ValueError('velocity_window_s must be a finite, non-negative time in seconds')
+        object.__setattr__(self, 'velocity_window_s', float(window))
         for name in ('joints', 'joint_velocities', 'tcp', 'widths'):
             if set(getattr(self, name)) != set(ARMS):
                 raise ValueError(f'{name} must cover {ARMS}')
@@ -151,6 +159,7 @@ def checked_targets(model, width_range_m, joints, widths):
 @runtime_checkable
 class AssemblyBackend(Protocol):
     control_hz: float
+    velocity_window_s: float  # what its snapshots' joint velocities average over (RobotSnapshot)
 
     def reset(self, task) -> RobotSnapshot:
         """Load `task`'s fragments at their initial poses, the anchor held there by a fixture (the protocol's
@@ -196,6 +205,7 @@ class KinematicBackend:
         if not all(np.isfinite(pair).all() and 0 <= pair[0] < pair[1] for pair in self.width_range.values()):
             raise ValueError('width_range_m must be finite (low, high) with 0 <= low < high')
         self.control_hz = float(control_hz)
+        self.velocity_window_s = 1.0 / self.control_hz  # each step's (target - previous) * control_hz
         self.capture_radius_m = float(capture_radius_m)
         self.task = None
 
@@ -216,7 +226,7 @@ class KinematicBackend:
     def robot_state(self):
         self._require_reset()
         return RobotSnapshot(self.time_s, self.joints, self.velocities, self.widths,
-                             {arm: self.model.arms[arm].tcp(self.joints[arm]) for arm in ARMS})
+                             {arm: self.model.arms[arm].tcp(self.joints[arm]) for arm in ARMS}, self.velocity_window_s)
 
     def observed_fragment_poses(self):
         self._require_reset()

@@ -147,8 +147,9 @@ def _samples(duration_s, servo_hz):
 
 
 def _joint_rates(q0, path, servo_hz):
-    """Peak joint speeds and accelerations as check_joint_path measures them from rest: the first segment's
-    acceleration over half a period, later ones over a full period."""
+    """Peak joint speeds and accelerations of a move from rest, read as strictly as check_joint_path can: the first
+    segment's acceleration over half a period (its reading for an instantaneous measured velocity, twice its reading
+    for a period's average, which the backends report), later ones over a full period."""
     velocity = np.diff(np.vstack([q0, path]), axis=0) * servo_hz
     spacing = np.full(len(path), 1.0 / servo_hz)
     spacing[0] /= 2
@@ -293,7 +294,8 @@ def run_pick_and_place(backend, model, limits, *, arm, fragment_id, points, carr
         times = state.time_s + np.arange(1, len(segment.joints) + 1) / servo_hz
         joints = {arm: segment.joints, other: np.repeat(hold[None], len(segment.joints), axis=0)}
         check_joint_path(model, limits, now=state.time_s, q_now=state.joints, qd_now=state.joint_velocities,
-                         times=times, joints=joints, contacts=() if segment.contact is None else (segment.contact,))
+                         qd_window_s=state.velocity_window_s, times=times, joints=joints,
+                         contacts=() if segment.contact is None else (segment.contact,))
         for k in range(len(segment.joints)):
             state = backend.step({arm: segment.joints[k], other: hold},
                                  {arm: float(segment.widths[k]), other: limits.gripper_width_range_m[other][1]})

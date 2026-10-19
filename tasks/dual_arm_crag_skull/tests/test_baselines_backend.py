@@ -134,7 +134,8 @@ def test_camera_frames_carry_their_sample_time(task):
 
 def snapshot(**changes):
     args = dict(time_s=0.5, joints={arm: HOME for arm in ARMS}, joint_velocities={arm: np.zeros(6) for arm in ARMS},
-                widths={arm: np.float32(0.05) for arm in ARMS}, tcp={arm: MODEL.arms[arm].tcp(HOME) for arm in ARMS})
+                widths={arm: np.float32(0.05) for arm in ARMS}, tcp={arm: MODEL.arms[arm].tcp(HOME) for arm in ARMS},
+                velocity_window_s=0.05)
     args.update(changes)
     return RobotSnapshot(**args)
 
@@ -149,9 +150,22 @@ def test_robot_snapshots_are_validated_and_normalized():
                     {'joints': {'left': np.eye(2), 'right': HOME}},
                     {'joint_velocities': {'left': np.zeros(5), 'right': np.zeros(6)}},
                     {'widths': {'left': float('nan'), 'right': 0.05}}, {'widths': {'left': -0.01, 'right': 0.05}},
-                    {'tcp': {'left': bad_tcp, 'right': bad_tcp}}, {'joints': {'left': HOME}}):
+                    {'tcp': {'left': bad_tcp, 'right': bad_tcp}}, {'joints': {'left': HOME}},
+                    {'velocity_window_s': -0.01}, {'velocity_window_s': float('nan')}, {'velocity_window_s': True},
+                    {'velocity_window_s': None}):
         with pytest.raises(ValueError):
             snapshot(**changes)
+
+
+def test_the_kinematic_double_reports_each_period_s_velocity_and_says_so(task):
+    """Its velocity is the last control period's (target - previous) * control_hz: a period's average, declared as
+    such so S0 reads a path's first step as it reads every later one."""
+    sim = backend()
+    state = sim.reset(task)
+    assert state.velocity_window_s == pytest.approx(1 / sim.control_hz) == sim.velocity_window_s
+    state = sim.step(targets(HOME + NUDGE * 0.1), {arm: 0.05 for arm in ARMS})
+    np.testing.assert_allclose(state.joint_velocities['left'], NUDGE * 0.1 * sim.control_hz)
+    assert state.velocity_window_s == pytest.approx(1 / sim.control_hz)
 
 
 def test_observed_poses_carry_their_time_and_source(task):

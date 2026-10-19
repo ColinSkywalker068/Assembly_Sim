@@ -107,6 +107,19 @@ def test_the_replay_observes_each_fragment_where_the_recording_has_it_then(task,
     np.testing.assert_allclose(moved, np.linalg.inv(RIG_T_WORLD)[:3, :3] @ [0.05, 0.0, 0.0], atol=1e-12)
 
 
+def test_the_replay_reports_each_servo_period_s_velocity_and_says_so(task, tmp_path):
+    objects = manifest(task)['objects']
+    path = recording(tmp_path / 't.npz', np.repeat(HOME[None], 31, axis=0), ['left: wait'] * 31, objects)
+    with np.load(path) as data:
+        names, qpos, time_s = [str(n) for n in data['joint_names']], data['qpos'].copy(), data['time_s']
+    hold, widths = {arm: HOME for arm in ARMS}, {arm: 0.05 for arm in ARMS}
+    replay = s0_check.ReplayBackend(hold, 60, widths, (time_s, qpos, names), np.linalg.inv(RIG_T_WORLD), objects)
+    assert replay.robot_state().velocity_window_s == pytest.approx(1 / 60) == replay.velocity_window_s
+    nudged = {arm: HOME + 0.001 for arm in ARMS}
+    replay.step(nudged, widths)
+    np.testing.assert_allclose(replay.robot_state().joint_velocities['left'], np.full(6, 0.06))
+
+
 def test_no_window_is_declared_on_the_anchor(task, tmp_path):
     spec = s0_check.write_spec(tmp_path / 's0_spec.json', task=task, limits=LIMITS, manifest=manifest(task),
                                repo=tmp_path)

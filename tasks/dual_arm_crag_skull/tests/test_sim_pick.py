@@ -103,8 +103,10 @@ def test_joint_moves_are_timed_inside_s0s_limits():
     assert (speed <= pick.SPEED_FRACTION * LIMITS.max_joint_velocity_rad_s + 1e-12).all()
     assert (accel <= pick.SPEED_FRACTION * LIMITS.max_joint_acceleration_rad_s2 + 1e-12).all()
     times = 1.0 + np.arange(1, len(segment.joints) + 1) / 60
-    check_joint_path(MODEL, LIMITS, now=1.0, q_now=HOME, qd_now={arm: np.zeros(6) for arm in ARMS}, times=times,
-                     joints={'left': segment.joints, 'right': np.repeat(HOME['right'][None], len(times), axis=0)})
+    for window in (0.0, 1 / 60):  # timed for the stricter reading (an instantaneous velocity), so it passes both
+        check_joint_path(MODEL, LIMITS, now=1.0, q_now=HOME, qd_now={arm: np.zeros(6) for arm in ARMS},
+                         qd_window_s=window, times=times,
+                         joints={'left': segment.joints, 'right': np.repeat(HOME['right'][None], len(times), axis=0)})
 
 
 def test_cartesian_lines_stay_straight_and_slow():
@@ -277,7 +279,8 @@ def test_s0_checks_each_segment_from_the_measured_velocity(tmp_path):
                                 carry_xy=(0.0, -0.05), tip_reach_m=REACH)
 
 
-def test_joint_rates_measure_the_first_step_as_s0_does():
-    """check_joint_path takes the first segment's acceleration over half a period: 2 (v1 - qd_now) / dt."""
+def test_joint_rates_measure_the_first_step_as_strictly_as_s0_can():
+    """From rest the first segment's acceleration over half a period, 2 v1 / dt: check_joint_path's reading for an
+    instantaneous measured velocity, twice its reading for a period's average (what the backends report)."""
     speed, accel = pick._joint_rates(np.zeros(6), np.array([[0.1, 0.0, 0.0, 0.0, 0.0, 0.0]]), 60)
     assert speed[0] == pytest.approx(6.0) and accel[0] == pytest.approx(720.0)

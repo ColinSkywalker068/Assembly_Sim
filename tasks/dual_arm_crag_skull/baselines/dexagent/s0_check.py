@@ -86,10 +86,12 @@ class ReplayBackend:
         self.velocities = {arm: np.zeros(6) for arm in ARMS}
         self.widths = dict(widths)
         self.period, self.time_s = 1.0 / float(servo_hz), 0.0
+        self.velocity_window_s = self.period  # each step's difference over the period
         self.recording, self.world_T_rig, self.objects = recording, world_T_rig, objects
 
     def robot_state(self):
-        return RobotSnapshot(self.time_s, self.joints, self.velocities, self.widths, {arm: np.eye(4) for arm in ARMS})
+        return RobotSnapshot(self.time_s, self.joints, self.velocities, self.widths, {arm: np.eye(4) for arm in ARMS},
+                             self.velocity_window_s)
 
     def privileged_fragment_poses(self):
         time_s, qpos, names = self.recording

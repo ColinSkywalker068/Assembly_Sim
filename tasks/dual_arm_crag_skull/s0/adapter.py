@@ -35,6 +35,7 @@ controller's to bound.
 """
 from __future__ import annotations
 
+import numbers
 from dataclasses import dataclass
 from typing import Mapping
 
@@ -511,18 +512,20 @@ def _check_contact_motion(arm_model, limits, samples, path, start, used):
                            f'(limit {limits.contact_max_speed_m_s} m/s in a contact)')
 
 
-def check_joint_path(model, limits, *, now, q_now, qd_now, times, joints, contacts=()):
+def check_joint_path(model, limits, *, now, q_now, qd_now, qd_window_s, times, joints, contacts=()):
     """Raise Rejected unless joint targets sampled at `times` keep both arms inside the joint position,
     velocity and acceleration limits, can brake to a stop inside the joint limits after the last
     target, and pass check_geometry.
 
     For callers that command joints directly (the ASPIRE adapter) instead of sending ActionChunks. The
-    targets are read as reached at their times, with constant acceleration from the measured state
-    (`q_now` and the instantaneous `qd_now` at `now`, both required finite): the first segment needs
-    2 (v_1 - qd_now) / dt_1, later knots the second difference over the mean of the two segments, and
-    braking from the last segment's velocity uses S0's synchronized profile. These are the limits a
-    chunk's spline must meet, applied to piecewise-linear targets. A measured state or clock that is
-    not finite is rejected. Nothing is clipped or re-timed. `contacts` are ContactWindows, applied by
+    targets are read as reached at their times. At every knot the acceleration is the change of segment
+    velocity over the mean of the two spans it joins; at the first, the span before `now` is the one the
+    measured `qd_now` averages over, `qd_window_s` (RobotSnapshot.velocity_window_s: the backends report
+    each control period's velocity, so a path's first step reads as every later one, and a motion cut into
+    several paths reads as it does whole). An instantaneous velocity (window 0) leaves half the first
+    segment, 2 (v_1 - qd_now) / dt_1: constant acceleration from `now`. `q_now`, `qd_now`, the clock and the
+    window must be finite (the window non-negative). Braking from the last segment's velocity uses S0's
+    synchronized profile. Nothing is clipped or re-timed. `contacts` are ContactWindows, applied by
     check_geometry as for a chunk; targets next to a contact must then be at most one servo period apart,
     because nothing between targets is checked. Away from a contact, long intervals are not checked in
     between either: a caller whose targets are further apart than a servo period must check the path
@@ -535,6 +538,10 @@ def check_joint_path(model, limits, *, now, q_now, qd_now, times, joints, contac
         now = float('nan')
     if not np.isfinite(now):
         raise Rejected('the measured clock is not finite')
+    if (isinstance(qd_window_s, bool) or not isinstance(qd_window_s, numbers.Real)
+            or not (np.isfinite(qd_window_s) and qd_window_s >= 0)):
+        raise Rejected('the measured joint velocity must say what it means: qd_window_s, the time it averages over '
+                       '(0 for an instantaneous velocity), finite and non-negative')
     times = np.asarray(times, dtype=float)
     if times.ndim != 1 or not len(times) or not np.isfinite(times).all() or times[0] <= now or (np.diff(times) <= 0).any():
         raise Rejected('sample times must be finite, strictly increasing and after now')
@@ -556,7 +563,7 @@ def check_joint_path(model, limits, *, now, q_now, qd_now, times, joints, contac
             raise Rejected(f'{arm} joint limit exceeded on joint_{joint + 1} at t={times[sample]:.3f} s '
                            f'(value {path[sample, joint]:.3f})')
         velocity = np.diff(np.vstack([q0, path]), axis=0) / steps[:, None]
-        spacing = np.concatenate([[steps[0] / 2], (steps[:-1] + steps[1:]) / 2])
+        spacing = np.concatenate([[(float(qd_window_s) + steps[0]) / 2], (steps[:-1] + steps[1:]) / 2])
         acceleration = np.diff(np.vstack([qd0, velocity]), axis=0) / spacing[:, None]
         for values, limit, label in ((velocity, limits.max_joint_velocity_rad_s, 'velocity'),
                                      (acceleration, limits.max_joint_acceleration_rad_s2, 'acceleration')):

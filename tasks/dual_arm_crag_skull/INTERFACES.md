@@ -253,9 +253,8 @@ GARF 输入完整局部几何，输出 `assembly_T_part_goal`。锚点观测恢�
   **每次试验的收尾对所有方法一样**：两爪张到最大，手臂保持 `settle_s`，期间照常经过命令检查，然后才读真值位姿评分。还夹在手里或松手后仍在滑动的碎片，按它停下的位置判定。
 
   对下发内容的检查（限位、碰撞）由调用方负责，不在后端里。Isaac 实现是 `sim/backend.py`：物理 240 Hz、目标 60 Hz（每周期 4 步线性插值）、相机 10 Hz 按需渲染（暂停物理，`World.play()` 恢复），锚点为运动学刚体，`reset` 先落定（最近 0.5 s 漂移 <0.1 mm / 0.05°，否则拒绝）再从 0 计时，所以试验从碎片落定处开始，不完全是任务里的初始位姿；`close()` 不关 Kit，进程最后调用 `shutdown(exit_code)`。`KinematicBackend` 只用于测试：没有物理，闭合的夹爪在 2 cm 内抓住最近的、没被另一只手夹着的碎片并刚性带走，张开即放下，碎片停在原处。它的结果永远不作为基线成绩。
-- **直接下发关节的检查**（`s0/adapter.py`）：`check_joint_path(model, limits, *, now, q_now, qd_now, times, joints)` 把一段关节目标视为在各自时刻到达、从实测状态出发按匀加速度运动：
-  - 第一段所需加速度为 `2 (v1 − qd_now) / dt`；
-  - 之后各节点用以相邻两段平均间隔为分母的二阶差分；
+- **直接下发关节的检查**（`s0/adapter.py`）：`check_joint_path(model, limits, *, now, q_now, qd_now, qd_window_s, times, joints)` 把一段关节目标视为在各自时刻到达：
+  - 每个节点的加速度 = 相邻两段速度之差 / 两段时长的平均；第一个节点的「前一段」是实测速度的平均窗口 `qd_window_s`（`RobotSnapshot.velocity_window_s`，后端必须声明，非有限或为负即拒绝）。三个仿真后端报的都是上一控制周期的平均速度（Isaac 实测 2026-10-19：PhysX 速度就是刚执行完的指令段速度），窗口 = 一个周期，所以路径第一步与之后每一步同样读数，同一运动切成几段检查与整段检查读数相同；瞬时速度（窗口 0）则第一段按从 `now` 起匀加速读成 `2 (v1 − qd_now) / dt`。加速度上限不变；新读法从不比旧读法（一律 `2 (v1 − qd_now) / dt`）更严，历史记录里没有被它改变的判定（见 TODO）；
   - 最后一个目标之后必须能在关节限位内制动停下；
   - 再用 `check_geometry` 的臂间、桌面、TCP 高度规则检查。
 
@@ -275,4 +274,4 @@ GARF 输入完整局部几何，输出 `assembly_T_part_goal`。锚点观测恢�
   - 模型中转：DexAgent 以 `provider: external` 把每个请求写成文件，由我们的中转调用 Claude 应答。中转保留 API 返回的完整助手内容（含 thinking 与签名）原样回传，并核对 DexAgent 的历史与已应答的内容一致；被拒、截断或停止原因不是 `end_turn`/`tool_use` 的轮次，其工具调用一律不转交；每次调用前按最坏情况检查美元上限；停止时写 `operator_checkpoint.json` 并回复 `report_blocked`。
   - 状态映射到 `RunRecord.status`：中转因预算停止 → `budget_exhausted`，因拒答停止 → `rejected`，其他停止 → `error`；我们的墙钟截止 → `timeout`；DexAgent 自己报 blocked 或停滞 → `blocked`；交付通过复核 → `completed`。
   - 留出种子要显式允许、必须写入记录，同一变体在同一任务的同一种子上只跑一次（`scoring.refuse_repeats`，ASPIRE 同样适用）。
-  - 共享硬件移植（`--bench crx_yam`，变体 `crx_yam_stage3`，进行中）：rig 是世界坐标下移到桌面（不偏航、不平移）。Stage 3 的门禁里有 `s0_delivery_check`，DexAgent 只接受 S0 在完美跟踪下不会拒绝的交付。交付由 `executor.py` 在 `AssemblyBackend` 上执行：参考指令从记录的起始状态按 60 Hz 斜坡，分块经 `check_joint_path` 检查。手臂指令每次进入接触带的那个采样点（或前一个采样点，取指令速度变化更小者）都另起一块，窗口在这时按该臂第一个带内指令的阶段标签、用此刻的观测声明（抓取用碎片的观测位姿；放置时碎片在目标的 S0 半径内用目标位姿，否则用碎片位姿；锚点由夹具固定，永远不是接触对象），出带即清除；其余各块不超过 1 s，在指令速度变化最小处切开（S0 把块的第一段按测得速度的匀加速度读成 2Δv/dt）。被 S0 拒绝的块不改变任何窗口。无论完成还是被拒，都走统一收尾（两爪张开、保持 `settle_s` 经 S0 检查、评分）。后端落定的起点与 DexAgent 规划的起点相差超过 1 mm / 1° 时不执行；每个交付只执行一次（开动前建 `execution.started`，执行中出错记为 `error`；留出种子必须写记录）。状态：执行完 → `completed`，S0 拒绝 → `rejected`，不执行 → `error`。
+  - 共享硬件移植（`--bench crx_yam`，变体 `crx_yam_stage3`，进行中）：rig 是世界坐标下移到桌面（不偏航、不平移）。Stage 3 的门禁里有 `s0_delivery_check`，DexAgent 只接受 S0 在完美跟踪下不会拒绝的交付。交付由 `executor.py` 在 `AssemblyBackend` 上执行：参考指令从记录的起始状态按 60 Hz 斜坡，分块经 `check_joint_path` 检查。手臂指令每次进入接触带的那个采样点（或前一个采样点，取指令速度变化更小者）都另起一块，窗口在这时按该臂第一个带内指令的阶段标签、用此刻的观测声明（抓取用碎片的观测位姿；放置时碎片在目标的 S0 半径内用目标位姿，否则用碎片位姿；锚点由夹具固定，永远不是接触对象），出带即清除；其余各块不超过 1 s，在指令速度变化最小处切开（S0 曾把块的第一段读成 2Δv/dt；统一口径后不再必需，保留无害）。被 S0 拒绝的块不改变任何窗口。无论完成还是被拒，都走统一收尾（两爪张开、保持 `settle_s` 经 S0 检查、评分）。后端落定的起点与 DexAgent 规划的起点相差超过 1 mm / 1° 时不执行；每个交付只执行一次（开动前建 `execution.started`，执行中出错记为 `error`；留出种子必须写记录）。状态：执行完 → `completed`，S0 拒绝 → `rejected`，不执行 → `error`。
