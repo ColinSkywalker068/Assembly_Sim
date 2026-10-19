@@ -1,0 +1,5912 @@
+{
+ "date": "2026-10-18",
+ "what": "S1 GPU smoke after the S1 code review fixes, on synthetic two-arm pick/place/retreat episodes (synthetic_pick_detour_v2): code path, conditioning on the requested arm and fragment, end-of-skill hold padding, multimodality versus an MSE regression baseline, latency, and the deployment path to contracts ActionChunks. Not the skull task.",
+ "code": {
+  "bundle": "code_v4: 19 source and test files (s1/, contracts/, perception.py, tests) plus s1_smoke_config.json; per-file sha256 in each run directory (code_v4.sha); the torch copy was checked equal file by file",
+  "code_sha256": "0bdafa411f42ae2eda310f1067c8ade901bb823715e236d306711da99dfdc197",
+  "repo_check": "all 19 files byte-identical to the working tree after the runs and after the mutation rerun (sha256sum -c)",
+  "smoke_config": {
+   "steps": 8000,
+   "batch_size": 256,
+   "lr": 0.0001,
+   "warmup_steps": 500,
+   "log_every": 100,
+   "eval_every": 1000,
+   "image_size": 32,
+   "eval_samples": 8,
+   "latency_steps": [
+    1,
+    2,
+    4,
+    8,
+    16
+   ],
+   "latency_ddpm": true,
+   "latency_repeats": 20,
+   "policy": {
+    "down_dims": [
+     128,
+     256,
+     512
+    ],
+    "image_feature_dim": 64,
+    "num_inference_steps": 16
+   }
+  },
+  "commands": "pytest (contracts + S1 tests, expected 101) -> s1.train --synthetic 300 --kind diffusion (8000 steps) -> s1.train --kind regression --steps 4000 -> s1.smoke verdict"
+ },
+ "hosts": {
+  "maxwell-20261018_033008": "maxwell.poly.edu GPU 2: NVIDIA RTX 6000 Ada Generation, driver 580.173.02, shared with other users (79% utilisation and 27.9 GB used by others at start); python 3.12.3, torch 2.14.1+cu130, torchvision 0.29.1, numpy 1.26.4, scipy 1.12.0; script exit code = worst step code",
+  "20226851": "NYU torch gl065, partition l40s_public, account torch_pr_51_tandon_advanced, 1x L40S, 8 CPU, 64 GB, --time 48:00:00 (sbatch jing-s1-smoke-v4)",
+  "20232734": "NYU torch gl067, partition l40s_public, account torch_pr_51_tandon_advanced, 1x L40S, 8 CPU, 64 GB, --time 48:00:00 (sbatch jing-s1-smoke-v5)"
+ },
+ "data": "s1/synthetic.py synthetic_pick_detour_v2, 300 episodes (seed 0), all successful. One active arm per episode (148 left, 152 right); the other arm idles at its rest pose. Two identical-looking fragments 14 cm apart on the active side; only the request fragment_pose says which one to pick (153 / 147). pick 0-1.4 s, place 1.4-3.4 s (carry past a 4 cm radius disc obstacle on the straight line, detour side +-1 with p = 1/2: 142 / 158, latent, privileged; release 2.9-3.2 s), retreat 3.4-4.6 s. Three 32x32 views (agent view missing in 65 episodes, labelled source umi); TCP 30 Hz; cameras 15 Hz, receive latency 20-50 ms, about 5% of frames dropped; commanded streams stamped at the reach time. Split by initial condition (one per episode here): 240/30/30 episodes, 10560/1320/1320 windows; no window dropped for gaps or stale state (counters absent = 0).",
+ "evaluation": "Held-out test episodes, 8 DDIM-16 samples per window (generator seed 99), raw predictions before S1 forces the hold. Phases: pick_first (pick start), place_first (carry about to start, mode unobservable), place_mid (0.7 s later, mode visible), place_late (1.6 s, future past the segment end), arms (all evaluated windows: max xy excursion of the requested and the other arm). Mode, chosen fragment and obstacle come from privileged.npz for evaluation only.",
+ "criteria": "v3, s1/smoke.py docstring (C1-C10), written before either code_v4 run and not changed after the results",
+ "pending_jobs": [],
+ "exploratory_diagnosis": {
+  "status": "post hoc, after the v3 verdict of the maxwell run; changes no verdict, criterion or code",
+  "question": "Do C3 and C10 fail because of the trained network or because of the deterministic DDIM-16 sampler?",
+  "method": "reports/s1_smoke/diagnose_sampler.py re-evaluates the saved EMA checkpoint of the maxwell run on the same test windows with the same evaluation code and deterministic kernels; only the sampler changes. The ddim_16 variant reproduces metrics.json exactly (max abs diff 0.0). A first pass without deterministic kernels moved rates by up to 1/30 episodes and distances by up to 0.14 mm.",
+  "finding": "The same network sampled with DDPM-100 meets both failed thresholds (place_first hits 0.096, inactive-arm median 3.4 mm) but takes 487 ms per sample. At the deployed cost of 16 network calls, DDIM with eta = 1 gives 0.167 hits (still above 0.15) and 4.8 mm. Deterministic DDIM-100 gives 0.171 and 13.1 mm, so the gap comes mostly from the deterministic sampler, not from too few steps. Without x0 clipping DDIM-16 diverges (tens of metres).",
+  "not_tested": "a verdict run with eta = 1 or with longer training (val loss still fell 5% over the last 1000 of 8000 steps); both need criteria declared before the run.",
+  "results": {
+   "sampler": {
+    "run": "/local_data/jz6676/repos_review/runs/s1_smoke_maxwell_20261018_033008",
+    "checkpoint_sha256": "4636aa29108104f39d99c524298c4358b932d6edf09fe5be8221a105d307d19e",
+    "device": "cuda",
+    "gpu": "NVIDIA RTX 6000 Ada Generation",
+    "samples_per_window": 8,
+    "variants": {
+     "ddim_16": {
+      "sample_kwargs": {
+       "num_inference_steps": 16
+      },
+      "patch": null,
+      "pick_first": {
+       "episodes": 30,
+       "trajectories": 240,
+       "chosen_fragment_rate": 0.9833333333333333,
+       "final_error_m_median": 0.01387402064232551,
+       "observation_offset_s": 0.0
+      },
+      "place_first": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.21666666666666667,
+       "left_fraction_of_clear": 0.5957446808510638,
+       "episodes_with_both_modes": 0.9333333333333333,
+       "mode_agreement_of_clear": 0.5053191489361702,
+       "final_error_m_median": 0.017427816742769272,
+       "final_width_m_median": 0.06524252519011497,
+       "min_clearance_m_median": 0.0267116486078176,
+       "observation_offset_s": 0.0
+      },
+      "place_mid": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.004166666666666667,
+       "left_fraction_of_clear": 0.5271966527196653,
+       "episodes_with_both_modes": 0.1,
+       "mode_agreement_of_clear": 0.9874476987447699,
+       "final_error_m_median": 0.015591179070971201,
+       "final_width_m_median": 0.07985119894146919,
+       "min_clearance_m_median": 0.05443590009565813,
+       "observation_offset_s": 0.7
+      },
+      "place_late": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.42916666666666664,
+       "episodes_with_both_modes": 0.7666666666666667,
+       "mode_agreement_of_clear": 0.5541666666666667,
+       "final_error_m_median": 0.004376917774145636,
+       "final_width_m_median": 0.07972672581672668,
+       "min_clearance_m_median": 0.10380996571126506,
+       "observation_offset_s": 1.6
+      },
+      "arms": {
+       "active_motion_m_median": 0.1971990461494349,
+       "inactive_motion_m_median": 0.020098510722292497,
+       "inactive_motion_m_p90": 0.05137282523949525
+      },
+      "place_first_split": {
+       "arm=left": {
+        "episodes": 16,
+        "obstacle_hit_rate": 0.265625,
+        "final_error_m_median": 0.015366799621056745,
+        "min_clearance_m_median": 0.022954559443059762
+       },
+       "arm=right": {
+        "episodes": 14,
+        "obstacle_hit_rate": 0.16071428571428573,
+        "final_error_m_median": 0.019509201082014028,
+        "min_clearance_m_median": 0.028609603315846638
+       },
+       "mode=-1": {
+        "episodes": 14,
+        "obstacle_hit_rate": 0.20535714285714285,
+        "final_error_m_median": 0.01750718155108444,
+        "min_clearance_m_median": 0.025051818622410398
+       },
+       "mode=1": {
+        "episodes": 16,
+        "obstacle_hit_rate": 0.2265625,
+        "final_error_m_median": 0.017224925647982718,
+        "min_clearance_m_median": 0.029039045792565096
+       }
+      }
+     },
+     "ddim_100": {
+      "sample_kwargs": {
+       "num_inference_steps": 100
+      },
+      "patch": null,
+      "pick_first": {
+       "episodes": 30,
+       "trajectories": 240,
+       "chosen_fragment_rate": 0.9875,
+       "final_error_m_median": 0.012505389373491244,
+       "observation_offset_s": 0.0
+      },
+      "place_first": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.17083333333333334,
+       "left_fraction_of_clear": 0.5979899497487438,
+       "episodes_with_both_modes": 0.9666666666666667,
+       "mode_agreement_of_clear": 0.507537688442211,
+       "final_error_m_median": 0.015767254571759436,
+       "final_width_m_median": 0.06383204460144043,
+       "min_clearance_m_median": 0.032738421599301286,
+       "observation_offset_s": 0.0
+      },
+      "place_mid": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.004166666666666667,
+       "left_fraction_of_clear": 0.5313807531380753,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 1.0,
+       "final_error_m_median": 0.013462640774130456,
+       "final_width_m_median": 0.0798453837633133,
+       "min_clearance_m_median": 0.05554524972612769,
+       "observation_offset_s": 0.7
+      },
+      "place_late": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.4875,
+       "episodes_with_both_modes": 0.8666666666666667,
+       "mode_agreement_of_clear": 0.5541666666666667,
+       "final_error_m_median": 0.00386469423853352,
+       "final_width_m_median": 0.07983927056193352,
+       "min_clearance_m_median": 0.10475874763765322,
+       "observation_offset_s": 1.6
+      },
+      "arms": {
+       "active_motion_m_median": 0.19056724238533645,
+       "inactive_motion_m_median": 0.013069035424796713,
+       "inactive_motion_m_p90": 0.03896464360463318
+      },
+      "place_first_split": {
+       "arm=left": {
+        "episodes": 16,
+        "obstacle_hit_rate": 0.203125,
+        "final_error_m_median": 0.014446255546878294,
+        "min_clearance_m_median": 0.02942921656028224
+       },
+       "arm=right": {
+        "episodes": 14,
+        "obstacle_hit_rate": 0.13392857142857142,
+        "final_error_m_median": 0.018026658882554333,
+        "min_clearance_m_median": 0.03569127602151067
+       },
+       "mode=-1": {
+        "episodes": 14,
+        "obstacle_hit_rate": 0.16071428571428573,
+        "final_error_m_median": 0.016432025990120024,
+        "min_clearance_m_median": 0.03125602845932418
+       },
+       "mode=1": {
+        "episodes": 16,
+        "obstacle_hit_rate": 0.1796875,
+        "final_error_m_median": 0.015130443148227406,
+        "min_clearance_m_median": 0.03614371239535882
+       }
+      }
+     },
+     "ddpm_100": {
+      "sample_kwargs": {
+       "method": "ddpm"
+      },
+      "patch": null,
+      "pick_first": {
+       "episodes": 30,
+       "trajectories": 240,
+       "chosen_fragment_rate": 1.0,
+       "final_error_m_median": 0.007920913334187388,
+       "observation_offset_s": 0.0
+      },
+      "place_first": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.09583333333333334,
+       "left_fraction_of_clear": 0.5345622119815668,
+       "episodes_with_both_modes": 0.9333333333333333,
+       "mode_agreement_of_clear": 0.5253456221198156,
+       "final_error_m_median": 0.009642432892086541,
+       "final_width_m_median": 0.05703029967844486,
+       "min_clearance_m_median": 0.0496714768438937,
+       "observation_offset_s": 0.0
+      },
+      "place_mid": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.5333333333333333,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 1.0,
+       "final_error_m_median": 0.009136802242647854,
+       "final_width_m_median": 0.07991333305835724,
+       "min_clearance_m_median": 0.057780239675763664,
+       "observation_offset_s": 0.7
+      },
+      "place_late": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.5708333333333333,
+       "episodes_with_both_modes": 0.8333333333333334,
+       "mode_agreement_of_clear": 0.3875,
+       "final_error_m_median": 0.0014009360136277723,
+       "final_width_m_median": 0.08006833866238594,
+       "min_clearance_m_median": 0.10568858181212477,
+       "observation_offset_s": 1.6
+      },
+      "arms": {
+       "active_motion_m_median": 0.16423677244775664,
+       "inactive_motion_m_median": 0.003444902948616395,
+       "inactive_motion_m_p90": 0.005435350890594794
+      },
+      "place_first_split": {
+       "arm=left": {
+        "episodes": 16,
+        "obstacle_hit_rate": 0.1484375,
+        "final_error_m_median": 0.007764920968026529,
+        "min_clearance_m_median": 0.04457765674351715
+       },
+       "arm=right": {
+        "episodes": 14,
+        "obstacle_hit_rate": 0.03571428571428571,
+        "final_error_m_median": 0.012705221147592111,
+        "min_clearance_m_median": 0.05168164418860956
+       },
+       "mode=-1": {
+        "episodes": 14,
+        "obstacle_hit_rate": 0.10714285714285714,
+        "final_error_m_median": 0.009607286433431131,
+        "min_clearance_m_median": 0.04897153340297304
+       },
+       "mode=1": {
+        "episodes": 16,
+        "obstacle_hit_rate": 0.0859375,
+        "final_error_m_median": 0.009691547657512392,
+        "min_clearance_m_median": 0.04997896701254876
+       }
+      }
+     },
+     "ddim_16_eta_0.5": {
+      "sample_kwargs": {
+       "num_inference_steps": 16,
+       "eta": 0.5
+      },
+      "patch": null,
+      "pick_first": {
+       "episodes": 30,
+       "trajectories": 240,
+       "chosen_fragment_rate": 1.0,
+       "final_error_m_median": 0.010851832982833817,
+       "observation_offset_s": 0.0
+      },
+      "place_first": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.20416666666666666,
+       "left_fraction_of_clear": 0.5759162303664922,
+       "episodes_with_both_modes": 0.9,
+       "mode_agreement_of_clear": 0.44502617801047123,
+       "final_error_m_median": 0.013119486621417868,
+       "final_width_m_median": 0.06311288475990295,
+       "min_clearance_m_median": 0.03386682954436072,
+       "observation_offset_s": 0.0
+      },
+      "place_mid": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.5333333333333333,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 1.0,
+       "final_error_m_median": 0.011233893988957482,
+       "final_width_m_median": 0.07991630211472511,
+       "min_clearance_m_median": 0.0562087245361473,
+       "observation_offset_s": 0.7
+      },
+      "place_late": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.4791666666666667,
+       "episodes_with_both_modes": 1.0,
+       "mode_agreement_of_clear": 0.49583333333333335,
+       "final_error_m_median": 0.0025563735371883626,
+       "final_width_m_median": 0.07989073544740677,
+       "min_clearance_m_median": 0.10484368561897033,
+       "observation_offset_s": 1.6
+      },
+      "arms": {
+       "active_motion_m_median": 0.17414422578943312,
+       "inactive_motion_m_median": 0.008080390176590315,
+       "inactive_motion_m_p90": 0.01685381496082679
+      },
+      "place_first_split": {
+       "arm=left": {
+        "episodes": 16,
+        "obstacle_hit_rate": 0.28125,
+        "final_error_m_median": 0.01181765642493505,
+        "min_clearance_m_median": 0.028334822837700543
+       },
+       "arm=right": {
+        "episodes": 14,
+        "obstacle_hit_rate": 0.11607142857142858,
+        "final_error_m_median": 0.01635591103924095,
+        "min_clearance_m_median": 0.03880719528671023
+       },
+       "mode=-1": {
+        "episodes": 14,
+        "obstacle_hit_rate": 0.1875,
+        "final_error_m_median": 0.012775425268321702,
+        "min_clearance_m_median": 0.03852803720790255
+       },
+       "mode=1": {
+        "episodes": 16,
+        "obstacle_hit_rate": 0.21875,
+        "final_error_m_median": 0.013537477875266159,
+        "min_clearance_m_median": 0.0303097328150597
+       }
+      }
+     },
+     "ddim_16_eta_1": {
+      "sample_kwargs": {
+       "num_inference_steps": 16,
+       "eta": 1.0
+      },
+      "patch": null,
+      "pick_first": {
+       "episodes": 30,
+       "trajectories": 240,
+       "chosen_fragment_rate": 1.0,
+       "final_error_m_median": 0.00875290011179614,
+       "observation_offset_s": 0.0
+      },
+      "place_first": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.16666666666666666,
+       "left_fraction_of_clear": 0.58,
+       "episodes_with_both_modes": 0.9,
+       "mode_agreement_of_clear": 0.475,
+       "final_error_m_median": 0.011699080448823493,
+       "final_width_m_median": 0.060918087139725685,
+       "min_clearance_m_median": 0.04137991678150994,
+       "observation_offset_s": 0.0
+      },
+      "place_mid": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.5333333333333333,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 1.0,
+       "final_error_m_median": 0.009326611539301723,
+       "final_width_m_median": 0.07997167482972145,
+       "min_clearance_m_median": 0.05691127164514737,
+       "observation_offset_s": 0.7
+      },
+      "place_late": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.5625,
+       "episodes_with_both_modes": 1.0,
+       "mode_agreement_of_clear": 0.5291666666666667,
+       "final_error_m_median": 0.001826924847969421,
+       "final_width_m_median": 0.07996286824345589,
+       "min_clearance_m_median": 0.1047862823513116,
+       "observation_offset_s": 1.6
+      },
+      "arms": {
+       "active_motion_m_median": 0.16455239721776166,
+       "inactive_motion_m_median": 0.004766253959045008,
+       "inactive_motion_m_p90": 0.007376811563856925
+      },
+      "place_first_split": {
+       "arm=left": {
+        "episodes": 16,
+        "obstacle_hit_rate": 0.1953125,
+        "final_error_m_median": 0.00986202022094939,
+        "min_clearance_m_median": 0.029311326603944483
+       },
+       "arm=right": {
+        "episodes": 14,
+        "obstacle_hit_rate": 0.13392857142857142,
+        "final_error_m_median": 0.014541747358406668,
+        "min_clearance_m_median": 0.04885732202992215
+       },
+       "mode=-1": {
+        "episodes": 14,
+        "obstacle_hit_rate": 0.15178571428571427,
+        "final_error_m_median": 0.011977184854970114,
+        "min_clearance_m_median": 0.04243048171178905
+       },
+       "mode=1": {
+        "episodes": 16,
+        "obstacle_hit_rate": 0.1796875,
+        "final_error_m_median": 0.011413654307550543,
+        "min_clearance_m_median": 0.041175271103468025
+       }
+      }
+     },
+     "ddim_16_unclipped_eps_direction": {
+      "sample_kwargs": {
+       "num_inference_steps": 16
+      },
+      "patch": "diffusers_eps",
+      "pick_first": {
+       "episodes": 30,
+       "trajectories": 240,
+       "chosen_fragment_rate": 1.0,
+       "final_error_m_median": 0.010229874610813875,
+       "observation_offset_s": 0.0
+      },
+      "place_first": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.21666666666666667,
+       "left_fraction_of_clear": 0.574468085106383,
+       "episodes_with_both_modes": 0.9333333333333333,
+       "mode_agreement_of_clear": 0.5212765957446809,
+       "final_error_m_median": 0.014622900153768454,
+       "final_width_m_median": 0.06668023765087128,
+       "min_clearance_m_median": 0.027571187251171525,
+       "observation_offset_s": 0.0
+      },
+      "place_mid": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.5333333333333333,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 1.0,
+       "final_error_m_median": 0.012251971296758844,
+       "final_width_m_median": 0.07952360063791275,
+       "min_clearance_m_median": 0.055951045460809506,
+       "observation_offset_s": 0.7
+      },
+      "place_late": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.48333333333333334,
+       "episodes_with_both_modes": 1.0,
+       "mode_agreement_of_clear": 0.5583333333333333,
+       "final_error_m_median": 0.0037411841284522625,
+       "final_width_m_median": 0.07956541702151299,
+       "min_clearance_m_median": 0.10571632736261999,
+       "observation_offset_s": 1.6
+      },
+      "arms": {
+       "active_motion_m_median": 0.1764632862937952,
+       "inactive_motion_m_median": 0.012554387080718307,
+       "inactive_motion_m_p90": 0.025841028369144863
+      },
+      "place_first_split": {
+       "arm=left": {
+        "episodes": 16,
+        "obstacle_hit_rate": 0.2578125,
+        "final_error_m_median": 0.013479561573533796,
+        "min_clearance_m_median": 0.02362469106536881
+       },
+       "arm=right": {
+        "episodes": 14,
+        "obstacle_hit_rate": 0.16964285714285715,
+        "final_error_m_median": 0.016239946383346873,
+        "min_clearance_m_median": 0.0312075114154405
+       },
+       "mode=-1": {
+        "episodes": 14,
+        "obstacle_hit_rate": 0.23214285714285715,
+        "final_error_m_median": 0.014392845910929476,
+        "min_clearance_m_median": 0.02730133718342665
+       },
+       "mode=1": {
+        "episodes": 16,
+        "obstacle_hit_rate": 0.203125,
+        "final_error_m_median": 0.014776247090931307,
+        "min_clearance_m_median": 0.027815168140948116
+       }
+      }
+     },
+     "ddim_16_no_x0_clip": {
+      "sample_kwargs": {
+       "num_inference_steps": 16
+      },
+      "patch": "no_clip",
+      "pick_first": {
+       "episodes": 30,
+       "trajectories": 240,
+       "chosen_fragment_rate": 0.675,
+       "final_error_m_median": 29.05840066115836,
+       "observation_offset_s": 0.0
+      },
+      "place_first": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.09583333333333334,
+       "left_fraction_of_clear": 0.631336405529954,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 0.35944700460829493,
+       "final_error_m_median": 32.28641960514517,
+       "final_width_m_median": 0.3723703622817993,
+       "min_clearance_m_median": 0.09509188916105334,
+       "observation_offset_s": 0.0
+      },
+      "place_mid": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.1,
+       "left_fraction_of_clear": 0.5231481481481481,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 1.0,
+       "final_error_m_median": 33.81181424840682,
+       "final_width_m_median": 1.5851341485977173,
+       "min_clearance_m_median": 0.05986819433570175,
+       "observation_offset_s": 0.7
+      },
+      "place_late": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.12916666666666668,
+       "left_fraction_of_clear": 0.47368421052631576,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 0.5311004784688995,
+       "final_error_m_median": 20.57008108762519,
+       "final_width_m_median": 0.38894565403461456,
+       "min_clearance_m_median": 0.09622175000124325,
+       "observation_offset_s": 1.6
+      },
+      "arms": {
+       "active_motion_m_median": 56.222845382238006,
+       "inactive_motion_m_median": 50.48163111839929,
+       "inactive_motion_m_p90": 72.72070662927662
+      },
+      "place_first_split": {
+       "arm=left": {
+        "episodes": 16,
+        "obstacle_hit_rate": 0.1015625,
+        "final_error_m_median": 29.582454808217996,
+        "min_clearance_m_median": 0.09281580283692406
+       },
+       "arm=right": {
+        "episodes": 14,
+        "obstacle_hit_rate": 0.08928571428571429,
+        "final_error_m_median": 32.85265582315537,
+        "min_clearance_m_median": 0.09622208505378149
+       },
+       "mode=-1": {
+        "episodes": 14,
+        "obstacle_hit_rate": 0.11607142857142858,
+        "final_error_m_median": 33.21829042967033,
+        "min_clearance_m_median": 0.09283312071034383
+       },
+       "mode=1": {
+        "episodes": 16,
+        "obstacle_hit_rate": 0.078125,
+        "final_error_m_median": 30.88187721439666,
+        "min_clearance_m_median": 0.10380590337809098
+       }
+      }
+     }
+    },
+    "reproduction": {
+     "ddim_16_vs_metrics_json_max_abs_diff": 0.0
+    }
+   }
+  }
+ },
+ "notes": [
+  "Verdict of the maxwell reference run: FAIL. C3 fails on the obstacle hit rate alone (0.217 > 0.15; left fraction 0.60, both modes in 28/30 episodes, final error 1.7 cm all pass). C10 fails on the inactive arm (median raw excursion 2.0 cm > 1 cm, p90 5.1 cm; active arm 19.7 cm). C1, C2, C4-C9 pass.",
+  "C10 measures the network output only. On the deployment path S1 overwrites the inactive arm with an exact hold at its last commanded width; all 64 deployment-path chunks were contract-valid and executable (C6).",
+  "The arm and fragment conditioning works: pick_first goes to the requested fragment in 98.3% of samples (regression 96.7%), and the requested arm moves about 10 times as far as the other one.",
+  "Regression baseline: place_first hits 0.80 with no episode showing both modes and a median clearance of -2.5 cm (through the obstacle), so C4 passes by a wide margin (0.80 >= 0.217 + 0.15).",
+  "Compared with the superseded synthetic_detour_v1 runs (diffusion hits 0.017, clearance 7.4 cm), v2 adds the arm choice, two fragments and three skills with the same 8000 training steps, and its demonstrations keep a smaller clearance (median 5.9 cm versus 7.9 cm).",
+  "DDIM-16 latency on the shared maxwell GPU: median 80.7 ms, p90 101.3 ms (budget 100 ms for the median). Deployment-path live_sample -> ActionChunk: median 64.9 ms, max 108.7 ms, under the 250 ms valid_until.",
+  "Torch job 20226851 (same v4 bundle, L40S) ran after the v4 section was written (06:02-06:14) and fails C3 and C10 with the same values; it is listed under comparison_runs, not as a verdict."
+ ],
+ "limitations": [
+  "Synthetic data only: no Isaac, UMI or robot episodes exist yet, so nothing here measures skull assembly ability.",
+  "Images are 32x32 top-down rasters; the real three-view resolution, crops and a pretrained encoder are untested.",
+  "Training preloads the whole split onto the GPU; real datasets need a streaming loader.",
+  "The maxwell GPU was shared with other users during the run, so its latency numbers include contention.",
+  "All synthetic episodes succeed and carry no oracle inputs or stream gaps; the success filter, oracle refusal and gap dropping are exercised only by the unit tests.",
+  "Mode-coverage metrics depend on privileged ground truth and the synthetic generator; they are a sanity check of the method, not a benchmark."
+ ],
+ "local_cpu_reference": {
+  "tests": "PYTHONDONTWRITEBYTECODE=1 ../venv-asm/bin/python -B -m pytest -q -p no:cacheprovider tasks/dual_arm_crag_skull/tests/test_contracts.py tasks/dual_arm_crag_skull/tests/test_s1_episode.py tasks/dual_arm_crag_skull/tests/test_s1_policy.py tasks/dual_arm_crag_skull/tests/test_s1_train.py: exit 0, 101 passed (34 contracts, 26 episode/dataset, 31 policy, 10 train/runtime/smoke), 0 skipped, 77 s on the maxwell CPU (2026-10-18, about 03:56); the GPU run collected the same 101",
+  "mutation_checks": "22 mutations, each reintroducing one reviewed defect (H1 arm mask, fragment pose, arm order, runtime combination gate; H2 end padding; H3 failures in dataset and training; M1 DDIM arange; M2 held width; M3 layout check; M4 unknown keys, policy horizon; M5 split by episode; M6 exposure-time frames; M7 provenance, silent oracle; M8 gap check; L1 interpolated state, future observation time; L2 issue-time stamps; L3 encoder reread; L4 empty collate): 22 killed, 0 survived, rerun 2026-10-18 04:01-04:06 with -B and cleared __pycache__; sources restored and re-checked against the code_v4 hashes"
+ },
+ "gpu_hours": "maxwell: v4 12 min 32 s and v5 1 h 10 min 44 s, each on one shared RTX 6000 Ada (v5 under 99-100 % utilisation by other users), plus four evaluation-only sampler diagnosis passes of a few minutes in total; torch: 20232734 15 min 29 s (gl067) and 20226851 11 min 52 s (gl065), one L40S each",
+ "checkpoints": "not copied to the repo: maxwell /local_data/jz6676/repos_review/runs/{s1_smoke_maxwell_20261018_033008,s1_smoke_maxwell_v5_20261018_042157}/{diffusion,regression}/checkpoint.pt (sha256 in each run entry); torch /scratch/jz6676/jing_assembly/runs/s1_smoke_<job>/",
+ "runs": [
+  {
+   "job_id": "maxwell-20261018_033008",
+   "role": "maxwell local GPU reference run (shared RTX 6000 Ada, GPU 2), same code_v4 bundle and criteria v3 as torch job 20226851; not a torch run",
+   "criteria": "v3 (s1/smoke.py, fixed before this run)",
+   "sacct": {
+    "job": "maxwell-20261018_033008",
+    "state": "local run (no Slurm), script exit 1 = verdict FAIL",
+    "elapsed": "00:12:32",
+    "start": "2026-10-18T03:30:08-04:00",
+    "end": "2026-10-18T03:42:40-04:00",
+    "node": "maxwell (GPU 2, shared)",
+    "exit_code": "1:0"
+   },
+   "gpu_line": "NVIDIA RTX 6000 Ada Generation, 580.173.02, 49140 MiB, 27942 MiB, 79 %",
+   "versions_txt": "2.14.1+cu130 13.0 NVIDIA RTX 6000 Ada Generation 1.26.4 1.12.0",
+   "steps_log": [
+    "host=maxwell.poly.edu gpu_index=2 start=2026-10-18T03:30:08-04:00",
+    "NVIDIA RTX 6000 Ada Generation, 580.173.02, 49140 MiB, 27942 MiB, 79 %",
+    "2026-10-18T03:30:11-04:00 exit=0 :: /local_data/jz6676/repos_review/venv-s1gpu/bin/python -c import torch, torchvision, numpy, scipy; assert torch.cuda.is_available(); print(torch.__version__, torch.version.cuda, torch.cuda.get_device_name(0), numpy.__version__, scipy.__version__)",
+    "2026-10-18T03:31:34-04:00 exit=0 :: /local_data/jz6676/repos_review/venv-s1gpu/bin/python -B -m pytest -q -p no:cacheprovider --junitxml=/local_data/jz6676/repos_review/runs/s1_smoke_maxwell_20261018_033008/junit.xml tasks/dual_arm_crag_skull/tests/test_contracts.py tasks/dual_arm_crag_skull/tests/test_s1_episode.py tasks/dual_arm_crag_skull/tests/test_s1_policy.py tasks/dual_arm_crag_skull/tests/test_s1_train.py",
+    "2026-10-18T03:39:45-04:00 exit=0 :: /local_data/jz6676/repos_review/venv-s1gpu/bin/python -B -m tasks.dual_arm_crag_skull.s1.train --synthetic 300 --output /local_data/jz6676/repos_review/runs/s1_smoke_maxwell_20261018_033008/diffusion --config /tmp/claude-4241759/-local-data-jz6676/e4f27028-ff24-47aa-ad50-641b7fc63ff7/scratchpad/s1fix/code_v4/s1_smoke_config.json --kind diffusion",
+    "2026-10-18T03:42:40-04:00 exit=0 :: /local_data/jz6676/repos_review/venv-s1gpu/bin/python -B -m tasks.dual_arm_crag_skull.s1.train --synthetic 300 --output /local_data/jz6676/repos_review/runs/s1_smoke_maxwell_20261018_033008/regression --config /tmp/claude-4241759/-local-data-jz6676/e4f27028-ff24-47aa-ad50-641b7fc63ff7/scratchpad/s1fix/code_v4/s1_smoke_config.json --kind regression --steps 4000",
+    "2026-10-18T03:42:40-04:00 exit=1 :: /local_data/jz6676/repos_review/venv-s1gpu/bin/python -B -m tasks.dual_arm_crag_skull.s1.smoke --diffusion /local_data/jz6676/repos_review/runs/s1_smoke_maxwell_20261018_033008/diffusion/metrics.json --regression /local_data/jz6676/repos_review/runs/s1_smoke_maxwell_20261018_033008/regression/metrics.json --junit /local_data/jz6676/repos_review/runs/s1_smoke_maxwell_20261018_033008/junit.xml --pytest-exit 0 --expected-tests 101 --output /local_data/jz6676/repos_review/runs/s1_smoke_maxwell_20261018_033008/summary.json",
+    "end=2026-10-18T03:42:40-04:00 worst=1"
+   ],
+   "verdict": {
+    "pass": false,
+    "checks": {
+     "C1_pytest": true,
+     "C2_trained_and_reloadable": true,
+     "C3_diffusion_modes": false,
+     "C4_regression_averages_modes": true,
+     "C5_latency": true,
+     "C6_inference_chunks": true,
+     "C7_pick_conditioned_on_fragment": true,
+     "C8_mid_window_follows_mode": true,
+     "C9_late_window_releases_at_goal": true,
+     "C10_only_requested_arm_moves": false
+    },
+    "criteria_version": 3,
+    "pytest": {
+     "exit": 0,
+     "tests": 101,
+     "failures": 0,
+     "errors": 0,
+     "skipped": 0,
+     "expected_tests": 101
+    },
+    "diffusion_test": {
+     "pick_first": {
+      "episodes": 30,
+      "trajectories": 240,
+      "chosen_fragment_rate": 0.9833333333333333,
+      "final_error_m_median": 0.01387402064232551,
+      "observation_offset_s": 0.0
+     },
+     "place_first": {
+      "episodes": 30,
+      "trajectories": 240,
+      "obstacle_hit_rate": 0.21666666666666667,
+      "left_fraction_of_clear": 0.5957446808510638,
+      "episodes_with_both_modes": 0.9333333333333333,
+      "mode_agreement_of_clear": 0.5053191489361702,
+      "final_error_m_median": 0.017427816742769272,
+      "final_width_m_median": 0.06524252519011497,
+      "min_clearance_m_median": 0.0267116486078176,
+      "observation_offset_s": 0.0
+     },
+     "place_mid": {
+      "episodes": 30,
+      "trajectories": 240,
+      "obstacle_hit_rate": 0.004166666666666667,
+      "left_fraction_of_clear": 0.5271966527196653,
+      "episodes_with_both_modes": 0.1,
+      "mode_agreement_of_clear": 0.9874476987447699,
+      "final_error_m_median": 0.015591179070971201,
+      "final_width_m_median": 0.07985119894146919,
+      "min_clearance_m_median": 0.05443590009565813,
+      "observation_offset_s": 0.7
+     },
+     "place_late": {
+      "episodes": 30,
+      "trajectories": 240,
+      "obstacle_hit_rate": 0.0,
+      "left_fraction_of_clear": 0.42916666666666664,
+      "episodes_with_both_modes": 0.7666666666666667,
+      "mode_agreement_of_clear": 0.5541666666666667,
+      "final_error_m_median": 0.004376917774145636,
+      "final_width_m_median": 0.07972672581672668,
+      "min_clearance_m_median": 0.10380996571126506,
+      "observation_offset_s": 1.6
+     },
+     "arms": {
+      "active_motion_m_median": 0.1971990461494349,
+      "inactive_motion_m_median": 0.020098510722292497,
+      "inactive_motion_m_p90": 0.05137282523949525
+     }
+    },
+    "regression_test": {
+     "pick_first": {
+      "episodes": 30,
+      "trajectories": 240,
+      "chosen_fragment_rate": 0.9666666666666667,
+      "final_error_m_median": 0.057175582921660514,
+      "observation_offset_s": 0.0
+     },
+     "place_first": {
+      "episodes": 30,
+      "trajectories": 240,
+      "obstacle_hit_rate": 0.8,
+      "left_fraction_of_clear": 0.6666666666666666,
+      "episodes_with_both_modes": 0.0,
+      "mode_agreement_of_clear": 0.5,
+      "final_error_m_median": 0.026408994626804204,
+      "final_width_m_median": 0.06254172325134277,
+      "min_clearance_m_median": -0.024642656530493988,
+      "observation_offset_s": 0.0
+     },
+     "place_mid": {
+      "episodes": 30,
+      "trajectories": 240,
+      "obstacle_hit_rate": 0.0,
+      "left_fraction_of_clear": 0.5333333333333333,
+      "episodes_with_both_modes": 0.0,
+      "mode_agreement_of_clear": 1.0,
+      "final_error_m_median": 0.013390745656804804,
+      "final_width_m_median": 0.08030547201633453,
+      "min_clearance_m_median": 0.05659404224086533,
+      "observation_offset_s": 0.7
+     },
+     "place_late": {
+      "episodes": 30,
+      "trajectories": 240,
+      "obstacle_hit_rate": 0.0,
+      "left_fraction_of_clear": 0.4,
+      "episodes_with_both_modes": 0.0,
+      "mode_agreement_of_clear": 0.6,
+      "final_error_m_median": 0.0033757306301347616,
+      "final_width_m_median": 0.08101220056414604,
+      "min_clearance_m_median": 0.10534461523896199,
+      "observation_offset_s": 1.6
+     },
+     "arms": {
+      "active_motion_m_median": 0.14635187347557013,
+      "inactive_motion_m_median": 0.006852044011422299,
+      "inactive_motion_m_p90": 0.017146647209948313
+     }
+    },
+    "ddim16_latency": {
+     "median_ms": 80.6629026774317,
+     "p90_ms": 101.28608872182667
+    },
+    "inference_check": {
+     "attempted": 64,
+     "chunks": 64,
+     "rejected": [],
+     "not_executable": [],
+     "latency_ms_median": 64.89926786161959,
+     "latency_ms_max": 108.73942589387298
+    }
+   },
+   "marker": "FAIL",
+   "checkpoint_listing": [
+    "-rw-rw-r-- 1 jz6676 dl eng - maxwell - access 427884479 Oct 18 03:39 /local_data/jz6676/repos_review/runs/s1_smoke_maxwell_20261018_033008/diffusion/checkpoint.pt",
+    "-rw-rw-r-- 1 jz6676 dl eng - maxwell - access 284220323 Oct 18 03:42 /local_data/jz6676/repos_review/runs/s1_smoke_maxwell_20261018_033008/regression/checkpoint.pt",
+    "4636aa29108104f39d99c524298c4358b932d6edf09fe5be8221a105d307d19e  /local_data/jz6676/repos_review/runs/s1_smoke_maxwell_20261018_033008/diffusion/checkpoint.pt",
+    "140519af4fd9316f9a374f70d1c5c9bb7f9b5aa72abb6e704c87698e53a5d929  /local_data/jz6676/repos_review/runs/s1_smoke_maxwell_20261018_033008/regression/checkpoint.pt"
+   ],
+   "diffusion": {
+    "code_sha256": "0bdafa411f42ae2eda310f1067c8ade901bb823715e236d306711da99dfdc197",
+    "versions": {
+     "python": "3.12.3",
+     "torch": "2.14.1+cu130",
+     "torchvision": "0.29.1+cu130",
+     "numpy": "1.26.4",
+     "scipy": "1.12.0",
+     "device": "cuda",
+     "host": "maxwell.poly.edu",
+     "gpu": "NVIDIA RTX 6000 Ada Generation",
+     "cuda": "13.0",
+     "cudnn": 92400
+    },
+    "policy_config": {
+     "obs_steps": 2,
+     "pred_steps": 16,
+     "action_dim": 20,
+     "lowdim_dim": 29,
+     "cameras": [
+      "left_wrist",
+      "right_wrist",
+      "agent"
+     ],
+     "image_feature_dim": 64,
+     "shared_encoder": false,
+     "encoder_weights": null,
+     "random_shift": 2,
+     "skill_embed_dim": 16,
+     "down_dims": [
+      128,
+      256,
+      512
+     ],
+     "kernel_size": 5,
+     "n_groups": 8,
+     "step_embed_dim": 128,
+     "num_train_timesteps": 100,
+     "clip_sample": true,
+     "num_inference_steps": 16,
+     "regression_hidden": [
+      1024,
+      1024
+     ]
+    },
+    "data": {
+     "source": "synthetic",
+     "supervision": "achieved",
+     "image_shape": [
+      32,
+      32,
+      3
+     ],
+     "excluded": {
+      "episodes_given": 300,
+      "excluded_failed": 0,
+      "excluded_unknown_outcome": 0
+     },
+     "episodes": {
+      "train": 240,
+      "val": 30,
+      "test": 30
+     },
+     "windows": {
+      "train": 10560,
+      "val": 1320,
+      "test": 1320
+     },
+     "window_stats": {
+      "train": {
+       "episodes_given": 240,
+       "episodes_used": 240,
+       "excluded_failed": 0,
+       "excluded_unknown_outcome": 0,
+       "windows": 10560
+      },
+      "val": {
+       "episodes_given": 30,
+       "episodes_used": 30,
+       "excluded_failed": 0,
+       "excluded_unknown_outcome": 0,
+       "windows": 1320
+      },
+      "test": {
+       "episodes_given": 30,
+       "episodes_used": 30,
+       "excluded_failed": 0,
+       "excluded_unknown_outcome": 0,
+       "windows": 1320
+      }
+     },
+     "trained_combinations": [
+      [
+       "pick",
+       [
+        "left"
+       ]
+      ],
+      [
+       "pick",
+       [
+        "right"
+       ]
+      ],
+      [
+       "place",
+       [
+        "left"
+       ]
+      ],
+      [
+       "place",
+       [
+        "right"
+       ]
+      ],
+      [
+       "retreat",
+       [
+        "left"
+       ]
+      ],
+      [
+       "retreat",
+       [
+        "right"
+       ]
+      ]
+     ],
+     "combination_window_counts": {
+      "pick:left": 1495,
+      "pick:right": 1625,
+      "place:left": 2185,
+      "place:right": 2375,
+      "retreat:left": 1380,
+      "retreat:right": 1500
+     }
+    },
+    "steps": 8000,
+    "seconds": 455.5,
+    "steps_per_second": 17.56,
+    "parameters_millions": 53.45,
+    "train_loss_every_1000": [
+     [
+      1000,
+      0.0767855042219162
+     ],
+     [
+      2000,
+      0.03154162446036935
+     ],
+     [
+      3000,
+      0.019208321701735257
+     ],
+     [
+      4000,
+      0.01320792336948216
+     ],
+     [
+      5000,
+      0.01029101395048201
+     ],
+     [
+      6000,
+      0.00787200872786343
+     ],
+     [
+      7000,
+      0.006362712094560265
+     ],
+     [
+      8000,
+      0.00605417259503156
+     ]
+    ],
+    "val_loss_ema_log": [
+     [
+      1000,
+      0.09050092805515636
+     ],
+     [
+      2000,
+      0.032590041106397453
+     ],
+     [
+      3000,
+      0.019389975714412602
+     ],
+     [
+      4000,
+      0.013674217061788747
+     ],
+     [
+      5000,
+      0.010627735552914215
+     ],
+     [
+      6000,
+      0.008764452312254544
+     ],
+     [
+      7000,
+      0.007754806824254267
+     ],
+     [
+      8000,
+      0.007343885200944813
+     ]
+    ],
+    "final_loss_ema": {
+     "val": 0.007343885200944813,
+     "test": 0.0069930148395625025
+    },
+    "checkpoint": {
+     "file": "checkpoint.pt",
+     "sha256": "4636aa29108104f39d99c524298c4358b932d6edf09fe5be8221a105d307d19e",
+     "reload_max_abs_diff": 0.0
+    },
+    "latency_batch1_ms": {
+     "ddim_1": {
+      "median_ms": 10.765999322757125,
+      "p90_ms": 13.812234718352558
+     },
+     "ddim_2": {
+      "median_ms": 14.6738535258919,
+      "p90_ms": 15.84067833609879
+     },
+     "ddim_4": {
+      "median_ms": 23.82410317659378,
+      "p90_ms": 36.09351613558829
+     },
+     "ddim_8": {
+      "median_ms": 43.11218415386975,
+      "p90_ms": 58.103749854490175
+     },
+     "ddim_16": {
+      "median_ms": 80.6629026774317,
+      "p90_ms": 101.28608872182667
+     },
+     "ddpm_100": {
+      "median_ms": 487.08597337827086,
+      "p90_ms": 522.2385371103883
+     }
+    },
+    "inference_check": {
+     "attempted": 64,
+     "chunks": 64,
+     "rejected": [],
+     "not_executable": [],
+     "latency_ms_median": 64.89926786161959,
+     "latency_ms_max": 108.73942589387298
+    },
+    "multimodal": {
+     "val": {
+      "pick_first": {
+       "episodes": 30,
+       "trajectories": 240,
+       "chosen_fragment_rate": 0.9916666666666667,
+       "final_error_m_median": 0.01684438580490681,
+       "observation_offset_s": 0.0
+      },
+      "place_first": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.25,
+       "left_fraction_of_clear": 0.5777777777777777,
+       "episodes_with_both_modes": 0.9,
+       "mode_agreement_of_clear": 0.45555555555555555,
+       "final_error_m_median": 0.01641427064290322,
+       "final_width_m_median": 0.06328848749399185,
+       "min_clearance_m_median": 0.03030798656675976,
+       "observation_offset_s": 0.0
+      },
+      "place_mid": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.004166666666666667,
+       "left_fraction_of_clear": 0.3682008368200837,
+       "episodes_with_both_modes": 0.1,
+       "mode_agreement_of_clear": 0.9874476987447699,
+       "final_error_m_median": 0.016253159600324942,
+       "final_width_m_median": 0.0795421414077282,
+       "min_clearance_m_median": 0.054563385522089135,
+       "observation_offset_s": 0.7
+      },
+      "place_late": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.5125,
+       "episodes_with_both_modes": 0.7,
+       "mode_agreement_of_clear": 0.5458333333333333,
+       "final_error_m_median": 0.004290965848836998,
+       "final_width_m_median": 0.07960181310772896,
+       "min_clearance_m_median": 0.10150569425435181,
+       "observation_offset_s": 1.6
+      },
+      "arms": {
+       "active_motion_m_median": 0.19175437113466895,
+       "inactive_motion_m_median": 0.019794860506829527,
+       "inactive_motion_m_p90": 0.052839038765284334
+      }
+     },
+     "test": {
+      "pick_first": {
+       "episodes": 30,
+       "trajectories": 240,
+       "chosen_fragment_rate": 0.9833333333333333,
+       "final_error_m_median": 0.01387402064232551,
+       "observation_offset_s": 0.0
+      },
+      "place_first": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.21666666666666667,
+       "left_fraction_of_clear": 0.5957446808510638,
+       "episodes_with_both_modes": 0.9333333333333333,
+       "mode_agreement_of_clear": 0.5053191489361702,
+       "final_error_m_median": 0.017427816742769272,
+       "final_width_m_median": 0.06524252519011497,
+       "min_clearance_m_median": 0.0267116486078176,
+       "observation_offset_s": 0.0
+      },
+      "place_mid": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.004166666666666667,
+       "left_fraction_of_clear": 0.5271966527196653,
+       "episodes_with_both_modes": 0.1,
+       "mode_agreement_of_clear": 0.9874476987447699,
+       "final_error_m_median": 0.015591179070971201,
+       "final_width_m_median": 0.07985119894146919,
+       "min_clearance_m_median": 0.05443590009565813,
+       "observation_offset_s": 0.7
+      },
+      "place_late": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.42916666666666664,
+       "episodes_with_both_modes": 0.7666666666666667,
+       "mode_agreement_of_clear": 0.5541666666666667,
+       "final_error_m_median": 0.004376917774145636,
+       "final_width_m_median": 0.07972672581672668,
+       "min_clearance_m_median": 0.10380996571126506,
+       "observation_offset_s": 1.6
+      },
+      "arms": {
+       "active_motion_m_median": 0.1971990461494349,
+       "inactive_motion_m_median": 0.020098510722292497,
+       "inactive_motion_m_p90": 0.05137282523949525
+      }
+     },
+     "demonstrations_test": {
+      "pick_first": {
+       "episodes": 30,
+       "trajectories": 30,
+       "chosen_fragment_rate": 1.0,
+       "final_error_m_median": 0.00021053737825036544,
+       "observation_offset_s": 0.0
+      },
+      "place_first": {
+       "episodes": 30,
+       "trajectories": 30,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.5333333333333333,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 1.0,
+       "final_error_m_median": 0.00019605119661583178,
+       "final_width_m_median": 0.04299387038635119,
+       "min_clearance_m_median": 0.05885419177800588,
+       "observation_offset_s": 0.0
+      },
+      "place_mid": {
+       "episodes": 30,
+       "trajectories": 30,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.5333333333333333,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 1.0,
+       "final_error_m_median": 0.00021731219334235818,
+       "final_width_m_median": 0.08001331245145227,
+       "min_clearance_m_median": 0.05833159782010224,
+       "observation_offset_s": 0.7
+      },
+      "place_late": {
+       "episodes": 30,
+       "trajectories": 30,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.6333333333333333,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 0.6333333333333333,
+       "final_error_m_median": 0.00021731219334233172,
+       "final_width_m_median": 0.08001331245145227,
+       "min_clearance_m_median": 0.10646430097470969,
+       "observation_offset_s": 1.6
+      },
+      "arms": {
+       "active_motion_m_median": 0.16477297293972365,
+       "inactive_motion_m_median": 0.0005845041872471695,
+       "inactive_motion_m_p90": 0.0007862535846419404
+      }
+     }
+    }
+   },
+   "regression": {
+    "code_sha256": "0bdafa411f42ae2eda310f1067c8ade901bb823715e236d306711da99dfdc197",
+    "versions": {
+     "python": "3.12.3",
+     "torch": "2.14.1+cu130",
+     "torchvision": "0.29.1+cu130",
+     "numpy": "1.26.4",
+     "scipy": "1.12.0",
+     "device": "cuda",
+     "host": "maxwell.poly.edu",
+     "gpu": "NVIDIA RTX 6000 Ada Generation",
+     "cuda": "13.0",
+     "cudnn": 92400
+    },
+    "policy_config": {
+     "obs_steps": 2,
+     "pred_steps": 16,
+     "action_dim": 20,
+     "lowdim_dim": 29,
+     "cameras": [
+      "left_wrist",
+      "right_wrist",
+      "agent"
+     ],
+     "image_feature_dim": 64,
+     "shared_encoder": false,
+     "encoder_weights": null,
+     "random_shift": 2,
+     "skill_embed_dim": 16,
+     "down_dims": [
+      128,
+      256,
+      512
+     ],
+     "kernel_size": 5,
+     "n_groups": 8,
+     "step_embed_dim": 128,
+     "num_train_timesteps": 100,
+     "clip_sample": true,
+     "num_inference_steps": 16,
+     "regression_hidden": [
+      1024,
+      1024
+     ]
+    },
+    "data": {
+     "source": "synthetic",
+     "supervision": "achieved",
+     "image_shape": [
+      32,
+      32,
+      3
+     ],
+     "excluded": {
+      "episodes_given": 300,
+      "excluded_failed": 0,
+      "excluded_unknown_outcome": 0
+     },
+     "episodes": {
+      "train": 240,
+      "val": 30,
+      "test": 30
+     },
+     "windows": {
+      "train": 10560,
+      "val": 1320,
+      "test": 1320
+     },
+     "window_stats": {
+      "train": {
+       "episodes_given": 240,
+       "episodes_used": 240,
+       "excluded_failed": 0,
+       "excluded_unknown_outcome": 0,
+       "windows": 10560
+      },
+      "val": {
+       "episodes_given": 30,
+       "episodes_used": 30,
+       "excluded_failed": 0,
+       "excluded_unknown_outcome": 0,
+       "windows": 1320
+      },
+      "test": {
+       "episodes_given": 30,
+       "episodes_used": 30,
+       "excluded_failed": 0,
+       "excluded_unknown_outcome": 0,
+       "windows": 1320
+      }
+     },
+     "trained_combinations": [
+      [
+       "pick",
+       [
+        "left"
+       ]
+      ],
+      [
+       "pick",
+       [
+        "right"
+       ]
+      ],
+      [
+       "place",
+       [
+        "left"
+       ]
+      ],
+      [
+       "place",
+       [
+        "right"
+       ]
+      ],
+      [
+       "retreat",
+       [
+        "left"
+       ]
+      ],
+      [
+       "retreat",
+       [
+        "right"
+       ]
+      ]
+     ],
+     "combination_window_counts": {
+      "pick:left": 1495,
+      "pick:right": 1625,
+      "place:left": 2185,
+      "place:right": 2375,
+      "retreat:left": 1380,
+      "retreat:right": 1500
+     }
+    },
+    "steps": 4000,
+    "seconds": 159.0,
+    "steps_per_second": 25.16,
+    "parameters_millions": 35.5,
+    "train_loss_every_1000": [
+     [
+      1000,
+      0.003588916913140565
+     ],
+     [
+      2000,
+      0.001845458297757432
+     ],
+     [
+      3000,
+      0.0014368403027765454
+     ],
+     [
+      4000,
+      0.0012970640347339214
+     ]
+    ],
+    "val_loss_ema_log": [
+     [
+      1000,
+      0.004414936647552884
+     ],
+     [
+      2000,
+      0.002243611882581855
+     ],
+     [
+      3000,
+      0.0019343962991666614
+     ],
+     [
+      4000,
+      0.0018845988465755275
+     ]
+    ],
+    "final_loss_ema": {
+     "val": 0.0018845988465755275,
+     "test": 0.0017179854701019146
+    },
+    "checkpoint": {
+     "file": "checkpoint.pt",
+     "sha256": "140519af4fd9316f9a374f70d1c5c9bb7f9b5aa72abb6e704c87698e53a5d929",
+     "reload_max_abs_diff": 0.0
+    },
+    "latency_batch1_ms": {
+     "forward": {
+      "median_ms": 5.345142213627696,
+      "p90_ms": 7.720233732834458
+     }
+    },
+    "inference_check": {
+     "attempted": 64,
+     "chunks": 64,
+     "rejected": [],
+     "not_executable": [],
+     "latency_ms_median": 9.398123482242227,
+     "latency_ms_max": 30.779635068029165
+    },
+    "multimodal": {
+     "val": {
+      "pick_first": {
+       "episodes": 30,
+       "trajectories": 240,
+       "chosen_fragment_rate": 0.7666666666666667,
+       "final_error_m_median": 0.058082838578557075,
+       "observation_offset_s": 0.0
+      },
+      "place_first": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.8666666666666667,
+       "left_fraction_of_clear": 1.0,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 0.0,
+       "final_error_m_median": 0.023105292650642994,
+       "final_width_m_median": 0.0622597374022007,
+       "min_clearance_m_median": -0.024363475603796085,
+       "observation_offset_s": 0.0
+      },
+      "place_mid": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.36666666666666664,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 1.0,
+       "final_error_m_median": 0.0149741646516966,
+       "final_width_m_median": 0.07995229214429855,
+       "min_clearance_m_median": 0.05501894843153196,
+       "observation_offset_s": 0.7
+      },
+      "place_late": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.5,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 0.5333333333333333,
+       "final_error_m_median": 0.004665242405920556,
+       "final_width_m_median": 0.08104380965232849,
+       "min_clearance_m_median": 0.1022874967231963,
+       "observation_offset_s": 1.6
+      },
+      "arms": {
+       "active_motion_m_median": 0.14695646064645054,
+       "inactive_motion_m_median": 0.006901232121568264,
+       "inactive_motion_m_p90": 0.017261026699557418
+      }
+     },
+     "test": {
+      "pick_first": {
+       "episodes": 30,
+       "trajectories": 240,
+       "chosen_fragment_rate": 0.9666666666666667,
+       "final_error_m_median": 0.057175582921660514,
+       "observation_offset_s": 0.0
+      },
+      "place_first": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.8,
+       "left_fraction_of_clear": 0.6666666666666666,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 0.5,
+       "final_error_m_median": 0.026408994626804204,
+       "final_width_m_median": 0.06254172325134277,
+       "min_clearance_m_median": -0.024642656530493988,
+       "observation_offset_s": 0.0
+      },
+      "place_mid": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.5333333333333333,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 1.0,
+       "final_error_m_median": 0.013390745656804804,
+       "final_width_m_median": 0.08030547201633453,
+       "min_clearance_m_median": 0.05659404224086533,
+       "observation_offset_s": 0.7
+      },
+      "place_late": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.4,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 0.6,
+       "final_error_m_median": 0.0033757306301347616,
+       "final_width_m_median": 0.08101220056414604,
+       "min_clearance_m_median": 0.10534461523896199,
+       "observation_offset_s": 1.6
+      },
+      "arms": {
+       "active_motion_m_median": 0.14635187347557013,
+       "inactive_motion_m_median": 0.006852044011422299,
+       "inactive_motion_m_p90": 0.017146647209948313
+      }
+     },
+     "demonstrations_test": {
+      "pick_first": {
+       "episodes": 30,
+       "trajectories": 30,
+       "chosen_fragment_rate": 1.0,
+       "final_error_m_median": 0.00021053737825036544,
+       "observation_offset_s": 0.0
+      },
+      "place_first": {
+       "episodes": 30,
+       "trajectories": 30,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.5333333333333333,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 1.0,
+       "final_error_m_median": 0.00019605119661583178,
+       "final_width_m_median": 0.04299387038635119,
+       "min_clearance_m_median": 0.05885419177800588,
+       "observation_offset_s": 0.0
+      },
+      "place_mid": {
+       "episodes": 30,
+       "trajectories": 30,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.5333333333333333,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 1.0,
+       "final_error_m_median": 0.00021731219334235818,
+       "final_width_m_median": 0.08001331245145227,
+       "min_clearance_m_median": 0.05833159782010224,
+       "observation_offset_s": 0.7
+      },
+      "place_late": {
+       "episodes": 30,
+       "trajectories": 30,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.6333333333333333,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 0.6333333333333333,
+       "final_error_m_median": 0.00021731219334233172,
+       "final_width_m_median": 0.08001331245145227,
+       "min_clearance_m_median": 0.10646430097470969,
+       "observation_offset_s": 1.6
+      },
+      "arms": {
+       "active_motion_m_median": 0.16477297293972365,
+       "inactive_motion_m_median": 0.0005845041872471695,
+       "inactive_motion_m_p90": 0.0007862535846419404
+      }
+     }
+    }
+   }
+  }
+ ],
+ "superseded_runs": [
+  {
+   "job_id": "20219996",
+   "role": "initial S1 code (faf31f75), 74 tests",
+   "criteria": "C1-C5",
+   "sacct": {
+    "job": "20219996",
+    "state": "COMPLETED",
+    "elapsed": "00:13:28",
+    "start": "2026-10-18T01:24:00",
+    "end": "2026-10-18T01:37:28",
+    "node": "gl038",
+    "exit_code": "0:0"
+   },
+   "gpu_line": "NVIDIA L40S, 610.43.02, 46068 MiB",
+   "versions_txt": "2.14.1+cu130 13.0 NVIDIA L40S 1.26.4 1.12.0",
+   "steps_log": [
+    "job=20219996 node=gl038.hpc.nyu.edu start=2026-10-18T01:24:01-04:00",
+    "NVIDIA L40S, 610.43.02, 46068 MiB",
+    "2026-10-18T01:24:02-04:00 exit=0 :: /home/jz6676/.local/bin/uv venv -q -p 3.12 /scratch/jz6676/jing_assembly/env",
+    "2026-10-18T01:27:16-04:00 exit=0 :: /home/jz6676/.local/bin/uv pip install -q --python /scratch/jz6676/jing_assembly/env/bin/python torch==2.14.1 torchvision==0.29.1 numpy==1.26.4 scipy==1.12.0 pytest==8.4.2",
+    "2026-10-18T01:27:38-04:00 exit=0 :: /scratch/jz6676/jing_assembly/env/bin/python -c import torch, torchvision, numpy, scipy; assert torch.cuda.is_available(); print(torch.__version__, torch.version.cuda, torch.cuda.get_device_name(0), numpy.__version__, scipy.__version__)",
+    "2026-10-18T01:28:57-04:00 exit=0 :: pytest",
+    "2026-10-18T01:35:07-04:00 exit=0 :: /scratch/jz6676/jing_assembly/env/bin/python -B -m tasks.dual_arm_crag_skull.s1.train --synthetic 300 --output /scratch/jz6676/jing_assembly/runs/s1_smoke_20219996/diffusion --config /scratch/jz6676/jing_assembly/code/s1_smoke_config.json --kind diffusion",
+    "2026-10-18T01:37:28-04:00 exit=0 :: /scratch/jz6676/jing_assembly/env/bin/python -B -m tasks.dual_arm_crag_skull.s1.train --synthetic 300 --output /scratch/jz6676/jing_assembly/runs/s1_smoke_20219996/regression --config /scratch/jz6676/jing_assembly/code/s1_smoke_config.json --kind regression --steps 4000",
+    "2026-10-18T01:37:28-04:00 exit=0 :: /scratch/jz6676/jing_assembly/env/bin/python -B -m tasks.dual_arm_crag_skull.s1.smoke --diffusion /scratch/jz6676/jing_assembly/runs/s1_smoke_20219996/diffusion/metrics.json --regression /scratch/jz6676/jing_assembly/runs/s1_smoke_20219996/regression/metrics.json --junit /scratch/jz6676/jing_assembly/runs/s1_smoke_20219996/junit.xml --pytest-exit 0 --expected-tests 74 --output /scratch/jz6676/jing_assembly/runs/s1_smoke_20219996/summary.json",
+    "end=2026-10-18T01:37:28-04:00 worst=0"
+   ],
+   "verdict": {
+    "pass": true,
+    "checks": {
+     "C1_pytest": true,
+     "C2_trained_and_reloadable": true,
+     "C3_diffusion_modes": true,
+     "C4_regression_averages_modes": true,
+     "C5_latency": true
+    },
+    "pytest": {
+     "exit": 0,
+     "tests": 74,
+     "failures": 0,
+     "errors": 0,
+     "skipped": 0,
+     "expected_tests": 74
+    },
+    "diffusion_test": {
+     "episodes": 30,
+     "samples_per_episode": 8,
+     "trajectories": 240,
+     "obstacle_hit_rate": 0.016666666666666666,
+     "left_fraction_of_clear": 0.4830508474576271,
+     "mode_balance": 0.9661016949152542,
+     "episodes_with_both_modes": 0.9666666666666667,
+     "final_error_m_mean": 0.01572823296542573,
+     "final_error_m_median": 0.01187442425482559,
+     "min_clearance_m_median": 0.07444998629190813
+    },
+    "regression_test": {
+     "episodes": 30,
+     "samples_per_episode": 8,
+     "trajectories": 240,
+     "obstacle_hit_rate": 0.3333333333333333,
+     "left_fraction_of_clear": 0.45,
+     "mode_balance": 0.9,
+     "episodes_with_both_modes": 0.0,
+     "final_error_m_mean": 0.011785336754229665,
+     "final_error_m_median": 0.01093242719620413,
+     "min_clearance_m_median": 0.02695919266431436
+    },
+    "ddim16_latency": {
+     "median_ms": 55.12532754801214,
+     "p90_ms": 55.468869768083096
+    }
+   },
+   "marker": "PASS",
+   "checkpoint_listing": [
+    "-rw-r--r--. 1 jz6676 jz6676 427192379 Oct 18 01:34 /scratch/jz6676/jing_assembly/runs/s1_smoke_20219996/diffusion/checkpoint.pt",
+    "-rw-r--r--. 1 jz6676 jz6676 284118047 Oct 18 01:37 /scratch/jz6676/jing_assembly/runs/s1_smoke_20219996/regression/checkpoint.pt",
+    "5aca01069e38334411b1d5ec9a6366a0a746725afa0f71e46b62f16636be0370  /scratch/jz6676/jing_assembly/runs/s1_smoke_20219996/diffusion/checkpoint.pt",
+    "c8a185891926a31813ea22eb29a54258aed4ea694b80b148edfc868fa97f30fc  /scratch/jz6676/jing_assembly/runs/s1_smoke_20219996/regression/checkpoint.pt"
+   ],
+   "diffusion": {
+    "code_sha256": "faf31f75df26393ae01e06446dbaeca1085afd4e5a05ce468c3adb057acf6070",
+    "versions": {
+     "python": "3.12.14",
+     "torch": "2.14.1+cu130",
+     "torchvision": "0.29.1+cu130",
+     "numpy": "1.26.4",
+     "scipy": "1.12.0",
+     "device": "cuda",
+     "host": "gl038.hpc.nyu.edu",
+     "gpu": "NVIDIA L40S",
+     "cuda": "13.0",
+     "cudnn": 92400
+    },
+    "policy_config": {
+     "obs_steps": 2,
+     "pred_steps": 16,
+     "action_dim": 20,
+     "lowdim_dim": 29,
+     "cameras": [
+      "left_wrist",
+      "right_wrist",
+      "agent"
+     ],
+     "image_feature_dim": 64,
+     "shared_encoder": false,
+     "encoder_weights": null,
+     "random_shift": 2,
+     "skill_embed_dim": 16,
+     "down_dims": [
+      128,
+      256,
+      512
+     ],
+     "kernel_size": 5,
+     "n_groups": 8,
+     "step_embed_dim": 128,
+     "num_train_timesteps": 100,
+     "clip_sample": true,
+     "num_inference_steps": 16,
+     "regression_hidden": [
+      1024,
+      1024
+     ]
+    },
+    "data": {
+     "source": "synthetic",
+     "supervision": "achieved",
+     "image_shape": [
+      32,
+      32,
+      3
+     ],
+     "episodes": {
+      "train": 240,
+      "val": 30,
+      "test": 30
+     },
+     "windows": {
+      "train": 5040,
+      "val": 630,
+      "test": 630
+     }
+    },
+    "steps": 8000,
+    "seconds": 330.6,
+    "steps_per_second": 24.2,
+    "parameters_millions": 53.36,
+    "train_loss_every_1000": [
+     [
+      1000,
+      0.06810245789587498
+     ],
+     [
+      2000,
+      0.029601621758192777
+     ],
+     [
+      3000,
+      0.020385718662291764
+     ],
+     [
+      4000,
+      0.01614599191583693
+     ],
+     [
+      5000,
+      0.013193306112661958
+     ],
+     [
+      6000,
+      0.011863606665283442
+     ],
+     [
+      7000,
+      0.010597649235278369
+     ],
+     [
+      8000,
+      0.010528252068907023
+     ]
+    ],
+    "val_loss_ema_log": [
+     [
+      1000,
+      0.07954468403070691
+     ],
+     [
+      2000,
+      0.032882542494270535
+     ],
+     [
+      3000,
+      0.022584354889298244
+     ],
+     [
+      4000,
+      0.018436452965178186
+     ],
+     [
+      5000,
+      0.01630162468978337
+     ],
+     [
+      6000,
+      0.015025066531130246
+     ],
+     [
+      7000,
+      0.014291225976887204
+     ],
+     [
+      8000,
+      0.014020135673502136
+     ]
+    ],
+    "final_loss_ema": {
+     "val": 0.014020135673502136,
+     "test": 0.013264954246817126
+    },
+    "checkpoint": {
+     "file": "checkpoint.pt",
+     "sha256": "5aca01069e38334411b1d5ec9a6366a0a746725afa0f71e46b62f16636be0370",
+     "reload_max_abs_diff": 0.0
+    },
+    "latency_batch1_ms": {
+     "ddim_1": {
+      "median_ms": 7.423725910484791,
+      "p90_ms": 7.518320484086871
+     },
+     "ddim_2": {
+      "median_ms": 10.663583176210523,
+      "p90_ms": 10.81003425642848
+     },
+     "ddim_4": {
+      "median_ms": 17.003531102091074,
+      "p90_ms": 17.193435644730926
+     },
+     "ddim_8": {
+      "median_ms": 29.679661383852363,
+      "p90_ms": 29.851533705368638
+     },
+     "ddim_16": {
+      "median_ms": 55.12532754801214,
+      "p90_ms": 55.468869768083096
+     },
+     "ddpm_100": {
+      "median_ms": 332.9100788105279,
+      "p90_ms": 335.7928835786879
+     }
+    },
+    "inference_check": null,
+    "multimodal": {
+     "val": {
+      "episodes": 30,
+      "samples_per_episode": 8,
+      "trajectories": 240,
+      "obstacle_hit_rate": 0.016666666666666666,
+      "left_fraction_of_clear": 0.5,
+      "mode_balance": 1.0,
+      "episodes_with_both_modes": 0.9666666666666667,
+      "final_error_m_mean": 0.015372531517546313,
+      "final_error_m_median": 0.012556253772043096,
+      "min_clearance_m_median": 0.07402363308073337
+     },
+     "test": {
+      "episodes": 30,
+      "samples_per_episode": 8,
+      "trajectories": 240,
+      "obstacle_hit_rate": 0.016666666666666666,
+      "left_fraction_of_clear": 0.4830508474576271,
+      "mode_balance": 0.9661016949152542,
+      "episodes_with_both_modes": 0.9666666666666667,
+      "final_error_m_mean": 0.01572823296542573,
+      "final_error_m_median": 0.01187442425482559,
+      "min_clearance_m_median": 0.07444998629190813
+     },
+     "demonstrations_test": {
+      "episodes": 30,
+      "samples_per_episode": 1,
+      "trajectories": 30,
+      "obstacle_hit_rate": 0.0,
+      "left_fraction_of_clear": 0.3333333333333333,
+      "mode_balance": 0.6666666666666666,
+      "episodes_with_both_modes": 0.0,
+      "final_error_m_mean": 0.00027986299726629344,
+      "final_error_m_median": 0.0002692292507324157,
+      "min_clearance_m_median": 0.07886756513873099
+     }
+    }
+   },
+   "regression": {
+    "code_sha256": "faf31f75df26393ae01e06446dbaeca1085afd4e5a05ce468c3adb057acf6070",
+    "versions": {
+     "python": "3.12.14",
+     "torch": "2.14.1+cu130",
+     "torchvision": "0.29.1+cu130",
+     "numpy": "1.26.4",
+     "scipy": "1.12.0",
+     "device": "cuda",
+     "host": "gl038.hpc.nyu.edu",
+     "gpu": "NVIDIA L40S",
+     "cuda": "13.0",
+     "cudnn": 92400
+    },
+    "policy_config": {
+     "obs_steps": 2,
+     "pred_steps": 16,
+     "action_dim": 20,
+     "lowdim_dim": 29,
+     "cameras": [
+      "left_wrist",
+      "right_wrist",
+      "agent"
+     ],
+     "image_feature_dim": 64,
+     "shared_encoder": false,
+     "encoder_weights": null,
+     "random_shift": 2,
+     "skill_embed_dim": 16,
+     "down_dims": [
+      128,
+      256,
+      512
+     ],
+     "kernel_size": 5,
+     "n_groups": 8,
+     "step_embed_dim": 128,
+     "num_train_timesteps": 100,
+     "clip_sample": true,
+     "num_inference_steps": 16,
+     "regression_hidden": [
+      1024,
+      1024
+     ]
+    },
+    "data": {
+     "source": "synthetic",
+     "supervision": "achieved",
+     "image_shape": [
+      32,
+      32,
+      3
+     ],
+     "episodes": {
+      "train": 240,
+      "val": 30,
+      "test": 30
+     },
+     "windows": {
+      "train": 5040,
+      "val": 630,
+      "test": 630
+     }
+    },
+    "steps": 4000,
+    "seconds": 114.2,
+    "steps_per_second": 35.03,
+    "parameters_millions": 35.49,
+    "train_loss_every_1000": [
+     [
+      1000,
+      0.0034555522026494144
+     ],
+     [
+      2000,
+      0.0023777755431365222
+     ],
+     [
+      3000,
+      0.0019158403831534088
+     ],
+     [
+      4000,
+      0.0018275820871349424
+     ]
+    ],
+    "val_loss_ema_log": [
+     [
+      1000,
+      0.0036135620016249873
+     ],
+     [
+      2000,
+      0.003193362524348592
+     ],
+     [
+      3000,
+      0.0031255061242965953
+     ],
+     [
+      4000,
+      0.003093879534641192
+     ]
+    ],
+    "final_loss_ema": {
+     "val": 0.003093879534641192,
+     "test": 0.003581653715717414
+    },
+    "checkpoint": {
+     "file": "checkpoint.pt",
+     "sha256": "c8a185891926a31813ea22eb29a54258aed4ea694b80b148edfc868fa97f30fc",
+     "reload_max_abs_diff": 0.0
+    },
+    "latency_batch1_ms": {
+     "forward": {
+      "median_ms": 4.903918597847223,
+      "p90_ms": 4.9383691512048244
+     }
+    },
+    "inference_check": null,
+    "multimodal": {
+     "val": {
+      "episodes": 30,
+      "samples_per_episode": 8,
+      "trajectories": 240,
+      "obstacle_hit_rate": 0.3333333333333333,
+      "left_fraction_of_clear": 0.6,
+      "mode_balance": 0.8,
+      "episodes_with_both_modes": 0.0,
+      "final_error_m_mean": 0.013202677196111364,
+      "final_error_m_median": 0.01094230217354284,
+      "min_clearance_m_median": 0.03140464718158268
+     },
+     "test": {
+      "episodes": 30,
+      "samples_per_episode": 8,
+      "trajectories": 240,
+      "obstacle_hit_rate": 0.3333333333333333,
+      "left_fraction_of_clear": 0.45,
+      "mode_balance": 0.9,
+      "episodes_with_both_modes": 0.0,
+      "final_error_m_mean": 0.011785336754229665,
+      "final_error_m_median": 0.01093242719620413,
+      "min_clearance_m_median": 0.02695919266431436
+     },
+     "demonstrations_test": {
+      "episodes": 30,
+      "samples_per_episode": 1,
+      "trajectories": 30,
+      "obstacle_hit_rate": 0.0,
+      "left_fraction_of_clear": 0.3333333333333333,
+      "mode_balance": 0.6666666666666666,
+      "episodes_with_both_modes": 0.0,
+      "final_error_m_mean": 0.00027986299726629344,
+      "final_error_m_median": 0.0002692292507324157,
+      "min_clearance_m_median": 0.07886756513873099
+     }
+    }
+   }
+  },
+  {
+   "job_id": "20221507",
+   "role": "final S1 code (9498adb9; contracts as shipped 01:42), 80 tests",
+   "criteria": "C1-C6",
+   "sacct": {
+    "job": "20221507",
+    "state": "COMPLETED",
+    "elapsed": "00:12:42",
+    "start": "2026-10-18T01:43:31",
+    "end": "2026-10-18T01:56:13",
+    "node": "gl063",
+    "exit_code": "0:0"
+   },
+   "gpu_line": "NVIDIA L40S, 610.43.02, 46068 MiB",
+   "versions_txt": "2.14.1+cu130 13.0 NVIDIA L40S 1.26.4 1.12.0",
+   "steps_log": [
+    "job=20221507 node=gl063.hpc.nyu.edu start=2026-10-18T01:43:32-04:00",
+    "NVIDIA L40S, 610.43.02, 46068 MiB",
+    "2026-10-18T01:43:34-04:00 exit=0 :: /home/jz6676/.local/bin/uv pip install -q --python /scratch/jz6676/jing_assembly/env/bin/python torch==2.14.1 torchvision==0.29.1 numpy==1.26.4 scipy==1.12.0 pytest==8.4.2",
+    "2026-10-18T01:44:12-04:00 exit=0 :: /scratch/jz6676/jing_assembly/env/bin/python -c import torch, torchvision, numpy, scipy; assert torch.cuda.is_available(); print(torch.__version__, torch.version.cuda, torch.cuda.get_device_name(0), numpy.__version__, scipy.__version__)",
+    "2026-10-18T01:46:05-04:00 exit=0 :: pytest",
+    "2026-10-18T01:53:29-04:00 exit=0 :: /scratch/jz6676/jing_assembly/env/bin/python -B -m tasks.dual_arm_crag_skull.s1.train --synthetic 300 --output /scratch/jz6676/jing_assembly/runs/s1_smoke_20221507/diffusion --config /scratch/jz6676/jing_assembly/code_v3/s1_smoke_config.json --kind diffusion",
+    "2026-10-18T01:56:10-04:00 exit=0 :: /scratch/jz6676/jing_assembly/env/bin/python -B -m tasks.dual_arm_crag_skull.s1.train --synthetic 300 --output /scratch/jz6676/jing_assembly/runs/s1_smoke_20221507/regression --config /scratch/jz6676/jing_assembly/code_v3/s1_smoke_config.json --kind regression --steps 4000",
+    "2026-10-18T01:56:11-04:00 exit=0 :: /scratch/jz6676/jing_assembly/env/bin/python -B -m tasks.dual_arm_crag_skull.s1.smoke --diffusion /scratch/jz6676/jing_assembly/runs/s1_smoke_20221507/diffusion/metrics.json --regression /scratch/jz6676/jing_assembly/runs/s1_smoke_20221507/regression/metrics.json --junit /scratch/jz6676/jing_assembly/runs/s1_smoke_20221507/junit.xml --pytest-exit 0 --expected-tests 80 --output /scratch/jz6676/jing_assembly/runs/s1_smoke_20221507/summary.json",
+    "end=2026-10-18T01:56:11-04:00 worst=0"
+   ],
+   "verdict": {
+    "pass": true,
+    "checks": {
+     "C1_pytest": true,
+     "C2_trained_and_reloadable": true,
+     "C3_diffusion_modes": true,
+     "C4_regression_averages_modes": true,
+     "C5_latency": true,
+     "C6_inference_chunks": true
+    },
+    "pytest": {
+     "exit": 0,
+     "tests": 80,
+     "failures": 0,
+     "errors": 0,
+     "skipped": 0,
+     "expected_tests": 80
+    },
+    "diffusion_test": {
+     "episodes": 30,
+     "samples_per_episode": 8,
+     "trajectories": 240,
+     "obstacle_hit_rate": 0.016666666666666666,
+     "left_fraction_of_clear": 0.4830508474576271,
+     "mode_balance": 0.9661016949152542,
+     "episodes_with_both_modes": 0.9666666666666667,
+     "final_error_m_mean": 0.01572823296542573,
+     "final_error_m_median": 0.01187442425482559,
+     "min_clearance_m_median": 0.07444998629190813
+    },
+    "regression_test": {
+     "episodes": 30,
+     "samples_per_episode": 8,
+     "trajectories": 240,
+     "obstacle_hit_rate": 0.3333333333333333,
+     "left_fraction_of_clear": 0.45,
+     "mode_balance": 0.9,
+     "episodes_with_both_modes": 0.0,
+     "final_error_m_mean": 0.011785336754229665,
+     "final_error_m_median": 0.01093242719620413,
+     "min_clearance_m_median": 0.02695919266431436
+    },
+    "ddim16_latency": {
+     "median_ms": 75.7219735532999,
+     "p90_ms": 76.27067812718451
+    },
+    "inference_check": {
+     "attempted": 60,
+     "chunks": 60,
+     "rejected": [],
+     "not_executable": [],
+     "latency_ms_median": 76.05659146793187,
+     "latency_ms_max": 78.85662419721484
+    }
+   },
+   "marker": "PASS",
+   "checkpoint_listing": [
+    "-rw-r--r--. 1 jz6676 jz6676 427192507 Oct 18 01:53 /scratch/jz6676/jing_assembly/runs/s1_smoke_20221507/diffusion/checkpoint.pt",
+    "-rw-r--r--. 1 jz6676 jz6676 284118175 Oct 18 01:56 /scratch/jz6676/jing_assembly/runs/s1_smoke_20221507/regression/checkpoint.pt",
+    "88ab6d66736e6fcc0f9c587801755d409a69c201fa4603ffb1afa34cefb01e46  /scratch/jz6676/jing_assembly/runs/s1_smoke_20221507/diffusion/checkpoint.pt",
+    "63d8c3baa4fa2456a9dd0b51c040ad109c68dbc674e531e35f53abead7e85914  /scratch/jz6676/jing_assembly/runs/s1_smoke_20221507/regression/checkpoint.pt"
+   ],
+   "diffusion": {
+    "code_sha256": "9498adb9845b866f064794ce712a35970238b993eccc29439d537b7dc62827b8",
+    "versions": {
+     "python": "3.12.14",
+     "torch": "2.14.1+cu130",
+     "torchvision": "0.29.1+cu130",
+     "numpy": "1.26.4",
+     "scipy": "1.12.0",
+     "device": "cuda",
+     "host": "gl063.hpc.nyu.edu",
+     "gpu": "NVIDIA L40S",
+     "cuda": "13.0",
+     "cudnn": 92400
+    },
+    "policy_config": {
+     "obs_steps": 2,
+     "pred_steps": 16,
+     "action_dim": 20,
+     "lowdim_dim": 29,
+     "cameras": [
+      "left_wrist",
+      "right_wrist",
+      "agent"
+     ],
+     "image_feature_dim": 64,
+     "shared_encoder": false,
+     "encoder_weights": null,
+     "random_shift": 2,
+     "skill_embed_dim": 16,
+     "down_dims": [
+      128,
+      256,
+      512
+     ],
+     "kernel_size": 5,
+     "n_groups": 8,
+     "step_embed_dim": 128,
+     "num_train_timesteps": 100,
+     "clip_sample": true,
+     "num_inference_steps": 16,
+     "regression_hidden": [
+      1024,
+      1024
+     ]
+    },
+    "data": {
+     "source": "synthetic",
+     "supervision": "achieved",
+     "image_shape": [
+      32,
+      32,
+      3
+     ],
+     "episodes": {
+      "train": 240,
+      "val": 30,
+      "test": 30
+     },
+     "windows": {
+      "train": 5040,
+      "val": 630,
+      "test": 630
+     }
+    },
+    "steps": 8000,
+    "seconds": 389.9,
+    "steps_per_second": 20.52,
+    "parameters_millions": 53.36,
+    "train_loss_every_1000": [
+     [
+      1000,
+      0.06810245789587498
+     ],
+     [
+      2000,
+      0.029601621758192777
+     ],
+     [
+      3000,
+      0.020385718662291764
+     ],
+     [
+      4000,
+      0.01614599191583693
+     ],
+     [
+      5000,
+      0.013193306112661958
+     ],
+     [
+      6000,
+      0.011863606665283442
+     ],
+     [
+      7000,
+      0.010597649235278369
+     ],
+     [
+      8000,
+      0.010528252068907023
+     ]
+    ],
+    "val_loss_ema_log": [
+     [
+      1000,
+      0.07954468403070691
+     ],
+     [
+      2000,
+      0.032882542494270535
+     ],
+     [
+      3000,
+      0.022584354889298244
+     ],
+     [
+      4000,
+      0.018436452965178186
+     ],
+     [
+      5000,
+      0.01630162468978337
+     ],
+     [
+      6000,
+      0.015025066531130246
+     ],
+     [
+      7000,
+      0.014291225976887204
+     ],
+     [
+      8000,
+      0.014020135673502136
+     ]
+    ],
+    "final_loss_ema": {
+     "val": 0.014020135673502136,
+     "test": 0.013264954246817126
+    },
+    "checkpoint": {
+     "file": "checkpoint.pt",
+     "sha256": "88ab6d66736e6fcc0f9c587801755d409a69c201fa4603ffb1afa34cefb01e46",
+     "reload_max_abs_diff": 0.0
+    },
+    "latency_batch1_ms": {
+     "ddim_1": {
+      "median_ms": 10.426348773762584,
+      "p90_ms": 10.959604196250439
+     },
+     "ddim_2": {
+      "median_ms": 14.41104686819017,
+      "p90_ms": 14.833327615633607
+     },
+     "ddim_4": {
+      "median_ms": 23.122788406908512,
+      "p90_ms": 23.350871121510863
+     },
+     "ddim_8": {
+      "median_ms": 40.73217511177063,
+      "p90_ms": 41.13304363563657
+     },
+     "ddim_16": {
+      "median_ms": 75.7219735532999,
+      "p90_ms": 76.27067812718451
+     },
+     "ddpm_100": {
+      "median_ms": 441.2875829730183,
+      "p90_ms": 444.38465968705714
+     }
+    },
+    "inference_check": {
+     "attempted": 60,
+     "chunks": 60,
+     "rejected": [],
+     "not_executable": [],
+     "latency_ms_median": 76.05659146793187,
+     "latency_ms_max": 78.85662419721484
+    },
+    "multimodal": {
+     "val": {
+      "episodes": 30,
+      "samples_per_episode": 8,
+      "trajectories": 240,
+      "obstacle_hit_rate": 0.016666666666666666,
+      "left_fraction_of_clear": 0.5,
+      "mode_balance": 1.0,
+      "episodes_with_both_modes": 0.9666666666666667,
+      "final_error_m_mean": 0.015372531517546313,
+      "final_error_m_median": 0.012556253772043096,
+      "min_clearance_m_median": 0.07402363308073337
+     },
+     "test": {
+      "episodes": 30,
+      "samples_per_episode": 8,
+      "trajectories": 240,
+      "obstacle_hit_rate": 0.016666666666666666,
+      "left_fraction_of_clear": 0.4830508474576271,
+      "mode_balance": 0.9661016949152542,
+      "episodes_with_both_modes": 0.9666666666666667,
+      "final_error_m_mean": 0.01572823296542573,
+      "final_error_m_median": 0.01187442425482559,
+      "min_clearance_m_median": 0.07444998629190813
+     },
+     "demonstrations_test": {
+      "episodes": 30,
+      "samples_per_episode": 1,
+      "trajectories": 30,
+      "obstacle_hit_rate": 0.0,
+      "left_fraction_of_clear": 0.3333333333333333,
+      "mode_balance": 0.6666666666666666,
+      "episodes_with_both_modes": 0.0,
+      "final_error_m_mean": 0.00027986299726629344,
+      "final_error_m_median": 0.0002692292507324157,
+      "min_clearance_m_median": 0.07886756513873099
+     }
+    }
+   },
+   "regression": {
+    "code_sha256": "9498adb9845b866f064794ce712a35970238b993eccc29439d537b7dc62827b8",
+    "versions": {
+     "python": "3.12.14",
+     "torch": "2.14.1+cu130",
+     "torchvision": "0.29.1+cu130",
+     "numpy": "1.26.4",
+     "scipy": "1.12.0",
+     "device": "cuda",
+     "host": "gl063.hpc.nyu.edu",
+     "gpu": "NVIDIA L40S",
+     "cuda": "13.0",
+     "cudnn": 92400
+    },
+    "policy_config": {
+     "obs_steps": 2,
+     "pred_steps": 16,
+     "action_dim": 20,
+     "lowdim_dim": 29,
+     "cameras": [
+      "left_wrist",
+      "right_wrist",
+      "agent"
+     ],
+     "image_feature_dim": 64,
+     "shared_encoder": false,
+     "encoder_weights": null,
+     "random_shift": 2,
+     "skill_embed_dim": 16,
+     "down_dims": [
+      128,
+      256,
+      512
+     ],
+     "kernel_size": 5,
+     "n_groups": 8,
+     "step_embed_dim": 128,
+     "num_train_timesteps": 100,
+     "clip_sample": true,
+     "num_inference_steps": 16,
+     "regression_hidden": [
+      1024,
+      1024
+     ]
+    },
+    "data": {
+     "source": "synthetic",
+     "supervision": "achieved",
+     "image_shape": [
+      32,
+      32,
+      3
+     ],
+     "episodes": {
+      "train": 240,
+      "val": 30,
+      "test": 30
+     },
+     "windows": {
+      "train": 5040,
+      "val": 630,
+      "test": 630
+     }
+    },
+    "steps": 4000,
+    "seconds": 127.3,
+    "steps_per_second": 31.42,
+    "parameters_millions": 35.49,
+    "train_loss_every_1000": [
+     [
+      1000,
+      0.0034555522026494144
+     ],
+     [
+      2000,
+      0.0023777755431365222
+     ],
+     [
+      3000,
+      0.0019158403831534088
+     ],
+     [
+      4000,
+      0.0018275820871349424
+     ]
+    ],
+    "val_loss_ema_log": [
+     [
+      1000,
+      0.0036135620016249873
+     ],
+     [
+      2000,
+      0.003193362524348592
+     ],
+     [
+      3000,
+      0.0031255061242965953
+     ],
+     [
+      4000,
+      0.003093879534641192
+     ]
+    ],
+    "final_loss_ema": {
+     "val": 0.003093879534641192,
+     "test": 0.003581653715717414
+    },
+    "checkpoint": {
+     "file": "checkpoint.pt",
+     "sha256": "63d8c3baa4fa2456a9dd0b51c040ad109c68dbc674e531e35f53abead7e85914",
+     "reload_max_abs_diff": 0.0
+    },
+    "latency_batch1_ms": {
+     "forward": {
+      "median_ms": 5.733660189434886,
+      "p90_ms": 5.810065241530538
+     }
+    },
+    "inference_check": {
+     "attempted": 60,
+     "chunks": 60,
+     "rejected": [],
+     "not_executable": [],
+     "latency_ms_median": 8.125574560835958,
+     "latency_ms_max": 8.449069224298
+    },
+    "multimodal": {
+     "val": {
+      "episodes": 30,
+      "samples_per_episode": 8,
+      "trajectories": 240,
+      "obstacle_hit_rate": 0.3333333333333333,
+      "left_fraction_of_clear": 0.6,
+      "mode_balance": 0.8,
+      "episodes_with_both_modes": 0.0,
+      "final_error_m_mean": 0.013202677196111364,
+      "final_error_m_median": 0.01094230217354284,
+      "min_clearance_m_median": 0.03140464718158268
+     },
+     "test": {
+      "episodes": 30,
+      "samples_per_episode": 8,
+      "trajectories": 240,
+      "obstacle_hit_rate": 0.3333333333333333,
+      "left_fraction_of_clear": 0.45,
+      "mode_balance": 0.9,
+      "episodes_with_both_modes": 0.0,
+      "final_error_m_mean": 0.011785336754229665,
+      "final_error_m_median": 0.01093242719620413,
+      "min_clearance_m_median": 0.02695919266431436
+     },
+     "demonstrations_test": {
+      "episodes": 30,
+      "samples_per_episode": 1,
+      "trajectories": 30,
+      "obstacle_hit_rate": 0.0,
+      "left_fraction_of_clear": 0.3333333333333333,
+      "mode_balance": 0.6666666666666666,
+      "episodes_with_both_modes": 0.0,
+      "final_error_m_mean": 0.00027986299726629344,
+      "final_error_m_median": 0.0002692292507324157,
+      "min_clearance_m_median": 0.07886756513873099
+     }
+    }
+   }
+  }
+ ],
+ "superseded_context": {
+  "what": "S1 (conditional Diffusion Policy) GPU smoke on deterministic synthetic bimanual detour episodes: code path, multimodality vs an MSE regression baseline, latency, contract round trip. Not the skull task.",
+  "cluster": "NYU torch, partition l40s_public, account torch_pr_51_tandon_advanced, 1x L40S, 8 CPU, 64 GB",
+  "data": "s1/synthetic.py synthetic_detour_v1, 300 episodes (seed 0), split 240/30/30 episodes (5040/630/630 windows) by episode; left hand carries part_0 past a disc obstacle on the straight line, passing left or right with p=1/2 (latent, privileged); right hand inactive; 3 views 32x32 (agent view missing in 57 of 300 episodes, labelled source umi); TCP 30 Hz, cameras 15 Hz with jitter and 5% drops",
+  "evaluation": "first place-segment window of each held-out episode (hand still at rest, mode unobservable), 8 DDIM-16 samples per episode; obstacle/target/mode ground truth read from privileged.npz for evaluation only",
+  "criteria": "s1/smoke.py docstring: C1 pytest counts, C2 checkpoint reload, C3 diffusion modes/hits/final error, C4 regression averages modes, C5 DDIM-16 latency <= 100 ms; C6 (end-to-end live_sample -> ActionChunk) added before the final run only",
+  "notes": [
+   "C4 passed with a narrow margin in both runs (regression 0.333 vs required 0.317). The deterministic regression baseline does not always average the modes: in 20 of 30 held-out episodes it commits to one side (sides split 45/55), and in 10 it drives through the obstacle. Its median closest approach is 2.7 cm outside the obstacle versus 7.4 cm for diffusion and 7.9 cm for the demonstrations.",
+   "Only 23.8% of the 6,300 training windows are mode-ambiguous (observation before the reach starts); the rest reveal the mode through the hand motion history.",
+   "Batch-1 latency budget: one 10 Hz policy step is 100 ms; DDIM-16 measured 55-76 ms on L40S nodes and 262 ms on a loaded maxwell CPU (8 threads), so CPU-only deployment would need fewer DDIM steps or a smaller model.",
+   "Runs 20219996 (gl038, S1 code faf31f75) and 20221507 (gl063, S1 code 9498adb9) produced bitwise-identical train and validation loss logs, final losses and evaluation metrics for both policies (max abs difference 0.0). The second revision refactored how windows are assembled (shared encode_observation/live_sample) and added the inference check and runtime wrapper, so this also shows the refactor did not change the training data. Checkpoint files differ only because their metadata differs.",
+   "Batch-1 latency differed between nodes: DDIM-16 median 55.1 ms on gl038 and 75.7 ms on gl063 (both under the 100 ms criterion); end-to-end live_sample -> ActionChunk median 76.1 ms, max 78.9 ms on gl063, against a 250 ms valid_until."
+  ],
+  "limitations": [
+   "Synthetic data only: no Isaac, UMI or robot episodes exist yet, so nothing here measures skull assembly ability.",
+   "Images are 32x32 top-down rasters; the real three-view resolution, crops and a pretrained encoder are untested (encoder weights=None).",
+   "Training preloads the whole split onto the GPU; real datasets need a streaming loader.",
+   "Reproducibility was checked only on L40S nodes with driver 610.43.02 (two runs, two nodes); other GPU models, drivers or batch sizes are untested.",
+   "Episode schema carries no joint diagnostics or action issue times yet (INTERFACES lists both).",
+   "Mode-coverage metrics depend on privileged ground truth and the synthetic generator; they are a sanity check of the method, not a benchmark."
+  ],
+  "gpu_hours": "about 0.44 L40S-hours: 13 min 28 s + 12 min 42 s; 20220558 never ran",
+  "cancelled_jobs": [
+   {
+    "job_id": "20220558",
+    "reason": "queued v2 (78 tests) superseded before it started; cancelled while PENDING, never ran"
+   }
+  ],
+  "contracts_versions": {
+   "shipped_to_gpu_runs": {
+    "actions.py": "876041120979d8dd...",
+    "skills.py": "d572662adb78f8a5..."
+   },
+   "current_after_parent_edit_0144": {
+    "actions.py": "bca18bb681b4fdff...",
+    "skills.py": "529a6258a970dfed..."
+   },
+   "s1_code_sha256_with_shipped_contracts": "9498adb9845b866f064794ce712a35970238b993eccc29439d537b7dc62827b8",
+   "s1_code_sha256_with_current_contracts": "4cfc8751a8578a23d24a8a0797489558e8539b33e045390bad4a0a09e314909f",
+   "note": "after both runs the parent session edited contracts/, while S1 sources did not change."
+  },
+  "local_cpu_reference": {
+   "tests": "PYTHONDONTWRITEBYTECODE=1 ../venv-asm/bin/python -B -m pytest -q -p no:cacheprovider tasks/dual_arm_crag_skull/tests/test_contracts.py tasks/dual_arm_crag_skull/tests/test_s1_episode.py tasks/dual_arm_crag_skull/tests/test_s1_policy.py tasks/dual_arm_crag_skull/tests/test_s1_train.py: exit 0, 80 passed with the contracts shipped to run 20221507; after the parent changed contracts/ at 01:44 (read-only anchors mapping, target checks in encode_chunk, clock-domain check in executable_reason, allows_support, fragment provenance checks) the same command gives exit 0, 82 passed (32 contract + 50 S1), 0 skipped",
+   "cpu_latency_batch1_ms_maxwell_8_threads_loaded": {
+    "ddim_1": 141.0,
+    "ddim_4": 107.6,
+    "ddim_16": 261.7
+   },
+   "mutation_checks": "31 deliberate mutations of S1 checks (extrapolation, causal frames, max age, window boundaries, half-open segments, split, normalizer span/train-only, anchors, commanded supervision, target anchor, inactive hold, width clip count, DDIM/DDPM formulas, q(x_t|x0), timesteps, GroupNorm, view masking, EMA, target mask, EMA updates in training, verdict criteria, inference staleness, live history order, privileged file read by the loader, runtime skill gate, recorded trained skills): all killed; 2 initially survived (target mask multiplication, EMA not updated during training) and were caught after strengthening the tests"
+  },
+  "checkpoints": "kept on torch only: /scratch/jz6676/jing_assembly/runs/s1_smoke_<job>/{diffusion,regression}/checkpoint.pt (427 MB / 284 MB); not copied to the repo"
+ },
+ "confirmatory_runs": [
+  {
+   "job_id": "maxwell-v5-20261018_042157",
+   "role": "pre-registered confirmatory run: criteria v3 unchanged, configuration changed after the v4 diagnosis (sampler_eta 1, 16000 diffusion steps) and fresh synthetic episodes (synthetic_seed 1); maxwell local GPU (shared), not a torch run",
+   "criteria": "v3 (s1/smoke.py sha256 db6a4d0b304e132b65fa5e4ed95240a94da3f23822a002e4363cd729911ea003, unchanged since v4)",
+   "preregistration": {
+    "path": "/local_data/jz6676/repos_review/runs/s1_smoke_maxwell_v5_20261018_042157/PREREGISTRATION.md",
+    "sha256": "894e862e32ff6109e24e655dce95c77b943135208c021466ff9b7db179db2982",
+    "written": "2026-10-18T04:21:57-04:00"
+   },
+   "changes_vs_v4": {
+    "policy.sampler_eta": [
+     0.0,
+     1.0
+    ],
+    "diffusion steps": [
+     8000,
+     16000
+    ],
+    "synthetic_seed": [
+     0,
+     1
+    ],
+    "expected_tests": [
+     101,
+     114
+    ]
+   },
+   "smoke_config": {
+    "steps": 16000,
+    "batch_size": 256,
+    "lr": 0.0001,
+    "warmup_steps": 500,
+    "log_every": 100,
+    "eval_every": 1000,
+    "image_size": 32,
+    "eval_samples": 8,
+    "latency_steps": [
+     1,
+     2,
+     4,
+     8,
+     16
+    ],
+    "latency_ddpm": true,
+    "latency_repeats": 20,
+    "synthetic_seed": 1,
+    "policy": {
+     "down_dims": [
+      128,
+      256,
+      512
+     ],
+     "image_feature_dim": 64,
+     "num_inference_steps": 16,
+     "sampler_eta": 1.0
+    }
+   },
+   "code": {
+    "bundle": "code_v5: the 19 code_v4 files at their current versions plus s1_smoke_config.json",
+    "per_file_sha256": {
+     "tasks/__init__.py": "4635e63b0ed3e5f6d966e1a0cb4cafef9059a211ef8bad5fcb51a64d0397532b",
+     "tasks/dual_arm_crag_skull/__init__.py": "fa548b8fdbedb73e76b742cefaa5be241fe5c81bdd557c4cdc4bc0b678025f79",
+     "tasks/dual_arm_crag_skull/perception.py": "a583ce662b9c99d5ffb14285c630565dbc87374994d6d52ae23c6604facffd3d",
+     "tasks/dual_arm_crag_skull/contracts/__init__.py": "9cff203616af2b8989a9f7ec47c5bff2c06347815e2161967768f9208a393eee",
+     "tasks/dual_arm_crag_skull/contracts/actions.py": "bca18bb681b4fdff4147cb29599bb9696036cdb2737481749431a34f06597479",
+     "tasks/dual_arm_crag_skull/contracts/skills.py": "9a352bfc2c59d75bfc40080929a59bb73484c313c172a4c60e16dff69904253f",
+     "tasks/dual_arm_crag_skull/s1/__init__.py": "069165972f95b3b0fbb4ca409c907552e904e18a3606a92c2133cb601ecef705",
+     "tasks/dual_arm_crag_skull/s1/chunking.py": "fec5354830d88ad0ac3fe765951fcbe5b593beb488762a5917dd86ec2cb5977a",
+     "tasks/dual_arm_crag_skull/s1/dataset.py": "0cce6b39353571c73c168d07b99666d2b79fbf67ae7fc4e282044970976f60cf",
+     "tasks/dual_arm_crag_skull/s1/episode.py": "ffde2d9ddcdb1bc0cb65dc9a20f657e860c0263c0edbdeaae15d6eddf05d2eb6",
+     "tasks/dual_arm_crag_skull/s1/policy.py": "56277a97edc5e4e46a8250ef5587a22af1e27d956bf1ad3f5c9105945dbbd34f",
+     "tasks/dual_arm_crag_skull/s1/runtime.py": "345a8fede1e25b3daa5f176f22b3bb634f59c571fa31ab9a17665bb7fa4df33e",
+     "tasks/dual_arm_crag_skull/s1/smoke.py": "db6a4d0b304e132b65fa5e4ed95240a94da3f23822a002e4363cd729911ea003",
+     "tasks/dual_arm_crag_skull/s1/synthetic.py": "7a9985f70f58083a4d98a2cb070042b3d8bf39399301fd13238d030010d82cc6",
+     "tasks/dual_arm_crag_skull/s1/train.py": "afb864a174c570cd7aae4e6e7c303def1b88781ed5bb20e0f2c99f81a5d7bc99",
+     "tasks/dual_arm_crag_skull/tests/test_contracts.py": "059b3987ec7b044ad214e861eba0d1b0c646b38660476bc0dcd4067ce2a175bd",
+     "tasks/dual_arm_crag_skull/tests/test_s1_episode.py": "7079340ab59cd9f702d4c5f41a7dc2ec66bb125d4aad5a2ccc7e0052940d37c4",
+     "tasks/dual_arm_crag_skull/tests/test_s1_policy.py": "ac3ebc623997d0311bce5ef1506a9e11e783ee6ab561229b4323df76b1457bf9",
+     "tasks/dual_arm_crag_skull/tests/test_s1_train.py": "a5bf38bf53456106de02ab3bfe29894d13cbc5bf8fefd27df729de32c97060e9",
+     "s1_smoke_config.json": "e97d75cf0e4d8c798618f97cb814bf7c52b23075fdbd371a8f380abd5872baf2"
+    }
+   },
+   "sacct": {
+    "job": "maxwell-v5-20261018_042157",
+    "state": "local run (no Slurm), script exit 1",
+    "start": "2026-10-18T04:22:45-04:00",
+    "end": "2026-10-18T05:33:29-04:00",
+    "node": "maxwell (GPU 5, shared)",
+    "exit_code": "1"
+   },
+   "gpu_line": "5, NVIDIA RTX 6000 Ada Generation, 580.173.02, 49140 MiB, 37426 MiB, 100 %",
+   "versions_txt": "2.14.1+cu130 13.0 NVIDIA RTX 6000 Ada Generation 1.26.4 1.12.0",
+   "steps_log": [
+    "host=maxwell.poly.edu gpu_index=5 free_MiB=11085 start=2026-10-18T04:22:45-04:00",
+    "0, NVIDIA RTX 6000 Ada Generation, 580.173.02, 49140 MiB, 47595 MiB, 98 %",
+    "1, NVIDIA RTX 6000 Ada Generation, 580.173.02, 49140 MiB, 38567 MiB, 100 %",
+    "2, NVIDIA RTX 6000 Ada Generation, 580.173.02, 49140 MiB, 38773 MiB, 100 %",
+    "3, NVIDIA RTX 6000 Ada Generation, 580.173.02, 49140 MiB, 37846 MiB, 98 %",
+    "4, NVIDIA RTX 6000 Ada Generation, 580.173.02, 49140 MiB, 43616 MiB, 100 %",
+    "5, NVIDIA RTX 6000 Ada Generation, 580.173.02, 49140 MiB, 37426 MiB, 100 %",
+    "6, NVIDIA RTX 6000 Ada Generation, 580.173.02, 49140 MiB, 47561 MiB, 98 %",
+    "7, NVIDIA RTX 6000 Ada Generation, 580.173.02, 49140 MiB, 43162 MiB, 80 %",
+    "2026-10-18T04:22:49-04:00 exit=0 :: /local_data/jz6676/repos_review/venv-s1gpu/bin/python -c import torch, torchvision, numpy, scipy; assert torch.cuda.is_available(); print(torch.__version__, torch.version.cuda, torch.cuda.get_device_name(0), numpy.__version__, scipy.__version__)",
+    "2026-10-18T04:24:27-04:00 exit=0 :: /local_data/jz6676/repos_review/venv-s1gpu/bin/python -B -m pytest -q -p no:cacheprovider --junitxml=/local_data/jz6676/repos_review/runs/s1_smoke_maxwell_v5_20261018_042157/junit.xml tasks/dual_arm_crag_skull/tests/test_contracts.py tasks/dual_arm_crag_skull/tests/test_s1_episode.py tasks/dual_arm_crag_skull/tests/test_s1_policy.py tasks/dual_arm_crag_skull/tests/test_s1_train.py",
+    "2026-10-18T05:23:46-04:00 exit=0 :: /local_data/jz6676/repos_review/venv-s1gpu/bin/python -B -m tasks.dual_arm_crag_skull.s1.train --synthetic 300 --output /local_data/jz6676/repos_review/runs/s1_smoke_maxwell_v5_20261018_042157/diffusion --config /tmp/claude-4241759/-local-data-jz6676/e4f27028-ff24-47aa-ad50-641b7fc63ff7/scratchpad/s1v5/code_v5/s1_smoke_config.json --kind diffusion",
+    "2026-10-18T05:33:29-04:00 exit=0 :: /local_data/jz6676/repos_review/venv-s1gpu/bin/python -B -m tasks.dual_arm_crag_skull.s1.train --synthetic 300 --output /local_data/jz6676/repos_review/runs/s1_smoke_maxwell_v5_20261018_042157/regression --config /tmp/claude-4241759/-local-data-jz6676/e4f27028-ff24-47aa-ad50-641b7fc63ff7/scratchpad/s1v5/code_v5/s1_smoke_config.json --kind regression --steps 4000",
+    "2026-10-18T05:33:29-04:00 exit=1 :: /local_data/jz6676/repos_review/venv-s1gpu/bin/python -B -m tasks.dual_arm_crag_skull.s1.smoke --diffusion /local_data/jz6676/repos_review/runs/s1_smoke_maxwell_v5_20261018_042157/diffusion/metrics.json --regression /local_data/jz6676/repos_review/runs/s1_smoke_maxwell_v5_20261018_042157/regression/metrics.json --junit /local_data/jz6676/repos_review/runs/s1_smoke_maxwell_v5_20261018_042157/junit.xml --pytest-exit 0 --expected-tests 114 --output /local_data/jz6676/repos_review/runs/s1_smoke_maxwell_v5_20261018_042157/summary.json",
+    "end=2026-10-18T05:33:29-04:00 worst=1",
+    "0, 47643 MiB, 99 %",
+    "1, 37586 MiB, 100 %",
+    "2, 38787 MiB, 100 %",
+    "3, 41375 MiB, 100 %",
+    "4, 42212 MiB, 100 %",
+    "5, 32869 MiB, 100 %",
+    "6, 47561 MiB, 99 %",
+    "7, 30131 MiB, 90 %"
+   ],
+   "resources": {
+    "peak_rss_kB": 1968272,
+    "gpu_memory_used_MiB_max_all_processes": 40533
+   },
+   "verdict": {
+    "pass": false,
+    "checks": {
+     "C1_pytest": true,
+     "C2_trained_and_reloadable": true,
+     "C3_diffusion_modes": true,
+     "C4_regression_averages_modes": true,
+     "C5_latency": false,
+     "C6_inference_chunks": false,
+     "C7_pick_conditioned_on_fragment": true,
+     "C8_mid_window_follows_mode": true,
+     "C9_late_window_releases_at_goal": true,
+     "C10_only_requested_arm_moves": true
+    },
+    "criteria_version": 3,
+    "pytest": {
+     "exit": 0,
+     "tests": 114,
+     "failures": 0,
+     "errors": 0,
+     "skipped": 0,
+     "expected_tests": 114
+    },
+    "diffusion_test": {
+     "pick_first": {
+      "episodes": 30,
+      "trajectories": 240,
+      "chosen_fragment_rate": 1.0,
+      "final_error_m_median": 0.007307196827051695,
+      "observation_offset_s": 0.0
+     },
+     "place_first": {
+      "episodes": 30,
+      "trajectories": 240,
+      "obstacle_hit_rate": 0.0,
+      "left_fraction_of_clear": 0.5291666666666667,
+      "episodes_with_both_modes": 1.0,
+      "mode_agreement_of_clear": 0.5041666666666667,
+      "final_error_m_median": 0.0056766735873662825,
+      "final_width_m_median": 0.047401538118720055,
+      "min_clearance_m_median": 0.05799389453962434,
+      "observation_offset_s": 0.0
+     },
+     "place_mid": {
+      "episodes": 30,
+      "trajectories": 240,
+      "obstacle_hit_rate": 0.0,
+      "left_fraction_of_clear": 0.43333333333333335,
+      "episodes_with_both_modes": 0.0,
+      "mode_agreement_of_clear": 1.0,
+      "final_error_m_median": 0.005364596778648274,
+      "final_width_m_median": 0.08004692941904068,
+      "min_clearance_m_median": 0.057618794212668314,
+      "observation_offset_s": 0.7
+     },
+     "place_late": {
+      "episodes": 30,
+      "trajectories": 240,
+      "obstacle_hit_rate": 0.0,
+      "left_fraction_of_clear": 0.5,
+      "episodes_with_both_modes": 0.9,
+      "mode_agreement_of_clear": 0.5166666666666667,
+      "final_error_m_median": 0.0010555599946864328,
+      "final_width_m_median": 0.0798841193318367,
+      "min_clearance_m_median": 0.1036000716026322,
+      "observation_offset_s": 1.6
+     },
+     "arms": {
+      "active_motion_m_median": 0.16423237927191997,
+      "inactive_motion_m_median": 0.0026700374973040323,
+      "inactive_motion_m_p90": 0.0038875354476000535
+     }
+    },
+    "regression_test": {
+     "pick_first": {
+      "episodes": 30,
+      "trajectories": 240,
+      "chosen_fragment_rate": 1.0,
+      "final_error_m_median": 0.053853485990218844,
+      "observation_offset_s": 0.0
+     },
+     "place_first": {
+      "episodes": 30,
+      "trajectories": 240,
+      "obstacle_hit_rate": 0.8666666666666667,
+      "left_fraction_of_clear": 0.5,
+      "episodes_with_both_modes": 0.0,
+      "mode_agreement_of_clear": 0.25,
+      "final_error_m_median": 0.025992341780222285,
+      "final_width_m_median": 0.06237218156456947,
+      "min_clearance_m_median": -0.021455448532352463,
+      "observation_offset_s": 0.0
+     },
+     "place_mid": {
+      "episodes": 30,
+      "trajectories": 240,
+      "obstacle_hit_rate": 0.0,
+      "left_fraction_of_clear": 0.43333333333333335,
+      "episodes_with_both_modes": 0.0,
+      "mode_agreement_of_clear": 1.0,
+      "final_error_m_median": 0.019193359018318253,
+      "final_width_m_median": 0.07966834306716919,
+      "min_clearance_m_median": 0.05093683312146503,
+      "observation_offset_s": 0.7
+     },
+     "place_late": {
+      "episodes": 30,
+      "trajectories": 240,
+      "obstacle_hit_rate": 0.0,
+      "left_fraction_of_clear": 0.4666666666666667,
+      "episodes_with_both_modes": 0.0,
+      "mode_agreement_of_clear": 0.5,
+      "final_error_m_median": 0.004390846133314169,
+      "final_width_m_median": 0.0809599794447422,
+      "min_clearance_m_median": 0.10193078268015174,
+      "observation_offset_s": 1.6
+     },
+     "arms": {
+      "active_motion_m_median": 0.13961560911286178,
+      "inactive_motion_m_median": 0.007425824427887944,
+      "inactive_motion_m_p90": 0.018838934300398694
+     }
+    },
+    "ddim16_latency": {
+     "median_ms": 315.3010986279696,
+     "p90_ms": 329.7866269480437
+    },
+    "inference_check": {
+     "attempted": 64,
+     "chunks": 64,
+     "rejected": [],
+     "not_executable": [
+      "synthetic_pick_detour_v2-s1-00000-pick: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00000-pick: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00000-place: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00000-place: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00000-retreat: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00000-retreat: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00008-pick: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00008-pick: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00008-place: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00008-place: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00008-retreat: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00008-retreat: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00009-pick: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00009-pick: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00009-place: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00009-place: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00009-retreat: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00009-retreat: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00026-pick: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00026-pick: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00026-place: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00026-place: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00026-retreat: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00026-retreat: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00034-pick: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00034-pick: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00034-place: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00034-place: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00034-retreat: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00034-retreat: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00051-pick: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00051-pick: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00051-place: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00051-place: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00051-retreat: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00051-retreat: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00059-pick: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00059-pick: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00059-place: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00059-place: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00059-retreat: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00059-retreat: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00066-pick: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00066-pick: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00066-place: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00066-place: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00066-retreat: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00066-retreat: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00075-pick: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00075-pick: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00075-place: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00075-place: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00075-retreat: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00075-retreat: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00081-pick: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00081-pick: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00081-place: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00081-place: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00081-retreat: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00081-retreat: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00095-pick: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00095-pick: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00095-place: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00095-place: stale chunk: valid_until has passed"
+     ],
+     "latency_ms_median": 395.4583699814975,
+     "latency_ms_max": 467.5786220468581
+    }
+   },
+   "marker": "FAIL",
+   "diffusion": {
+    "code_sha256": "389ee4243f865b9024a2140996573e496931c010c64f87db4965b8c79f40cccc",
+    "versions": {
+     "python": "3.12.3",
+     "torch": "2.14.1+cu130",
+     "torchvision": "0.29.1+cu130",
+     "numpy": "1.26.4",
+     "scipy": "1.12.0",
+     "device": "cuda",
+     "host": "maxwell.poly.edu",
+     "gpu": "NVIDIA RTX 6000 Ada Generation",
+     "cuda": "13.0",
+     "cudnn": 92400
+    },
+    "policy_config": {
+     "obs_steps": 2,
+     "pred_steps": 16,
+     "action_dim": 20,
+     "lowdim_dim": 29,
+     "cameras": [
+      "left_wrist",
+      "right_wrist",
+      "agent"
+     ],
+     "image_feature_dim": 64,
+     "shared_encoder": false,
+     "encoder_weights": null,
+     "random_shift": 2,
+     "skill_embed_dim": 16,
+     "down_dims": [
+      128,
+      256,
+      512
+     ],
+     "kernel_size": 5,
+     "n_groups": 8,
+     "step_embed_dim": 128,
+     "num_train_timesteps": 100,
+     "clip_sample": true,
+     "num_inference_steps": 16,
+     "regression_hidden": [
+      1024,
+      1024
+     ],
+     "sampler_eta": 1.0
+    },
+    "data": {
+     "source": "synthetic",
+     "supervision": "achieved",
+     "image_shape": [
+      32,
+      32,
+      3
+     ],
+     "excluded": {
+      "episodes_given": 300,
+      "excluded_failed": 0,
+      "excluded_unknown_outcome": 0
+     },
+     "episodes": {
+      "train": 240,
+      "val": 30,
+      "test": 30
+     },
+     "windows": {
+      "train": 10560,
+      "val": 1320,
+      "test": 1320
+     },
+     "window_stats": {
+      "train": {
+       "episodes_given": 240,
+       "episodes_used": 240,
+       "excluded_failed": 0,
+       "excluded_unknown_outcome": 0,
+       "windows": 10560
+      },
+      "val": {
+       "episodes_given": 30,
+       "episodes_used": 30,
+       "excluded_failed": 0,
+       "excluded_unknown_outcome": 0,
+       "windows": 1320
+      },
+      "test": {
+       "episodes_given": 30,
+       "episodes_used": 30,
+       "excluded_failed": 0,
+       "excluded_unknown_outcome": 0,
+       "windows": 1320
+      }
+     },
+     "trained_combinations": [
+      [
+       "pick",
+       [
+        "left"
+       ]
+      ],
+      [
+       "pick",
+       [
+        "right"
+       ]
+      ],
+      [
+       "place",
+       [
+        "left"
+       ]
+      ],
+      [
+       "place",
+       [
+        "right"
+       ]
+      ],
+      [
+       "retreat",
+       [
+        "left"
+       ]
+      ],
+      [
+       "retreat",
+       [
+        "right"
+       ]
+      ]
+     ],
+     "combination_window_counts": {
+      "pick:left": 1573,
+      "pick:right": 1547,
+      "place:left": 2299,
+      "place:right": 2261,
+      "retreat:left": 1452,
+      "retreat:right": 1428
+     }
+    },
+    "steps": 16000,
+    "seconds": 3419.3,
+    "steps_per_second": 4.68,
+    "parameters_millions": 53.45,
+    "train_loss_every_1000": [
+     [
+      1000,
+      0.07644257090985775
+     ],
+     [
+      2000,
+      0.031194122135639192
+     ],
+     [
+      3000,
+      0.019341675397008658
+     ],
+     [
+      4000,
+      0.014083004463464022
+     ],
+     [
+      5000,
+      0.011513556446880102
+     ],
+     [
+      6000,
+      0.009454262549988926
+     ],
+     [
+      7000,
+      0.007835969273000955
+     ],
+     [
+      8000,
+      0.006461641932837665
+     ],
+     [
+      9000,
+      0.0056500609265640375
+     ],
+     [
+      10000,
+      0.004416692813392729
+     ],
+     [
+      11000,
+      0.003911871968302876
+     ],
+     [
+      12000,
+      0.0034308590367436408
+     ],
+     [
+      13000,
+      0.00292616234626621
+     ],
+     [
+      14000,
+      0.0025902828527614476
+     ],
+     [
+      15000,
+      0.0024091228144243358
+     ],
+     [
+      16000,
+      0.0022600208048243076
+     ]
+    ],
+    "val_loss_ema_log": [
+     [
+      1000,
+      0.089674165438522
+     ],
+     [
+      2000,
+      0.031147465945193263
+     ],
+     [
+      3000,
+      0.018173832062518956
+     ],
+     [
+      4000,
+      0.012707941674373367
+     ],
+     [
+      5000,
+      0.00964500376898231
+     ],
+     [
+      6000,
+      0.007784342833540656
+     ],
+     [
+      7000,
+      0.006550075477835807
+     ],
+     [
+      8000,
+      0.0055962199260565365
+     ],
+     [
+      9000,
+      0.004875557378611782
+     ],
+     [
+      10000,
+      0.004298259978267279
+     ],
+     [
+      11000,
+      0.0038439738056199116
+     ],
+     [
+      12000,
+      0.003489113590595397
+     ],
+     [
+      13000,
+      0.003212963015010411
+     ],
+     [
+      14000,
+      0.0030249625867740672
+     ],
+     [
+      15000,
+      0.0029094380594677093
+     ],
+     [
+      16000,
+      0.002843069537740314
+     ]
+    ],
+    "final_loss_ema": {
+     "val": 0.002843069537740314,
+     "test": 0.0029243860718314394
+    },
+    "checkpoint": {
+     "file": "checkpoint.pt",
+     "sha256": "1b4fe7745dd96515eac35f2a6f1d49fdda844502d87790c7c96b30b2e24e48fb",
+     "reload_max_abs_diff": 0.0
+    },
+    "latency_batch1_ms": {
+     "ddim_1": {
+      "median_ms": 30.70510784164071,
+      "p90_ms": 33.45823958516121
+     },
+     "ddim_2": {
+      "median_ms": 50.965286092832685,
+      "p90_ms": 55.16584147699177
+     },
+     "ddim_4": {
+      "median_ms": 86.89666190184653,
+      "p90_ms": 93.88550687581301
+     },
+     "ddim_8": {
+      "median_ms": 160.3044862858951,
+      "p90_ms": 181.14396519958973
+     },
+     "ddim_16": {
+      "median_ms": 315.3010986279696,
+      "p90_ms": 329.7866269480437
+     },
+     "ddpm_100": {
+      "median_ms": 2803.403979865834,
+      "p90_ms": 2876.6307587269694
+     }
+    },
+    "inference_check": {
+     "attempted": 64,
+     "chunks": 64,
+     "rejected": [],
+     "not_executable": [
+      "synthetic_pick_detour_v2-s1-00000-pick: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00000-pick: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00000-place: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00000-place: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00000-retreat: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00000-retreat: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00008-pick: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00008-pick: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00008-place: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00008-place: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00008-retreat: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00008-retreat: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00009-pick: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00009-pick: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00009-place: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00009-place: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00009-retreat: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00009-retreat: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00026-pick: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00026-pick: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00026-place: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00026-place: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00026-retreat: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00026-retreat: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00034-pick: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00034-pick: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00034-place: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00034-place: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00034-retreat: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00034-retreat: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00051-pick: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00051-pick: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00051-place: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00051-place: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00051-retreat: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00051-retreat: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00059-pick: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00059-pick: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00059-place: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00059-place: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00059-retreat: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00059-retreat: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00066-pick: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00066-pick: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00066-place: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00066-place: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00066-retreat: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00066-retreat: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00075-pick: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00075-pick: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00075-place: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00075-place: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00075-retreat: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00075-retreat: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00081-pick: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00081-pick: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00081-place: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00081-place: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00081-retreat: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00081-retreat: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00095-pick: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00095-pick: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00095-place: stale chunk: valid_until has passed",
+      "synthetic_pick_detour_v2-s1-00095-place: stale chunk: valid_until has passed"
+     ],
+     "latency_ms_median": 395.4583699814975,
+     "latency_ms_max": 467.5786220468581
+    },
+    "multimodal": {
+     "val": {
+      "pick_first": {
+       "episodes": 30,
+       "trajectories": 240,
+       "chosen_fragment_rate": 1.0,
+       "final_error_m_median": 0.007613962003366536,
+       "observation_offset_s": 0.0
+      },
+      "place_first": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.0125,
+       "left_fraction_of_clear": 0.4641350210970464,
+       "episodes_with_both_modes": 0.9333333333333333,
+       "mode_agreement_of_clear": 0.48523206751054854,
+       "final_error_m_median": 0.006677262905012825,
+       "final_width_m_median": 0.04676297679543495,
+       "min_clearance_m_median": 0.05676047612966375,
+       "observation_offset_s": 0.0
+      },
+      "place_mid": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.4666666666666667,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 1.0,
+       "final_error_m_median": 0.005627553967589553,
+       "final_width_m_median": 0.07999183237552643,
+       "min_clearance_m_median": 0.05768328456810748,
+       "observation_offset_s": 0.7
+      },
+      "place_late": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.45416666666666666,
+       "episodes_with_both_modes": 0.9333333333333333,
+       "mode_agreement_of_clear": 0.45416666666666666,
+       "final_error_m_median": 0.0011083689473248102,
+       "final_width_m_median": 0.07987219467759132,
+       "min_clearance_m_median": 0.1001923848347512,
+       "observation_offset_s": 1.6
+      },
+      "arms": {
+       "active_motion_m_median": 0.165898374293985,
+       "inactive_motion_m_median": 0.002633082617150728,
+       "inactive_motion_m_p90": 0.0039925409023239605
+      }
+     },
+     "test": {
+      "pick_first": {
+       "episodes": 30,
+       "trajectories": 240,
+       "chosen_fragment_rate": 1.0,
+       "final_error_m_median": 0.007307196827051695,
+       "observation_offset_s": 0.0
+      },
+      "place_first": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.5291666666666667,
+       "episodes_with_both_modes": 1.0,
+       "mode_agreement_of_clear": 0.5041666666666667,
+       "final_error_m_median": 0.0056766735873662825,
+       "final_width_m_median": 0.047401538118720055,
+       "min_clearance_m_median": 0.05799389453962434,
+       "observation_offset_s": 0.0
+      },
+      "place_mid": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.43333333333333335,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 1.0,
+       "final_error_m_median": 0.005364596778648274,
+       "final_width_m_median": 0.08004692941904068,
+       "min_clearance_m_median": 0.057618794212668314,
+       "observation_offset_s": 0.7
+      },
+      "place_late": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.5,
+       "episodes_with_both_modes": 0.9,
+       "mode_agreement_of_clear": 0.5166666666666667,
+       "final_error_m_median": 0.0010555599946864328,
+       "final_width_m_median": 0.0798841193318367,
+       "min_clearance_m_median": 0.1036000716026322,
+       "observation_offset_s": 1.6
+      },
+      "arms": {
+       "active_motion_m_median": 0.16423237927191997,
+       "inactive_motion_m_median": 0.0026700374973040323,
+       "inactive_motion_m_p90": 0.0038875354476000535
+      }
+     },
+     "demonstrations_test": {
+      "pick_first": {
+       "episodes": 30,
+       "trajectories": 30,
+       "chosen_fragment_rate": 1.0,
+       "final_error_m_median": 0.00020215227140023528,
+       "observation_offset_s": 0.0
+      },
+      "place_first": {
+       "episodes": 30,
+       "trajectories": 30,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.43333333333333335,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 1.0,
+       "final_error_m_median": 0.0002273163422162694,
+       "final_width_m_median": 0.042993966621946364,
+       "min_clearance_m_median": 0.05881105331385731,
+       "observation_offset_s": 0.0
+      },
+      "place_mid": {
+       "episodes": 30,
+       "trajectories": 30,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.43333333333333335,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 1.0,
+       "final_error_m_median": 0.00026774774664123737,
+       "final_width_m_median": 0.07995288993472292,
+       "min_clearance_m_median": 0.058358336956914426,
+       "observation_offset_s": 0.7
+      },
+      "place_late": {
+       "episodes": 30,
+       "trajectories": 30,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.5666666666666667,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 0.5333333333333333,
+       "final_error_m_median": 0.00026774774664124686,
+       "final_width_m_median": 0.07995288993472292,
+       "min_clearance_m_median": 0.10493941300265162,
+       "observation_offset_s": 1.6
+      },
+      "arms": {
+       "active_motion_m_median": 0.1645672198529738,
+       "inactive_motion_m_median": 0.0005860378900559816,
+       "inactive_motion_m_p90": 0.0008029259122691865
+      }
+     }
+    }
+   },
+   "regression": {
+    "code_sha256": "389ee4243f865b9024a2140996573e496931c010c64f87db4965b8c79f40cccc",
+    "versions": {
+     "python": "3.12.3",
+     "torch": "2.14.1+cu130",
+     "torchvision": "0.29.1+cu130",
+     "numpy": "1.26.4",
+     "scipy": "1.12.0",
+     "device": "cuda",
+     "host": "maxwell.poly.edu",
+     "gpu": "NVIDIA RTX 6000 Ada Generation",
+     "cuda": "13.0",
+     "cudnn": 92400
+    },
+    "policy_config": {
+     "obs_steps": 2,
+     "pred_steps": 16,
+     "action_dim": 20,
+     "lowdim_dim": 29,
+     "cameras": [
+      "left_wrist",
+      "right_wrist",
+      "agent"
+     ],
+     "image_feature_dim": 64,
+     "shared_encoder": false,
+     "encoder_weights": null,
+     "random_shift": 2,
+     "skill_embed_dim": 16,
+     "down_dims": [
+      128,
+      256,
+      512
+     ],
+     "kernel_size": 5,
+     "n_groups": 8,
+     "step_embed_dim": 128,
+     "num_train_timesteps": 100,
+     "clip_sample": true,
+     "num_inference_steps": 16,
+     "regression_hidden": [
+      1024,
+      1024
+     ],
+     "sampler_eta": 1.0
+    },
+    "data": {
+     "source": "synthetic",
+     "supervision": "achieved",
+     "image_shape": [
+      32,
+      32,
+      3
+     ],
+     "excluded": {
+      "episodes_given": 300,
+      "excluded_failed": 0,
+      "excluded_unknown_outcome": 0
+     },
+     "episodes": {
+      "train": 240,
+      "val": 30,
+      "test": 30
+     },
+     "windows": {
+      "train": 10560,
+      "val": 1320,
+      "test": 1320
+     },
+     "window_stats": {
+      "train": {
+       "episodes_given": 240,
+       "episodes_used": 240,
+       "excluded_failed": 0,
+       "excluded_unknown_outcome": 0,
+       "windows": 10560
+      },
+      "val": {
+       "episodes_given": 30,
+       "episodes_used": 30,
+       "excluded_failed": 0,
+       "excluded_unknown_outcome": 0,
+       "windows": 1320
+      },
+      "test": {
+       "episodes_given": 30,
+       "episodes_used": 30,
+       "excluded_failed": 0,
+       "excluded_unknown_outcome": 0,
+       "windows": 1320
+      }
+     },
+     "trained_combinations": [
+      [
+       "pick",
+       [
+        "left"
+       ]
+      ],
+      [
+       "pick",
+       [
+        "right"
+       ]
+      ],
+      [
+       "place",
+       [
+        "left"
+       ]
+      ],
+      [
+       "place",
+       [
+        "right"
+       ]
+      ],
+      [
+       "retreat",
+       [
+        "left"
+       ]
+      ],
+      [
+       "retreat",
+       [
+        "right"
+       ]
+      ]
+     ],
+     "combination_window_counts": {
+      "pick:left": 1573,
+      "pick:right": 1547,
+      "place:left": 2299,
+      "place:right": 2261,
+      "retreat:left": 1452,
+      "retreat:right": 1428
+     }
+    },
+    "steps": 4000,
+    "seconds": 555.3,
+    "steps_per_second": 7.2,
+    "parameters_millions": 35.5,
+    "train_loss_every_1000": [
+     [
+      1000,
+      0.003661539345048368
+     ],
+     [
+      2000,
+      0.0018838856532238423
+     ],
+     [
+      3000,
+      0.0014538601972162724
+     ],
+     [
+      4000,
+      0.0013162849517539144
+     ]
+    ],
+    "val_loss_ema_log": [
+     [
+      1000,
+      0.004352080762724985
+     ],
+     [
+      2000,
+      0.0020335482645102523
+     ],
+     [
+      3000,
+      0.001711134625965673
+     ],
+     [
+      4000,
+      0.001648796746281512
+     ]
+    ],
+    "final_loss_ema": {
+     "val": 0.001648796746281512,
+     "test": 0.0016328521143419274
+    },
+    "checkpoint": {
+     "file": "checkpoint.pt",
+     "sha256": "0573f8bd8e203b2090222580d63ce5e530ea2e64f9ed5468594d847811b28b4a",
+     "reload_max_abs_diff": 0.0
+    },
+    "latency_batch1_ms": {
+     "forward": {
+      "median_ms": 10.436774929985404,
+      "p90_ms": 12.000642018392682
+     }
+    },
+    "inference_check": {
+     "attempted": 64,
+     "chunks": 64,
+     "rejected": [],
+     "not_executable": [],
+     "latency_ms_median": 88.57366349548101,
+     "latency_ms_max": 118.44335496425629
+    },
+    "multimodal": {
+     "val": {
+      "pick_first": {
+       "episodes": 30,
+       "trajectories": 240,
+       "chosen_fragment_rate": 0.9333333333333333,
+       "final_error_m_median": 0.053116389636267886,
+       "observation_offset_s": 0.0
+      },
+      "place_first": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.9333333333333333,
+       "left_fraction_of_clear": 0.5,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 0.0,
+       "final_error_m_median": 0.025300403876862262,
+       "final_width_m_median": 0.062162477523088455,
+       "min_clearance_m_median": -0.02300600566531425,
+       "observation_offset_s": 0.0
+      },
+      "place_mid": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.4666666666666667,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 1.0,
+       "final_error_m_median": 0.01364683908886586,
+       "final_width_m_median": 0.07996492087841034,
+       "min_clearance_m_median": 0.05318930841042795,
+       "observation_offset_s": 0.7
+      },
+      "place_late": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.5,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 0.3,
+       "final_error_m_median": 0.004706971012894237,
+       "final_width_m_median": 0.08104778826236725,
+       "min_clearance_m_median": 0.10019762723636988,
+       "observation_offset_s": 1.6
+      },
+      "arms": {
+       "active_motion_m_median": 0.14864337633534197,
+       "inactive_motion_m_median": 0.006970783665251824,
+       "inactive_motion_m_p90": 0.017846839497213763
+      }
+     },
+     "test": {
+      "pick_first": {
+       "episodes": 30,
+       "trajectories": 240,
+       "chosen_fragment_rate": 1.0,
+       "final_error_m_median": 0.053853485990218844,
+       "observation_offset_s": 0.0
+      },
+      "place_first": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.8666666666666667,
+       "left_fraction_of_clear": 0.5,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 0.25,
+       "final_error_m_median": 0.025992341780222285,
+       "final_width_m_median": 0.06237218156456947,
+       "min_clearance_m_median": -0.021455448532352463,
+       "observation_offset_s": 0.0
+      },
+      "place_mid": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.43333333333333335,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 1.0,
+       "final_error_m_median": 0.019193359018318253,
+       "final_width_m_median": 0.07966834306716919,
+       "min_clearance_m_median": 0.05093683312146503,
+       "observation_offset_s": 0.7
+      },
+      "place_late": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.4666666666666667,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 0.5,
+       "final_error_m_median": 0.004390846133314169,
+       "final_width_m_median": 0.0809599794447422,
+       "min_clearance_m_median": 0.10193078268015174,
+       "observation_offset_s": 1.6
+      },
+      "arms": {
+       "active_motion_m_median": 0.13961560911286178,
+       "inactive_motion_m_median": 0.007425824427887944,
+       "inactive_motion_m_p90": 0.018838934300398694
+      }
+     },
+     "demonstrations_test": {
+      "pick_first": {
+       "episodes": 30,
+       "trajectories": 30,
+       "chosen_fragment_rate": 1.0,
+       "final_error_m_median": 0.00020215227140023528,
+       "observation_offset_s": 0.0
+      },
+      "place_first": {
+       "episodes": 30,
+       "trajectories": 30,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.43333333333333335,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 1.0,
+       "final_error_m_median": 0.0002273163422162694,
+       "final_width_m_median": 0.042993966621946364,
+       "min_clearance_m_median": 0.05881105331385731,
+       "observation_offset_s": 0.0
+      },
+      "place_mid": {
+       "episodes": 30,
+       "trajectories": 30,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.43333333333333335,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 1.0,
+       "final_error_m_median": 0.00026774774664123737,
+       "final_width_m_median": 0.07995288993472292,
+       "min_clearance_m_median": 0.058358336956914426,
+       "observation_offset_s": 0.7
+      },
+      "place_late": {
+       "episodes": 30,
+       "trajectories": 30,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.5666666666666667,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 0.5333333333333333,
+       "final_error_m_median": 0.00026774774664124686,
+       "final_width_m_median": 0.07995288993472292,
+       "min_clearance_m_median": 0.10493941300265162,
+       "observation_offset_s": 1.6
+      },
+      "arms": {
+       "active_motion_m_median": 0.1645672198529738,
+       "inactive_motion_m_median": 0.0005860378900559816,
+       "inactive_motion_m_p90": 0.0008029259122691865
+      }
+     }
+    }
+   },
+   "failure_analysis": "C5 and C6 fail on latency alone: DDIM-16 median 315.3 ms (limit 100 ms) and deployment-path median 395.5 ms, so all 64 contract-valid chunks were stale after valid_until (250 ms). GPU 5 was at 99-100 % utilisation in all 143 samples during the run, and samplers that do not depend on eta slowed as much as DDIM did against the v4 run on the same GPU model: DDPM-100 2803.4 vs 487.1 ms (5.8x), regression forward 10.4 vs 5.3 ms (2.0x), DDIM-1 30.7 vs 10.8 ms, training 4.68 vs 17.56 steps/s. The FAIL stands; contention is the likely cause, not a measured one. The policy-quality checks that failed in v4 pass with margin on fresh episodes: place_first hits 0.000 (both modes in 30/30 episodes), inactive-arm median 2.7 mm, pick picks the requested fragment in 240/240 samples."
+  },
+  {
+   "role": "pre-registered re-measurement of the code_v5 bundle on an uncontended L40S: same files, configuration, synthetic data and criteria v3 as maxwell-v5-20261018_042157; does not change the maxwell verdict",
+   "criteria": "v3 (s1/smoke.py sha256 db6a4d0b304e132b65fa5e4ed95240a94da3f23822a002e4363cd729911ea003, unchanged since v4)",
+   "preregistration": {
+    "path": "/local_data/jz6676/repos_review/runs/s1_smoke_torch_v5_preregistration.md",
+    "sha256": "2283baa1050cc38f69da9db5cdfa7c31509159f99ce24e4596971819ce03e56d",
+    "written": "2026-10-18T05:35:37-04:00"
+   },
+   "code": {
+    "bundle": "/scratch/jz6676/jing_assembly/code_v5 on torch",
+    "per_file_check": "20 of 20 files equal to the maxwell v5 per-file sha256 (re-hashed on torch 2026-10-18 13:00 EDT); the directory also holds the sbatch script"
+   },
+   "job_id": "20232734",
+   "sacct": {
+    "job": "20232734",
+    "name": "jing-s1-smoke-v5",
+    "state": "COMPLETED",
+    "start": "2026-10-18T06:02:32",
+    "end": "2026-10-18T06:18:01",
+    "elapsed": "00:15:29",
+    "node": "gl067",
+    "exit_code": "0:0"
+   },
+   "gpu_line": "NVIDIA L40S, 610.43.02, 46068 MiB",
+   "versions_txt": "2.14.1+cu130 13.0 NVIDIA L40S 1.26.4 1.12.0",
+   "steps_log": [
+    "job=20232734 node=gl067.hpc.nyu.edu start=2026-10-18T06:02:34-04:00",
+    "NVIDIA L40S, 610.43.02, 46068 MiB",
+    "2026-10-18T06:02:35-04:00 exit=0 :: /home/jz6676/.local/bin/uv pip install -q --python /scratch/jz6676/jing_assembly/env/bin/python torch==2.14.1 torchvision==0.29.1 numpy==1.26.4 scipy==1.12.0 pytest==8.4.2",
+    "2026-10-18T06:03:09-04:00 exit=0 :: /scratch/jz6676/jing_assembly/env/bin/python -c import torch, torchvision, numpy, scipy; assert torch.cuda.is_available(); print(torch.__version__, torch.version.cuda, torch.cuda.get_device_name(0), numpy.__version__, scipy.__version__)",
+    "2026-10-18T06:04:31-04:00 exit=0 :: pytest",
+    "2026-10-18T06:15:43-04:00 exit=0 :: /scratch/jz6676/jing_assembly/env/bin/python -B -m tasks.dual_arm_crag_skull.s1.train --synthetic 300 --output /scratch/jz6676/jing_assembly/runs/s1_smoke_20232734/diffusion --config /scratch/jz6676/jing_assembly/code_v5/s1_smoke_config.json --kind diffusion",
+    "2026-10-18T06:17:59-04:00 exit=0 :: /scratch/jz6676/jing_assembly/env/bin/python -B -m tasks.dual_arm_crag_skull.s1.train --synthetic 300 --output /scratch/jz6676/jing_assembly/runs/s1_smoke_20232734/regression --config /scratch/jz6676/jing_assembly/code_v5/s1_smoke_config.json --kind regression --steps 4000",
+    "2026-10-18T06:17:59-04:00 exit=0 :: /scratch/jz6676/jing_assembly/env/bin/python -B -m tasks.dual_arm_crag_skull.s1.smoke --diffusion /scratch/jz6676/jing_assembly/runs/s1_smoke_20232734/diffusion/metrics.json --regression /scratch/jz6676/jing_assembly/runs/s1_smoke_20232734/regression/metrics.json --junit /scratch/jz6676/jing_assembly/runs/s1_smoke_20232734/junit.xml --pytest-exit 0 --expected-tests 114 --output /scratch/jz6676/jing_assembly/runs/s1_smoke_20232734/summary.json",
+    "end=2026-10-18T06:17:59-04:00 worst=0"
+   ],
+   "verdict": {
+    "pass": true,
+    "checks": {
+     "C1_pytest": true,
+     "C2_trained_and_reloadable": true,
+     "C3_diffusion_modes": true,
+     "C4_regression_averages_modes": true,
+     "C5_latency": true,
+     "C6_inference_chunks": true,
+     "C7_pick_conditioned_on_fragment": true,
+     "C8_mid_window_follows_mode": true,
+     "C9_late_window_releases_at_goal": true,
+     "C10_only_requested_arm_moves": true
+    },
+    "criteria_version": 3,
+    "pytest": {
+     "exit": 0,
+     "tests": 114,
+     "failures": 0,
+     "errors": 0,
+     "skipped": 0,
+     "expected_tests": 114
+    },
+    "diffusion_test": {
+     "pick_first": {
+      "episodes": 30,
+      "trajectories": 240,
+      "chosen_fragment_rate": 1.0,
+      "final_error_m_median": 0.007307196827051695,
+      "observation_offset_s": 0.0
+     },
+     "place_first": {
+      "episodes": 30,
+      "trajectories": 240,
+      "obstacle_hit_rate": 0.0,
+      "left_fraction_of_clear": 0.5291666666666667,
+      "episodes_with_both_modes": 1.0,
+      "mode_agreement_of_clear": 0.5041666666666667,
+      "final_error_m_median": 0.0056766735873662825,
+      "final_width_m_median": 0.047401538118720055,
+      "min_clearance_m_median": 0.05799389453962435,
+      "observation_offset_s": 0.0
+     },
+     "place_mid": {
+      "episodes": 30,
+      "trajectories": 240,
+      "obstacle_hit_rate": 0.0,
+      "left_fraction_of_clear": 0.43333333333333335,
+      "episodes_with_both_modes": 0.0,
+      "mode_agreement_of_clear": 1.0,
+      "final_error_m_median": 0.005364596778648274,
+      "final_width_m_median": 0.08004692941904068,
+      "min_clearance_m_median": 0.057618794212668314,
+      "observation_offset_s": 0.7
+     },
+     "place_late": {
+      "episodes": 30,
+      "trajectories": 240,
+      "obstacle_hit_rate": 0.0,
+      "left_fraction_of_clear": 0.5,
+      "episodes_with_both_modes": 0.9,
+      "mode_agreement_of_clear": 0.5166666666666667,
+      "final_error_m_median": 0.0010555599946864328,
+      "final_width_m_median": 0.0798841193318367,
+      "min_clearance_m_median": 0.1036000716026322,
+      "observation_offset_s": 1.6
+     },
+     "arms": {
+      "active_motion_m_median": 0.16423237927191997,
+      "inactive_motion_m_median": 0.0026700374973040323,
+      "inactive_motion_m_p90": 0.0038875354476000535
+     }
+    },
+    "regression_test": {
+     "pick_first": {
+      "episodes": 30,
+      "trajectories": 240,
+      "chosen_fragment_rate": 1.0,
+      "final_error_m_median": 0.053853485990218844,
+      "observation_offset_s": 0.0
+     },
+     "place_first": {
+      "episodes": 30,
+      "trajectories": 240,
+      "obstacle_hit_rate": 0.8666666666666667,
+      "left_fraction_of_clear": 0.5,
+      "episodes_with_both_modes": 0.0,
+      "mode_agreement_of_clear": 0.25,
+      "final_error_m_median": 0.02599234178022229,
+      "final_width_m_median": 0.06237218156456947,
+      "min_clearance_m_median": -0.021455448532352463,
+      "observation_offset_s": 0.0
+     },
+     "place_mid": {
+      "episodes": 30,
+      "trajectories": 240,
+      "obstacle_hit_rate": 0.0,
+      "left_fraction_of_clear": 0.43333333333333335,
+      "episodes_with_both_modes": 0.0,
+      "mode_agreement_of_clear": 1.0,
+      "final_error_m_median": 0.019193359018318253,
+      "final_width_m_median": 0.07966834306716919,
+      "min_clearance_m_median": 0.05093683312146503,
+      "observation_offset_s": 0.7
+     },
+     "place_late": {
+      "episodes": 30,
+      "trajectories": 240,
+      "obstacle_hit_rate": 0.0,
+      "left_fraction_of_clear": 0.4666666666666667,
+      "episodes_with_both_modes": 0.0,
+      "mode_agreement_of_clear": 0.5,
+      "final_error_m_median": 0.004390846133314169,
+      "final_width_m_median": 0.0809599794447422,
+      "min_clearance_m_median": 0.10193078268015174,
+      "observation_offset_s": 1.6
+     },
+     "arms": {
+      "active_motion_m_median": 0.13961560911286178,
+      "inactive_motion_m_median": 0.007425824427887944,
+      "inactive_motion_m_p90": 0.018838934300398694
+     }
+    },
+    "ddim16_latency": {
+     "median_ms": 52.173055009916425,
+     "p90_ms": 52.301864977926016
+    },
+    "inference_check": {
+     "attempted": 64,
+     "chunks": 64,
+     "rejected": [],
+     "not_executable": [],
+     "latency_ms_median": 53.45575464889407,
+     "latency_ms_max": 54.902615025639534
+    }
+   },
+   "marker": "PASS",
+   "local_copy": "/local_data/jz6676/repos_review/runs/s1_smoke_torch_20232734 (everything except the checkpoints, which stay on torch)",
+   "diffusion": {
+    "code_sha256": "389ee4243f865b9024a2140996573e496931c010c64f87db4965b8c79f40cccc",
+    "versions": {
+     "python": "3.12.14",
+     "torch": "2.14.1+cu130",
+     "torchvision": "0.29.1+cu130",
+     "numpy": "1.26.4",
+     "scipy": "1.12.0",
+     "device": "cuda",
+     "host": "gl067.hpc.nyu.edu",
+     "gpu": "NVIDIA L40S",
+     "cuda": "13.0",
+     "cudnn": 92400
+    },
+    "policy_config": {
+     "obs_steps": 2,
+     "pred_steps": 16,
+     "action_dim": 20,
+     "lowdim_dim": 29,
+     "cameras": [
+      "left_wrist",
+      "right_wrist",
+      "agent"
+     ],
+     "image_feature_dim": 64,
+     "shared_encoder": false,
+     "encoder_weights": null,
+     "random_shift": 2,
+     "skill_embed_dim": 16,
+     "down_dims": [
+      128,
+      256,
+      512
+     ],
+     "kernel_size": 5,
+     "n_groups": 8,
+     "step_embed_dim": 128,
+     "num_train_timesteps": 100,
+     "clip_sample": true,
+     "num_inference_steps": 16,
+     "regression_hidden": [
+      1024,
+      1024
+     ],
+     "sampler_eta": 1.0
+    },
+    "data": {
+     "source": "synthetic",
+     "supervision": "achieved",
+     "image_shape": [
+      32,
+      32,
+      3
+     ],
+     "excluded": {
+      "episodes_given": 300,
+      "excluded_failed": 0,
+      "excluded_unknown_outcome": 0
+     },
+     "episodes": {
+      "train": 240,
+      "val": 30,
+      "test": 30
+     },
+     "windows": {
+      "train": 10560,
+      "val": 1320,
+      "test": 1320
+     },
+     "window_stats": {
+      "train": {
+       "episodes_given": 240,
+       "episodes_used": 240,
+       "excluded_failed": 0,
+       "excluded_unknown_outcome": 0,
+       "windows": 10560
+      },
+      "val": {
+       "episodes_given": 30,
+       "episodes_used": 30,
+       "excluded_failed": 0,
+       "excluded_unknown_outcome": 0,
+       "windows": 1320
+      },
+      "test": {
+       "episodes_given": 30,
+       "episodes_used": 30,
+       "excluded_failed": 0,
+       "excluded_unknown_outcome": 0,
+       "windows": 1320
+      }
+     },
+     "trained_combinations": [
+      [
+       "pick",
+       [
+        "left"
+       ]
+      ],
+      [
+       "pick",
+       [
+        "right"
+       ]
+      ],
+      [
+       "place",
+       [
+        "left"
+       ]
+      ],
+      [
+       "place",
+       [
+        "right"
+       ]
+      ],
+      [
+       "retreat",
+       [
+        "left"
+       ]
+      ],
+      [
+       "retreat",
+       [
+        "right"
+       ]
+      ]
+     ],
+     "combination_window_counts": {
+      "pick:left": 1573,
+      "pick:right": 1547,
+      "place:left": 2299,
+      "place:right": 2261,
+      "retreat:left": 1452,
+      "retreat:right": 1428
+     }
+    },
+    "steps": 16000,
+    "seconds": 628.7,
+    "steps_per_second": 25.45,
+    "parameters_millions": 53.45,
+    "train_loss_every_1000": [
+     [
+      1000,
+      0.07644257090985775
+     ],
+     [
+      2000,
+      0.031194122135639192
+     ],
+     [
+      3000,
+      0.019341675397008658
+     ],
+     [
+      4000,
+      0.014083004463464022
+     ],
+     [
+      5000,
+      0.011513556446880102
+     ],
+     [
+      6000,
+      0.009454262549988926
+     ],
+     [
+      7000,
+      0.007835969273000955
+     ],
+     [
+      8000,
+      0.006461641932837665
+     ],
+     [
+      9000,
+      0.0056500609265640375
+     ],
+     [
+      10000,
+      0.004416692813392729
+     ],
+     [
+      11000,
+      0.003911871968302876
+     ],
+     [
+      12000,
+      0.0034308590367436408
+     ],
+     [
+      13000,
+      0.00292616234626621
+     ],
+     [
+      14000,
+      0.0025902828527614476
+     ],
+     [
+      15000,
+      0.0024091228144243358
+     ],
+     [
+      16000,
+      0.0022600208048243076
+     ]
+    ],
+    "val_loss_ema_log": [
+     [
+      1000,
+      0.089674165438522
+     ],
+     [
+      2000,
+      0.031147465945193263
+     ],
+     [
+      3000,
+      0.018173832062518956
+     ],
+     [
+      4000,
+      0.012707941674373367
+     ],
+     [
+      5000,
+      0.00964500376898231
+     ],
+     [
+      6000,
+      0.007784342833540656
+     ],
+     [
+      7000,
+      0.006550075477835807
+     ],
+     [
+      8000,
+      0.0055962199260565365
+     ],
+     [
+      9000,
+      0.004875557378611782
+     ],
+     [
+      10000,
+      0.004298259978267279
+     ],
+     [
+      11000,
+      0.0038439738056199116
+     ],
+     [
+      12000,
+      0.003489113590595397
+     ],
+     [
+      13000,
+      0.003212963015010411
+     ],
+     [
+      14000,
+      0.0030249625867740672
+     ],
+     [
+      15000,
+      0.0029094380594677093
+     ],
+     [
+      16000,
+      0.002843069537740314
+     ]
+    ],
+    "final_loss_ema": {
+     "val": 0.002843069537740314,
+     "test": 0.0029243860718314394
+    },
+    "checkpoint": {
+     "file": "checkpoint.pt",
+     "sha256": "4bcb7c4a9ba76455af82649fea0df07b5349b47bb2b3c083e1268e233245ceea",
+     "reload_max_abs_diff": 0.0
+    },
+    "latency_batch1_ms": {
+     "ddim_1": {
+      "median_ms": 7.107593584805727,
+      "p90_ms": 7.125101983547211
+     },
+     "ddim_2": {
+      "median_ms": 10.143049526959658,
+      "p90_ms": 10.172871267423034
+     },
+     "ddim_4": {
+      "median_ms": 16.157673206180334,
+      "p90_ms": 16.201278008520603
+     },
+     "ddim_8": {
+      "median_ms": 28.13896955922246,
+      "p90_ms": 28.223037999123335
+     },
+     "ddim_16": {
+      "median_ms": 52.173055009916425,
+      "p90_ms": 52.301864977926016
+     },
+     "ddpm_100": {
+      "median_ms": 306.67969887144864,
+      "p90_ms": 307.07077234983444
+     }
+    },
+    "inference_check": {
+     "attempted": 64,
+     "chunks": 64,
+     "rejected": [],
+     "not_executable": [],
+     "latency_ms_median": 53.45575464889407,
+     "latency_ms_max": 54.902615025639534
+    },
+    "multimodal": {
+     "val": {
+      "pick_first": {
+       "episodes": 30,
+       "trajectories": 240,
+       "chosen_fragment_rate": 1.0,
+       "final_error_m_median": 0.007613962003366536,
+       "observation_offset_s": 0.0
+      },
+      "place_first": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.0125,
+       "left_fraction_of_clear": 0.4641350210970464,
+       "episodes_with_both_modes": 0.9333333333333333,
+       "mode_agreement_of_clear": 0.48523206751054854,
+       "final_error_m_median": 0.006677262905012825,
+       "final_width_m_median": 0.04676297679543495,
+       "min_clearance_m_median": 0.05676047612966376,
+       "observation_offset_s": 0.0
+      },
+      "place_mid": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.4666666666666667,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 1.0,
+       "final_error_m_median": 0.0056275539675895506,
+       "final_width_m_median": 0.07999183237552643,
+       "min_clearance_m_median": 0.05768328456810748,
+       "observation_offset_s": 0.7
+      },
+      "place_late": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.45416666666666666,
+       "episodes_with_both_modes": 0.9333333333333333,
+       "mode_agreement_of_clear": 0.45416666666666666,
+       "final_error_m_median": 0.0011083689473248102,
+       "final_width_m_median": 0.07987219467759132,
+       "min_clearance_m_median": 0.1001923848347512,
+       "observation_offset_s": 1.6
+      },
+      "arms": {
+       "active_motion_m_median": 0.165898374293985,
+       "inactive_motion_m_median": 0.002633082617150728,
+       "inactive_motion_m_p90": 0.0039925409023239605
+      }
+     },
+     "test": {
+      "pick_first": {
+       "episodes": 30,
+       "trajectories": 240,
+       "chosen_fragment_rate": 1.0,
+       "final_error_m_median": 0.007307196827051695,
+       "observation_offset_s": 0.0
+      },
+      "place_first": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.5291666666666667,
+       "episodes_with_both_modes": 1.0,
+       "mode_agreement_of_clear": 0.5041666666666667,
+       "final_error_m_median": 0.0056766735873662825,
+       "final_width_m_median": 0.047401538118720055,
+       "min_clearance_m_median": 0.05799389453962435,
+       "observation_offset_s": 0.0
+      },
+      "place_mid": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.43333333333333335,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 1.0,
+       "final_error_m_median": 0.005364596778648274,
+       "final_width_m_median": 0.08004692941904068,
+       "min_clearance_m_median": 0.057618794212668314,
+       "observation_offset_s": 0.7
+      },
+      "place_late": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.5,
+       "episodes_with_both_modes": 0.9,
+       "mode_agreement_of_clear": 0.5166666666666667,
+       "final_error_m_median": 0.0010555599946864328,
+       "final_width_m_median": 0.0798841193318367,
+       "min_clearance_m_median": 0.1036000716026322,
+       "observation_offset_s": 1.6
+      },
+      "arms": {
+       "active_motion_m_median": 0.16423237927191997,
+       "inactive_motion_m_median": 0.0026700374973040323,
+       "inactive_motion_m_p90": 0.0038875354476000535
+      }
+     },
+     "demonstrations_test": {
+      "pick_first": {
+       "episodes": 30,
+       "trajectories": 30,
+       "chosen_fragment_rate": 1.0,
+       "final_error_m_median": 0.00020215227140023528,
+       "observation_offset_s": 0.0
+      },
+      "place_first": {
+       "episodes": 30,
+       "trajectories": 30,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.43333333333333335,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 1.0,
+       "final_error_m_median": 0.00022731634221628214,
+       "final_width_m_median": 0.042993966621946364,
+       "min_clearance_m_median": 0.0588110533138573,
+       "observation_offset_s": 0.0
+      },
+      "place_mid": {
+       "episodes": 30,
+       "trajectories": 30,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.43333333333333335,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 1.0,
+       "final_error_m_median": 0.0002677477466412317,
+       "final_width_m_median": 0.07995288993472292,
+       "min_clearance_m_median": 0.058358336956914426,
+       "observation_offset_s": 0.7
+      },
+      "place_late": {
+       "episodes": 30,
+       "trajectories": 30,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.5666666666666667,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 0.5333333333333333,
+       "final_error_m_median": 0.00026774774664124344,
+       "final_width_m_median": 0.07995288993472292,
+       "min_clearance_m_median": 0.10493941300265162,
+       "observation_offset_s": 1.6
+      },
+      "arms": {
+       "active_motion_m_median": 0.1645672198529738,
+       "inactive_motion_m_median": 0.000586037890055993,
+       "inactive_motion_m_p90": 0.0008029259122691714
+      }
+     }
+    }
+   },
+   "regression": {
+    "code_sha256": "389ee4243f865b9024a2140996573e496931c010c64f87db4965b8c79f40cccc",
+    "versions": {
+     "python": "3.12.14",
+     "torch": "2.14.1+cu130",
+     "torchvision": "0.29.1+cu130",
+     "numpy": "1.26.4",
+     "scipy": "1.12.0",
+     "device": "cuda",
+     "host": "gl067.hpc.nyu.edu",
+     "gpu": "NVIDIA L40S",
+     "cuda": "13.0",
+     "cudnn": 92400
+    },
+    "policy_config": {
+     "obs_steps": 2,
+     "pred_steps": 16,
+     "action_dim": 20,
+     "lowdim_dim": 29,
+     "cameras": [
+      "left_wrist",
+      "right_wrist",
+      "agent"
+     ],
+     "image_feature_dim": 64,
+     "shared_encoder": false,
+     "encoder_weights": null,
+     "random_shift": 2,
+     "skill_embed_dim": 16,
+     "down_dims": [
+      128,
+      256,
+      512
+     ],
+     "kernel_size": 5,
+     "n_groups": 8,
+     "step_embed_dim": 128,
+     "num_train_timesteps": 100,
+     "clip_sample": true,
+     "num_inference_steps": 16,
+     "regression_hidden": [
+      1024,
+      1024
+     ],
+     "sampler_eta": 1.0
+    },
+    "data": {
+     "source": "synthetic",
+     "supervision": "achieved",
+     "image_shape": [
+      32,
+      32,
+      3
+     ],
+     "excluded": {
+      "episodes_given": 300,
+      "excluded_failed": 0,
+      "excluded_unknown_outcome": 0
+     },
+     "episodes": {
+      "train": 240,
+      "val": 30,
+      "test": 30
+     },
+     "windows": {
+      "train": 10560,
+      "val": 1320,
+      "test": 1320
+     },
+     "window_stats": {
+      "train": {
+       "episodes_given": 240,
+       "episodes_used": 240,
+       "excluded_failed": 0,
+       "excluded_unknown_outcome": 0,
+       "windows": 10560
+      },
+      "val": {
+       "episodes_given": 30,
+       "episodes_used": 30,
+       "excluded_failed": 0,
+       "excluded_unknown_outcome": 0,
+       "windows": 1320
+      },
+      "test": {
+       "episodes_given": 30,
+       "episodes_used": 30,
+       "excluded_failed": 0,
+       "excluded_unknown_outcome": 0,
+       "windows": 1320
+      }
+     },
+     "trained_combinations": [
+      [
+       "pick",
+       [
+        "left"
+       ]
+      ],
+      [
+       "pick",
+       [
+        "right"
+       ]
+      ],
+      [
+       "place",
+       [
+        "left"
+       ]
+      ],
+      [
+       "place",
+       [
+        "right"
+       ]
+      ],
+      [
+       "retreat",
+       [
+        "left"
+       ]
+      ],
+      [
+       "retreat",
+       [
+        "right"
+       ]
+      ]
+     ],
+     "combination_window_counts": {
+      "pick:left": 1573,
+      "pick:right": 1547,
+      "place:left": 2299,
+      "place:right": 2261,
+      "retreat:left": 1452,
+      "retreat:right": 1428
+     }
+    },
+    "steps": 4000,
+    "seconds": 106.9,
+    "steps_per_second": 37.42,
+    "parameters_millions": 35.5,
+    "train_loss_every_1000": [
+     [
+      1000,
+      0.003661539345048368
+     ],
+     [
+      2000,
+      0.0018838856532238423
+     ],
+     [
+      3000,
+      0.0014538601972162724
+     ],
+     [
+      4000,
+      0.0013162849517539144
+     ]
+    ],
+    "val_loss_ema_log": [
+     [
+      1000,
+      0.004352080762724985
+     ],
+     [
+      2000,
+      0.0020335482645102523
+     ],
+     [
+      3000,
+      0.001711134625965673
+     ],
+     [
+      4000,
+      0.001648796746281512
+     ]
+    ],
+    "final_loss_ema": {
+     "val": 0.001648796746281512,
+     "test": 0.0016328521143419274
+    },
+    "checkpoint": {
+     "file": "checkpoint.pt",
+     "sha256": "47b40085e4ca6527f3c91b6e619b9a25d7f43bcdb5ca1cb283039835c7f6c041",
+     "reload_max_abs_diff": 0.0
+    },
+    "latency_batch1_ms": {
+     "forward": {
+      "median_ms": 3.9538342971354723,
+      "p90_ms": 3.992193751037121
+     }
+    },
+    "inference_check": {
+     "attempted": 64,
+     "chunks": 64,
+     "rejected": [],
+     "not_executable": [],
+     "latency_ms_median": 5.119991255924106,
+     "latency_ms_max": 5.345840007066727
+    },
+    "multimodal": {
+     "val": {
+      "pick_first": {
+       "episodes": 30,
+       "trajectories": 240,
+       "chosen_fragment_rate": 0.9333333333333333,
+       "final_error_m_median": 0.053116389636267886,
+       "observation_offset_s": 0.0
+      },
+      "place_first": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.9333333333333333,
+       "left_fraction_of_clear": 0.5,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 0.0,
+       "final_error_m_median": 0.025300403876862262,
+       "final_width_m_median": 0.062162477523088455,
+       "min_clearance_m_median": -0.02300600566531425,
+       "observation_offset_s": 0.0
+      },
+      "place_mid": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.4666666666666667,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 1.0,
+       "final_error_m_median": 0.013646839088865862,
+       "final_width_m_median": 0.07996492087841034,
+       "min_clearance_m_median": 0.05318930841042795,
+       "observation_offset_s": 0.7
+      },
+      "place_late": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.5,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 0.3,
+       "final_error_m_median": 0.004706971012894237,
+       "final_width_m_median": 0.08104778826236725,
+       "min_clearance_m_median": 0.10019762723636988,
+       "observation_offset_s": 1.6
+      },
+      "arms": {
+       "active_motion_m_median": 0.14864337633534197,
+       "inactive_motion_m_median": 0.006970783665251824,
+       "inactive_motion_m_p90": 0.017846839497213763
+      }
+     },
+     "test": {
+      "pick_first": {
+       "episodes": 30,
+       "trajectories": 240,
+       "chosen_fragment_rate": 1.0,
+       "final_error_m_median": 0.053853485990218844,
+       "observation_offset_s": 0.0
+      },
+      "place_first": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.8666666666666667,
+       "left_fraction_of_clear": 0.5,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 0.25,
+       "final_error_m_median": 0.02599234178022229,
+       "final_width_m_median": 0.06237218156456947,
+       "min_clearance_m_median": -0.021455448532352463,
+       "observation_offset_s": 0.0
+      },
+      "place_mid": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.43333333333333335,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 1.0,
+       "final_error_m_median": 0.019193359018318253,
+       "final_width_m_median": 0.07966834306716919,
+       "min_clearance_m_median": 0.05093683312146503,
+       "observation_offset_s": 0.7
+      },
+      "place_late": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.4666666666666667,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 0.5,
+       "final_error_m_median": 0.004390846133314169,
+       "final_width_m_median": 0.0809599794447422,
+       "min_clearance_m_median": 0.10193078268015174,
+       "observation_offset_s": 1.6
+      },
+      "arms": {
+       "active_motion_m_median": 0.13961560911286178,
+       "inactive_motion_m_median": 0.007425824427887944,
+       "inactive_motion_m_p90": 0.018838934300398694
+      }
+     },
+     "demonstrations_test": {
+      "pick_first": {
+       "episodes": 30,
+       "trajectories": 30,
+       "chosen_fragment_rate": 1.0,
+       "final_error_m_median": 0.00020215227140023528,
+       "observation_offset_s": 0.0
+      },
+      "place_first": {
+       "episodes": 30,
+       "trajectories": 30,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.43333333333333335,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 1.0,
+       "final_error_m_median": 0.00022731634221628214,
+       "final_width_m_median": 0.042993966621946364,
+       "min_clearance_m_median": 0.0588110533138573,
+       "observation_offset_s": 0.0
+      },
+      "place_mid": {
+       "episodes": 30,
+       "trajectories": 30,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.43333333333333335,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 1.0,
+       "final_error_m_median": 0.0002677477466412317,
+       "final_width_m_median": 0.07995288993472292,
+       "min_clearance_m_median": 0.058358336956914426,
+       "observation_offset_s": 0.7
+      },
+      "place_late": {
+       "episodes": 30,
+       "trajectories": 30,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.5666666666666667,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 0.5333333333333333,
+       "final_error_m_median": 0.00026774774664124344,
+       "final_width_m_median": 0.07995288993472292,
+       "min_clearance_m_median": 0.10493941300265162,
+       "observation_offset_s": 1.6
+      },
+      "arms": {
+       "active_motion_m_median": 0.1645672198529738,
+       "inactive_motion_m_median": 0.000586037890055993,
+       "inactive_motion_m_p90": 0.0008029259122691714
+      }
+     }
+    }
+   },
+   "agreement_with_maxwell": {
+    "run": "maxwell-v5-20261018_042157",
+    "diffusion": {
+     "train_loss_log_equal": true,
+     "train_loss_log_entries": 160,
+     "val_loss_ema_log_equal": true,
+     "final_loss_ema_equal": true,
+     "multimodal_fields_differing": [
+      {
+       "field": ".demonstrations_test.arms.inactive_motion_m_median",
+       "torch": 0.000586037890055993,
+       "maxwell": 0.0005860378900559816
+      },
+      {
+       "field": ".demonstrations_test.arms.inactive_motion_m_p90",
+       "torch": 0.0008029259122691714,
+       "maxwell": 0.0008029259122691865
+      },
+      {
+       "field": ".demonstrations_test.place_first.final_error_m_median",
+       "torch": 0.00022731634221628214,
+       "maxwell": 0.0002273163422162694
+      },
+      {
+       "field": ".demonstrations_test.place_first.min_clearance_m_median",
+       "torch": 0.0588110533138573,
+       "maxwell": 0.05881105331385731
+      },
+      {
+       "field": ".demonstrations_test.place_late.final_error_m_median",
+       "torch": 0.00026774774664124344,
+       "maxwell": 0.00026774774664124686
+      },
+      {
+       "field": ".demonstrations_test.place_mid.final_error_m_median",
+       "torch": 0.0002677477466412317,
+       "maxwell": 0.00026774774664123737
+      },
+      {
+       "field": ".test.place_first.min_clearance_m_median",
+       "torch": 0.05799389453962435,
+       "maxwell": 0.05799389453962434
+      },
+      {
+       "field": ".val.place_first.min_clearance_m_median",
+       "torch": 0.05676047612966376,
+       "maxwell": 0.05676047612966375
+      },
+      {
+       "field": ".val.place_mid.final_error_m_median",
+       "torch": 0.0056275539675895506,
+       "maxwell": 0.005627553967589553
+      }
+     ],
+     "checkpoint_sha256_equal": false
+    },
+    "regression": {
+     "train_loss_log_equal": true,
+     "train_loss_log_entries": 40,
+     "val_loss_ema_log_equal": true,
+     "final_loss_ema_equal": true,
+     "multimodal_fields_differing": [
+      {
+       "field": ".demonstrations_test.arms.inactive_motion_m_median",
+       "torch": 0.000586037890055993,
+       "maxwell": 0.0005860378900559816
+      },
+      {
+       "field": ".demonstrations_test.arms.inactive_motion_m_p90",
+       "torch": 0.0008029259122691714,
+       "maxwell": 0.0008029259122691865
+      },
+      {
+       "field": ".demonstrations_test.place_first.final_error_m_median",
+       "torch": 0.00022731634221628214,
+       "maxwell": 0.0002273163422162694
+      },
+      {
+       "field": ".demonstrations_test.place_first.min_clearance_m_median",
+       "torch": 0.0588110533138573,
+       "maxwell": 0.05881105331385731
+      },
+      {
+       "field": ".demonstrations_test.place_late.final_error_m_median",
+       "torch": 0.00026774774664124344,
+       "maxwell": 0.00026774774664124686
+      },
+      {
+       "field": ".demonstrations_test.place_mid.final_error_m_median",
+       "torch": 0.0002677477466412317,
+       "maxwell": 0.00026774774664123737
+      },
+      {
+       "field": ".test.place_first.final_error_m_median",
+       "torch": 0.02599234178022229,
+       "maxwell": 0.025992341780222285
+      },
+      {
+       "field": ".val.place_mid.final_error_m_median",
+       "torch": 0.013646839088865862,
+       "maxwell": 0.01364683908886586
+      }
+     ],
+     "checkpoint_sha256_equal": false
+    }
+   }
+  }
+ ],
+ "post_run_code_changes": "After both maxwell runs, two bundle files changed in the working tree after an independent review of the new code: contracts/skills.py (validate_skill_request accepts trained combinations in the checkpoint list form) and s1/policy.py (an explicit eta argument outside [0, 1] is refused); tests/test_contracts.py and tests/test_s1_policy.py gained assertions inside existing tests (test count unchanged, 114). Neither code path is used differently by these runs (S1 training and evaluation never call validate_skill_request, and every eta they use is 0 or 1). Torch jobs use the bundles as uploaded.",
+ "comparison_runs": [
+  {
+   "role": "same-hardware comparison: the code_v4 bundle (eta 0, 8000 steps, synthetic_seed 0) on an L40S; submitted 2026-10-18T03:24:55 before any result, without its own pre-registration; not a verdict run",
+   "criteria": "v3 (unchanged)",
+   "job_id": "20226851",
+   "sacct": {
+    "job": "20226851",
+    "name": "jing-s1-smoke",
+    "state": "FAILED",
+    "start": "2026-10-18T06:02:32",
+    "end": "2026-10-18T06:14:24",
+    "elapsed": "00:11:52",
+    "node": "gl065",
+    "exit_code": "1:0"
+   },
+   "gpu_line": "NVIDIA L40S, 610.43.02, 46068 MiB",
+   "versions_txt": "2.14.1+cu130 13.0 NVIDIA L40S 1.26.4 1.12.0",
+   "steps_log": [
+    "job=20226851 node=gl065.hpc.nyu.edu start=2026-10-18T06:02:34-04:00",
+    "NVIDIA L40S, 610.43.02, 46068 MiB",
+    "2026-10-18T06:02:37-04:00 exit=0 :: /home/jz6676/.local/bin/uv pip install -q --python /scratch/jz6676/jing_assembly/env/bin/python torch==2.14.1 torchvision==0.29.1 numpy==1.26.4 scipy==1.12.0 pytest==8.4.2",
+    "2026-10-18T06:03:13-04:00 exit=0 :: /scratch/jz6676/jing_assembly/env/bin/python -c import torch, torchvision, numpy, scipy; assert torch.cuda.is_available(); print(torch.__version__, torch.version.cuda, torch.cuda.get_device_name(0), numpy.__version__, scipy.__version__)",
+    "2026-10-18T06:04:58-04:00 exit=0 :: pytest",
+    "2026-10-18T06:11:48-04:00 exit=0 :: /scratch/jz6676/jing_assembly/env/bin/python -B -m tasks.dual_arm_crag_skull.s1.train --synthetic 300 --output /scratch/jz6676/jing_assembly/runs/s1_smoke_20226851/diffusion --config /scratch/jz6676/jing_assembly/code_v4/s1_smoke_config.json --kind diffusion",
+    "2026-10-18T06:14:21-04:00 exit=0 :: /scratch/jz6676/jing_assembly/env/bin/python -B -m tasks.dual_arm_crag_skull.s1.train --synthetic 300 --output /scratch/jz6676/jing_assembly/runs/s1_smoke_20226851/regression --config /scratch/jz6676/jing_assembly/code_v4/s1_smoke_config.json --kind regression --steps 4000",
+    "2026-10-18T06:14:21-04:00 exit=1 :: /scratch/jz6676/jing_assembly/env/bin/python -B -m tasks.dual_arm_crag_skull.s1.smoke --diffusion /scratch/jz6676/jing_assembly/runs/s1_smoke_20226851/diffusion/metrics.json --regression /scratch/jz6676/jing_assembly/runs/s1_smoke_20226851/regression/metrics.json --junit /scratch/jz6676/jing_assembly/runs/s1_smoke_20226851/junit.xml --pytest-exit 0 --expected-tests 101 --output /scratch/jz6676/jing_assembly/runs/s1_smoke_20226851/summary.json",
+    "end=2026-10-18T06:14:21-04:00 worst=1"
+   ],
+   "verdict": {
+    "pass": false,
+    "checks": {
+     "C1_pytest": true,
+     "C2_trained_and_reloadable": true,
+     "C3_diffusion_modes": false,
+     "C4_regression_averages_modes": true,
+     "C5_latency": true,
+     "C6_inference_chunks": true,
+     "C7_pick_conditioned_on_fragment": true,
+     "C8_mid_window_follows_mode": true,
+     "C9_late_window_releases_at_goal": true,
+     "C10_only_requested_arm_moves": false
+    },
+    "criteria_version": 3,
+    "pytest": {
+     "exit": 0,
+     "tests": 101,
+     "failures": 0,
+     "errors": 0,
+     "skipped": 0,
+     "expected_tests": 101
+    },
+    "diffusion_test": {
+     "pick_first": {
+      "episodes": 30,
+      "trajectories": 240,
+      "chosen_fragment_rate": 0.9833333333333333,
+      "final_error_m_median": 0.01387402064232551,
+      "observation_offset_s": 0.0
+     },
+     "place_first": {
+      "episodes": 30,
+      "trajectories": 240,
+      "obstacle_hit_rate": 0.21666666666666667,
+      "left_fraction_of_clear": 0.5957446808510638,
+      "episodes_with_both_modes": 0.9333333333333333,
+      "mode_agreement_of_clear": 0.5053191489361702,
+      "final_error_m_median": 0.017427816742769275,
+      "final_width_m_median": 0.06524252519011497,
+      "min_clearance_m_median": 0.0267116486078176,
+      "observation_offset_s": 0.0
+     },
+     "place_mid": {
+      "episodes": 30,
+      "trajectories": 240,
+      "obstacle_hit_rate": 0.004166666666666667,
+      "left_fraction_of_clear": 0.5271966527196653,
+      "episodes_with_both_modes": 0.1,
+      "mode_agreement_of_clear": 0.9874476987447699,
+      "final_error_m_median": 0.015591179070971201,
+      "final_width_m_median": 0.07985119894146919,
+      "min_clearance_m_median": 0.05443590009565813,
+      "observation_offset_s": 0.7
+     },
+     "place_late": {
+      "episodes": 30,
+      "trajectories": 240,
+      "obstacle_hit_rate": 0.0,
+      "left_fraction_of_clear": 0.42916666666666664,
+      "episodes_with_both_modes": 0.7666666666666667,
+      "mode_agreement_of_clear": 0.5541666666666667,
+      "final_error_m_median": 0.004376917774145636,
+      "final_width_m_median": 0.07972672581672668,
+      "min_clearance_m_median": 0.10380996571126506,
+      "observation_offset_s": 1.6
+     },
+     "arms": {
+      "active_motion_m_median": 0.1971990461494349,
+      "inactive_motion_m_median": 0.020098510722292497,
+      "inactive_motion_m_p90": 0.05137282523949525
+     }
+    },
+    "regression_test": {
+     "pick_first": {
+      "episodes": 30,
+      "trajectories": 240,
+      "chosen_fragment_rate": 0.9666666666666667,
+      "final_error_m_median": 0.057175582921660514,
+      "observation_offset_s": 0.0
+     },
+     "place_first": {
+      "episodes": 30,
+      "trajectories": 240,
+      "obstacle_hit_rate": 0.8,
+      "left_fraction_of_clear": 0.6666666666666666,
+      "episodes_with_both_modes": 0.0,
+      "mode_agreement_of_clear": 0.5,
+      "final_error_m_median": 0.026408994626804204,
+      "final_width_m_median": 0.06254172325134277,
+      "min_clearance_m_median": -0.024642656530493988,
+      "observation_offset_s": 0.0
+     },
+     "place_mid": {
+      "episodes": 30,
+      "trajectories": 240,
+      "obstacle_hit_rate": 0.0,
+      "left_fraction_of_clear": 0.5333333333333333,
+      "episodes_with_both_modes": 0.0,
+      "mode_agreement_of_clear": 1.0,
+      "final_error_m_median": 0.013390745656804806,
+      "final_width_m_median": 0.08030547201633453,
+      "min_clearance_m_median": 0.05659404224086533,
+      "observation_offset_s": 0.7
+     },
+     "place_late": {
+      "episodes": 30,
+      "trajectories": 240,
+      "obstacle_hit_rate": 0.0,
+      "left_fraction_of_clear": 0.4,
+      "episodes_with_both_modes": 0.0,
+      "mode_agreement_of_clear": 0.6,
+      "final_error_m_median": 0.0033757306301347616,
+      "final_width_m_median": 0.08101220056414604,
+      "min_clearance_m_median": 0.10534461523896199,
+      "observation_offset_s": 1.6
+     },
+     "arms": {
+      "active_motion_m_median": 0.14635187347557013,
+      "inactive_motion_m_median": 0.006852044011422299,
+      "inactive_motion_m_p90": 0.017146647209948313
+     }
+    },
+    "ddim16_latency": {
+     "median_ms": 70.32008748501539,
+     "p90_ms": 70.63498077914119
+    },
+    "inference_check": {
+     "attempted": 64,
+     "chunks": 64,
+     "rejected": [],
+     "not_executable": [],
+     "latency_ms_median": 72.1223964355886,
+     "latency_ms_max": 73.460026178509
+    }
+   },
+   "marker": "FAIL",
+   "local_copy": "/local_data/jz6676/repos_review/runs/s1_smoke_torch_20226851 (everything except the checkpoints, which stay on torch)",
+   "diffusion": {
+    "code_sha256": "0bdafa411f42ae2eda310f1067c8ade901bb823715e236d306711da99dfdc197",
+    "versions": {
+     "python": "3.12.14",
+     "torch": "2.14.1+cu130",
+     "torchvision": "0.29.1+cu130",
+     "numpy": "1.26.4",
+     "scipy": "1.12.0",
+     "device": "cuda",
+     "host": "gl065.hpc.nyu.edu",
+     "gpu": "NVIDIA L40S",
+     "cuda": "13.0",
+     "cudnn": 92400
+    },
+    "policy_config": {
+     "obs_steps": 2,
+     "pred_steps": 16,
+     "action_dim": 20,
+     "lowdim_dim": 29,
+     "cameras": [
+      "left_wrist",
+      "right_wrist",
+      "agent"
+     ],
+     "image_feature_dim": 64,
+     "shared_encoder": false,
+     "encoder_weights": null,
+     "random_shift": 2,
+     "skill_embed_dim": 16,
+     "down_dims": [
+      128,
+      256,
+      512
+     ],
+     "kernel_size": 5,
+     "n_groups": 8,
+     "step_embed_dim": 128,
+     "num_train_timesteps": 100,
+     "clip_sample": true,
+     "num_inference_steps": 16,
+     "regression_hidden": [
+      1024,
+      1024
+     ]
+    },
+    "data": {
+     "source": "synthetic",
+     "supervision": "achieved",
+     "image_shape": [
+      32,
+      32,
+      3
+     ],
+     "excluded": {
+      "episodes_given": 300,
+      "excluded_failed": 0,
+      "excluded_unknown_outcome": 0
+     },
+     "episodes": {
+      "train": 240,
+      "val": 30,
+      "test": 30
+     },
+     "windows": {
+      "train": 10560,
+      "val": 1320,
+      "test": 1320
+     },
+     "window_stats": {
+      "train": {
+       "episodes_given": 240,
+       "episodes_used": 240,
+       "excluded_failed": 0,
+       "excluded_unknown_outcome": 0,
+       "windows": 10560
+      },
+      "val": {
+       "episodes_given": 30,
+       "episodes_used": 30,
+       "excluded_failed": 0,
+       "excluded_unknown_outcome": 0,
+       "windows": 1320
+      },
+      "test": {
+       "episodes_given": 30,
+       "episodes_used": 30,
+       "excluded_failed": 0,
+       "excluded_unknown_outcome": 0,
+       "windows": 1320
+      }
+     },
+     "trained_combinations": [
+      [
+       "pick",
+       [
+        "left"
+       ]
+      ],
+      [
+       "pick",
+       [
+        "right"
+       ]
+      ],
+      [
+       "place",
+       [
+        "left"
+       ]
+      ],
+      [
+       "place",
+       [
+        "right"
+       ]
+      ],
+      [
+       "retreat",
+       [
+        "left"
+       ]
+      ],
+      [
+       "retreat",
+       [
+        "right"
+       ]
+      ]
+     ],
+     "combination_window_counts": {
+      "pick:left": 1495,
+      "pick:right": 1625,
+      "place:left": 2185,
+      "place:right": 2375,
+      "retreat:left": 1380,
+      "retreat:right": 1500
+     }
+    },
+    "steps": 8000,
+    "seconds": 356.5,
+    "steps_per_second": 22.44,
+    "parameters_millions": 53.45,
+    "train_loss_every_1000": [
+     [
+      1000,
+      0.0767855042219162
+     ],
+     [
+      2000,
+      0.03154162446036935
+     ],
+     [
+      3000,
+      0.019208321701735257
+     ],
+     [
+      4000,
+      0.01320792336948216
+     ],
+     [
+      5000,
+      0.01029101395048201
+     ],
+     [
+      6000,
+      0.00787200872786343
+     ],
+     [
+      7000,
+      0.006362712094560265
+     ],
+     [
+      8000,
+      0.00605417259503156
+     ]
+    ],
+    "val_loss_ema_log": [
+     [
+      1000,
+      0.09050092805515636
+     ],
+     [
+      2000,
+      0.032590041106397453
+     ],
+     [
+      3000,
+      0.019389975714412602
+     ],
+     [
+      4000,
+      0.013674217061788747
+     ],
+     [
+      5000,
+      0.010627735552914215
+     ],
+     [
+      6000,
+      0.008764452312254544
+     ],
+     [
+      7000,
+      0.007754806824254267
+     ],
+     [
+      8000,
+      0.007343885200944813
+     ]
+    ],
+    "final_loss_ema": {
+     "val": 0.007343885200944813,
+     "test": 0.0069930148395625025
+    },
+    "checkpoint": {
+     "file": "checkpoint.pt",
+     "sha256": "d1d227fb37f068929332155fee444ad547fa6a389fcdfe69f74758263fff8ba4",
+     "reload_max_abs_diff": 0.0
+    },
+    "latency_batch1_ms": {
+     "ddim_1": {
+      "median_ms": 9.494780097156763,
+      "p90_ms": 9.614301472902298
+     },
+     "ddim_2": {
+      "median_ms": 13.582389568910003,
+      "p90_ms": 13.73824505135417
+     },
+     "ddim_4": {
+      "median_ms": 21.57569071277976,
+      "p90_ms": 21.822769520804286
+     },
+     "ddim_8": {
+      "median_ms": 37.55472134798765,
+      "p90_ms": 37.91355048306286
+     },
+     "ddim_16": {
+      "median_ms": 70.32008748501539,
+      "p90_ms": 70.63498077914119
+     },
+     "ddpm_100": {
+      "median_ms": 416.74898844212294,
+      "p90_ms": 417.9490455426276
+     }
+    },
+    "inference_check": {
+     "attempted": 64,
+     "chunks": 64,
+     "rejected": [],
+     "not_executable": [],
+     "latency_ms_median": 72.1223964355886,
+     "latency_ms_max": 73.460026178509
+    },
+    "multimodal": {
+     "val": {
+      "pick_first": {
+       "episodes": 30,
+       "trajectories": 240,
+       "chosen_fragment_rate": 0.9916666666666667,
+       "final_error_m_median": 0.01684438580490681,
+       "observation_offset_s": 0.0
+      },
+      "place_first": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.25,
+       "left_fraction_of_clear": 0.5777777777777777,
+       "episodes_with_both_modes": 0.9,
+       "mode_agreement_of_clear": 0.45555555555555555,
+       "final_error_m_median": 0.01641427064290322,
+       "final_width_m_median": 0.06328848749399185,
+       "min_clearance_m_median": 0.030307986566759752,
+       "observation_offset_s": 0.0
+      },
+      "place_mid": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.004166666666666667,
+       "left_fraction_of_clear": 0.3682008368200837,
+       "episodes_with_both_modes": 0.1,
+       "mode_agreement_of_clear": 0.9874476987447699,
+       "final_error_m_median": 0.016253159600324942,
+       "final_width_m_median": 0.0795421414077282,
+       "min_clearance_m_median": 0.054563385522089135,
+       "observation_offset_s": 0.7
+      },
+      "place_late": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.5125,
+       "episodes_with_both_modes": 0.7,
+       "mode_agreement_of_clear": 0.5458333333333333,
+       "final_error_m_median": 0.004290965848836998,
+       "final_width_m_median": 0.07960181310772896,
+       "min_clearance_m_median": 0.10150569425435181,
+       "observation_offset_s": 1.6
+      },
+      "arms": {
+       "active_motion_m_median": 0.19175437113466895,
+       "inactive_motion_m_median": 0.019794860506829527,
+       "inactive_motion_m_p90": 0.052839038765284334
+      }
+     },
+     "test": {
+      "pick_first": {
+       "episodes": 30,
+       "trajectories": 240,
+       "chosen_fragment_rate": 0.9833333333333333,
+       "final_error_m_median": 0.01387402064232551,
+       "observation_offset_s": 0.0
+      },
+      "place_first": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.21666666666666667,
+       "left_fraction_of_clear": 0.5957446808510638,
+       "episodes_with_both_modes": 0.9333333333333333,
+       "mode_agreement_of_clear": 0.5053191489361702,
+       "final_error_m_median": 0.017427816742769275,
+       "final_width_m_median": 0.06524252519011497,
+       "min_clearance_m_median": 0.0267116486078176,
+       "observation_offset_s": 0.0
+      },
+      "place_mid": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.004166666666666667,
+       "left_fraction_of_clear": 0.5271966527196653,
+       "episodes_with_both_modes": 0.1,
+       "mode_agreement_of_clear": 0.9874476987447699,
+       "final_error_m_median": 0.015591179070971201,
+       "final_width_m_median": 0.07985119894146919,
+       "min_clearance_m_median": 0.05443590009565813,
+       "observation_offset_s": 0.7
+      },
+      "place_late": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.42916666666666664,
+       "episodes_with_both_modes": 0.7666666666666667,
+       "mode_agreement_of_clear": 0.5541666666666667,
+       "final_error_m_median": 0.004376917774145636,
+       "final_width_m_median": 0.07972672581672668,
+       "min_clearance_m_median": 0.10380996571126506,
+       "observation_offset_s": 1.6
+      },
+      "arms": {
+       "active_motion_m_median": 0.1971990461494349,
+       "inactive_motion_m_median": 0.020098510722292497,
+       "inactive_motion_m_p90": 0.05137282523949525
+      }
+     },
+     "demonstrations_test": {
+      "pick_first": {
+       "episodes": 30,
+       "trajectories": 30,
+       "chosen_fragment_rate": 1.0,
+       "final_error_m_median": 0.00021053737825036544,
+       "observation_offset_s": 0.0
+      },
+      "place_first": {
+       "episodes": 30,
+       "trajectories": 30,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.5333333333333333,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 1.0,
+       "final_error_m_median": 0.00019605119661583,
+       "final_width_m_median": 0.04299387038635119,
+       "min_clearance_m_median": 0.058854191778005854,
+       "observation_offset_s": 0.0
+      },
+      "place_mid": {
+       "episodes": 30,
+       "trajectories": 30,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.5333333333333333,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 1.0,
+       "final_error_m_median": 0.00021731219334235818,
+       "final_width_m_median": 0.08001331245145227,
+       "min_clearance_m_median": 0.05833159782010224,
+       "observation_offset_s": 0.7
+      },
+      "place_late": {
+       "episodes": 30,
+       "trajectories": 30,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.6333333333333333,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 0.6333333333333333,
+       "final_error_m_median": 0.0002173121933423314,
+       "final_width_m_median": 0.08001331245145227,
+       "min_clearance_m_median": 0.10646430097470969,
+       "observation_offset_s": 1.6
+      },
+      "arms": {
+       "active_motion_m_median": 0.16477297293972365,
+       "inactive_motion_m_median": 0.0005845041872471623,
+       "inactive_motion_m_p90": 0.0007862535846419611
+      }
+     }
+    }
+   },
+   "regression": {
+    "code_sha256": "0bdafa411f42ae2eda310f1067c8ade901bb823715e236d306711da99dfdc197",
+    "versions": {
+     "python": "3.12.14",
+     "torch": "2.14.1+cu130",
+     "torchvision": "0.29.1+cu130",
+     "numpy": "1.26.4",
+     "scipy": "1.12.0",
+     "device": "cuda",
+     "host": "gl065.hpc.nyu.edu",
+     "gpu": "NVIDIA L40S",
+     "cuda": "13.0",
+     "cudnn": 92400
+    },
+    "policy_config": {
+     "obs_steps": 2,
+     "pred_steps": 16,
+     "action_dim": 20,
+     "lowdim_dim": 29,
+     "cameras": [
+      "left_wrist",
+      "right_wrist",
+      "agent"
+     ],
+     "image_feature_dim": 64,
+     "shared_encoder": false,
+     "encoder_weights": null,
+     "random_shift": 2,
+     "skill_embed_dim": 16,
+     "down_dims": [
+      128,
+      256,
+      512
+     ],
+     "kernel_size": 5,
+     "n_groups": 8,
+     "step_embed_dim": 128,
+     "num_train_timesteps": 100,
+     "clip_sample": true,
+     "num_inference_steps": 16,
+     "regression_hidden": [
+      1024,
+      1024
+     ]
+    },
+    "data": {
+     "source": "synthetic",
+     "supervision": "achieved",
+     "image_shape": [
+      32,
+      32,
+      3
+     ],
+     "excluded": {
+      "episodes_given": 300,
+      "excluded_failed": 0,
+      "excluded_unknown_outcome": 0
+     },
+     "episodes": {
+      "train": 240,
+      "val": 30,
+      "test": 30
+     },
+     "windows": {
+      "train": 10560,
+      "val": 1320,
+      "test": 1320
+     },
+     "window_stats": {
+      "train": {
+       "episodes_given": 240,
+       "episodes_used": 240,
+       "excluded_failed": 0,
+       "excluded_unknown_outcome": 0,
+       "windows": 10560
+      },
+      "val": {
+       "episodes_given": 30,
+       "episodes_used": 30,
+       "excluded_failed": 0,
+       "excluded_unknown_outcome": 0,
+       "windows": 1320
+      },
+      "test": {
+       "episodes_given": 30,
+       "episodes_used": 30,
+       "excluded_failed": 0,
+       "excluded_unknown_outcome": 0,
+       "windows": 1320
+      }
+     },
+     "trained_combinations": [
+      [
+       "pick",
+       [
+        "left"
+       ]
+      ],
+      [
+       "pick",
+       [
+        "right"
+       ]
+      ],
+      [
+       "place",
+       [
+        "left"
+       ]
+      ],
+      [
+       "place",
+       [
+        "right"
+       ]
+      ],
+      [
+       "retreat",
+       [
+        "left"
+       ]
+      ],
+      [
+       "retreat",
+       [
+        "right"
+       ]
+      ]
+     ],
+     "combination_window_counts": {
+      "pick:left": 1495,
+      "pick:right": 1625,
+      "place:left": 2185,
+      "place:right": 2375,
+      "retreat:left": 1380,
+      "retreat:right": 1500
+     }
+    },
+    "steps": 4000,
+    "seconds": 117.3,
+    "steps_per_second": 34.1,
+    "parameters_millions": 35.5,
+    "train_loss_every_1000": [
+     [
+      1000,
+      0.003588916913140565
+     ],
+     [
+      2000,
+      0.001845458297757432
+     ],
+     [
+      3000,
+      0.0014368403027765454
+     ],
+     [
+      4000,
+      0.0012970640347339214
+     ]
+    ],
+    "val_loss_ema_log": [
+     [
+      1000,
+      0.004414936647552884
+     ],
+     [
+      2000,
+      0.002243611882581855
+     ],
+     [
+      3000,
+      0.0019343962991666614
+     ],
+     [
+      4000,
+      0.0018845988465755275
+     ]
+    ],
+    "final_loss_ema": {
+     "val": 0.0018845988465755275,
+     "test": 0.0017179854701019146
+    },
+    "checkpoint": {
+     "file": "checkpoint.pt",
+     "sha256": "4764c2c5d92e6c4a091d0abaf1866538ca57645dae91159912ea346764a90607",
+     "reload_max_abs_diff": 0.0
+    },
+    "latency_batch1_ms": {
+     "forward": {
+      "median_ms": 5.439344793558121,
+      "p90_ms": 5.519966501742601
+     }
+    },
+    "inference_check": {
+     "attempted": 64,
+     "chunks": 64,
+     "rejected": [],
+     "not_executable": [],
+     "latency_ms_median": 7.066661026328802,
+     "latency_ms_max": 7.190464995801449
+    },
+    "multimodal": {
+     "val": {
+      "pick_first": {
+       "episodes": 30,
+       "trajectories": 240,
+       "chosen_fragment_rate": 0.7666666666666667,
+       "final_error_m_median": 0.058082838578557075,
+       "observation_offset_s": 0.0
+      },
+      "place_first": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.8666666666666667,
+       "left_fraction_of_clear": 1.0,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 0.0,
+       "final_error_m_median": 0.02310529265064299,
+       "final_width_m_median": 0.0622597374022007,
+       "min_clearance_m_median": -0.024363475603796085,
+       "observation_offset_s": 0.0
+      },
+      "place_mid": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.36666666666666664,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 1.0,
+       "final_error_m_median": 0.014974164651696598,
+       "final_width_m_median": 0.07995229214429855,
+       "min_clearance_m_median": 0.05501894843153196,
+       "observation_offset_s": 0.7
+      },
+      "place_late": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.5,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 0.5333333333333333,
+       "final_error_m_median": 0.004665242405920556,
+       "final_width_m_median": 0.08104380965232849,
+       "min_clearance_m_median": 0.1022874967231963,
+       "observation_offset_s": 1.6
+      },
+      "arms": {
+       "active_motion_m_median": 0.14695646064645054,
+       "inactive_motion_m_median": 0.006901232121568264,
+       "inactive_motion_m_p90": 0.017261026699557418
+      }
+     },
+     "test": {
+      "pick_first": {
+       "episodes": 30,
+       "trajectories": 240,
+       "chosen_fragment_rate": 0.9666666666666667,
+       "final_error_m_median": 0.057175582921660514,
+       "observation_offset_s": 0.0
+      },
+      "place_first": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.8,
+       "left_fraction_of_clear": 0.6666666666666666,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 0.5,
+       "final_error_m_median": 0.026408994626804204,
+       "final_width_m_median": 0.06254172325134277,
+       "min_clearance_m_median": -0.024642656530493988,
+       "observation_offset_s": 0.0
+      },
+      "place_mid": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.5333333333333333,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 1.0,
+       "final_error_m_median": 0.013390745656804806,
+       "final_width_m_median": 0.08030547201633453,
+       "min_clearance_m_median": 0.05659404224086533,
+       "observation_offset_s": 0.7
+      },
+      "place_late": {
+       "episodes": 30,
+       "trajectories": 240,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.4,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 0.6,
+       "final_error_m_median": 0.0033757306301347616,
+       "final_width_m_median": 0.08101220056414604,
+       "min_clearance_m_median": 0.10534461523896199,
+       "observation_offset_s": 1.6
+      },
+      "arms": {
+       "active_motion_m_median": 0.14635187347557013,
+       "inactive_motion_m_median": 0.006852044011422299,
+       "inactive_motion_m_p90": 0.017146647209948313
+      }
+     },
+     "demonstrations_test": {
+      "pick_first": {
+       "episodes": 30,
+       "trajectories": 30,
+       "chosen_fragment_rate": 1.0,
+       "final_error_m_median": 0.00021053737825036544,
+       "observation_offset_s": 0.0
+      },
+      "place_first": {
+       "episodes": 30,
+       "trajectories": 30,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.5333333333333333,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 1.0,
+       "final_error_m_median": 0.00019605119661583,
+       "final_width_m_median": 0.04299387038635119,
+       "min_clearance_m_median": 0.058854191778005854,
+       "observation_offset_s": 0.0
+      },
+      "place_mid": {
+       "episodes": 30,
+       "trajectories": 30,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.5333333333333333,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 1.0,
+       "final_error_m_median": 0.00021731219334235818,
+       "final_width_m_median": 0.08001331245145227,
+       "min_clearance_m_median": 0.05833159782010224,
+       "observation_offset_s": 0.7
+      },
+      "place_late": {
+       "episodes": 30,
+       "trajectories": 30,
+       "obstacle_hit_rate": 0.0,
+       "left_fraction_of_clear": 0.6333333333333333,
+       "episodes_with_both_modes": 0.0,
+       "mode_agreement_of_clear": 0.6333333333333333,
+       "final_error_m_median": 0.0002173121933423314,
+       "final_width_m_median": 0.08001331245145227,
+       "min_clearance_m_median": 0.10646430097470969,
+       "observation_offset_s": 1.6
+      },
+      "arms": {
+       "active_motion_m_median": 0.16477297293972365,
+       "inactive_motion_m_median": 0.0005845041872471623,
+       "inactive_motion_m_p90": 0.0007862535846419611
+      }
+     }
+    }
+   },
+   "agreement_with_maxwell": {
+    "run": "maxwell-20261018_033008",
+    "diffusion": {
+     "train_loss_log_equal": true,
+     "train_loss_log_entries": 80,
+     "val_loss_ema_log_equal": true,
+     "final_loss_ema_equal": true,
+     "multimodal_fields_differing": [
+      {
+       "field": ".demonstrations_test.arms.inactive_motion_m_median",
+       "torch": 0.0005845041872471623,
+       "maxwell": 0.0005845041872471695
+      },
+      {
+       "field": ".demonstrations_test.arms.inactive_motion_m_p90",
+       "torch": 0.0007862535846419611,
+       "maxwell": 0.0007862535846419404
+      },
+      {
+       "field": ".demonstrations_test.place_first.final_error_m_median",
+       "torch": 0.00019605119661583,
+       "maxwell": 0.00019605119661583178
+      },
+      {
+       "field": ".demonstrations_test.place_first.min_clearance_m_median",
+       "torch": 0.058854191778005854,
+       "maxwell": 0.05885419177800588
+      },
+      {
+       "field": ".demonstrations_test.place_late.final_error_m_median",
+       "torch": 0.0002173121933423314,
+       "maxwell": 0.00021731219334233172
+      },
+      {
+       "field": ".test.place_first.final_error_m_median",
+       "torch": 0.017427816742769275,
+       "maxwell": 0.017427816742769272
+      },
+      {
+       "field": ".val.place_first.min_clearance_m_median",
+       "torch": 0.030307986566759752,
+       "maxwell": 0.03030798656675976
+      }
+     ],
+     "checkpoint_sha256_equal": false
+    },
+    "regression": {
+     "train_loss_log_equal": true,
+     "train_loss_log_entries": 40,
+     "val_loss_ema_log_equal": true,
+     "final_loss_ema_equal": true,
+     "multimodal_fields_differing": [
+      {
+       "field": ".demonstrations_test.arms.inactive_motion_m_median",
+       "torch": 0.0005845041872471623,
+       "maxwell": 0.0005845041872471695
+      },
+      {
+       "field": ".demonstrations_test.arms.inactive_motion_m_p90",
+       "torch": 0.0007862535846419611,
+       "maxwell": 0.0007862535846419404
+      },
+      {
+       "field": ".demonstrations_test.place_first.final_error_m_median",
+       "torch": 0.00019605119661583,
+       "maxwell": 0.00019605119661583178
+      },
+      {
+       "field": ".demonstrations_test.place_first.min_clearance_m_median",
+       "torch": 0.058854191778005854,
+       "maxwell": 0.05885419177800588
+      },
+      {
+       "field": ".demonstrations_test.place_late.final_error_m_median",
+       "torch": 0.0002173121933423314,
+       "maxwell": 0.00021731219334233172
+      },
+      {
+       "field": ".test.place_mid.final_error_m_median",
+       "torch": 0.013390745656804806,
+       "maxwell": 0.013390745656804804
+      },
+      {
+       "field": ".val.place_first.final_error_m_median",
+       "torch": 0.02310529265064299,
+       "maxwell": 0.023105292650642994
+      },
+      {
+       "field": ".val.place_mid.final_error_m_median",
+       "torch": 0.014974164651696598,
+       "maxwell": 0.0149741646516966
+      }
+     ],
+     "checkpoint_sha256_equal": false
+    }
+   }
+  }
+ ]
+}

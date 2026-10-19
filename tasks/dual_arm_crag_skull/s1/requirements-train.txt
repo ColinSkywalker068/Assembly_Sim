@@ -1,0 +1,8 @@
+# S1 training / inference environment (Python 3.12), separate from the Isaac Sim Python.
+# CUDA: the default PyPI wheels (verified on the NYU torch cluster, L40S, driver 610.43.02).
+# CPU-only tests: install torch/torchvision from https://download.pytorch.org/whl/cpu instead.
+torch==2.14.1
+torchvision==0.29.1
+numpy==1.26.4
+scipy==1.12.0
+pytest==8.4.2
