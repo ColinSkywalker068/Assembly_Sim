@@ -1,0 +1,291 @@
+{
+  "date": "2026-10-18",
+  "purpose": "verify camera intrinsics used for RGB-D back-projection",
+  "host": "maxwell (NVIDIA RTX 6000 Ada, CUDA_VISIBLE_DEVICES=2)",
+  "isaac_sim": "5.1.0.0 (conda env behavior)",
+  "command": "python -m tasks.dual_arm_crag_skull.smoke --assembly <prepare --simulation-only --allow-disconnected-rigid-proxy of view_gt.glb, pitch 0.008, target 0.2>/layout.json --output <run> --allow-robotiq-proxy",
+  "runner": {
+    "exit_code": "0",
+    "peak_rss_kb": "5649684",
+    "out": "/local_data/jz6676/repos_review/runs/smoke_20261018_015732"
+  },
+  "layout_sha256": "78b9204e3da14d1f261320a34844517b7c470701ea6e7febab5152c2a48acb25",
+  "source_glb_sha256": "0eb9c886c3b45301f6c1602a3f94ca470be6270f3f63d79b91e6c3c26cd60ecc",
+  "finding": "Rendered pixels are square: the render-product projection gives fx == fy, and an independent least-squares fit from the same frame as optical-Z and ray distance agrees to <1e-6 relative. Intrinsics computed from the USD apertures (default 20.955 x 15.2908 mm film back with 1920x1440 output) overstate fy by 2.782%, so the fy values in reports/2026-10-14.json are wrong; fx and the extrinsics are right; its cx = W/2, cy = H/2 also sit half a pixel off the OpenCV convention used by depth_to_world (USD camera pose matches the renderer view transform to 1e-15).",
+  "smoke": {
+    "physics_frames": 120,
+    "fragment_count": 8,
+    "gripper": "robotiq_proxy",
+    "assembly_success_evaluated": false,
+    "cameras": {
+      "agent": {
+        "timestamp_s": 4.05000021122396,
+        "depth_units": "m",
+        "depth_type": "optical_z",
+        "valid_fraction": 1.0,
+        "world_T_camera_optical": [
+          [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            -0.7882464758132598,
+            0.6153596455472002,
+            -2.1000000000000005
+          ],
+          [
+            0.0,
+            -0.6153596455472002,
+            -0.7882464758132599,
+            3.4400000000000004
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "extrinsics_source": "renderer_view_transform",
+        "usd_prim_pose_max_abs_difference": 4.440892098500626e-16,
+        "intrinsics": [
+          [
+            2290.622771403514,
+            0.0,
+            959.5
+          ],
+          [
+            0.0,
+            2290.622771403514,
+            719.5
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "intrinsics_source": "render_product_projection",
+        "pixel_convention": "opencv_integer_pixel_centres",
+        "focal_fit_from_depths": {
+          "fx": 2290.6231006498506,
+          "fy": 2290.6232827046065,
+          "rms_residual": 1.1067698020471117e-07,
+          "max_relative_disagreement": 2.232148325065353e-07
+        },
+        "intrinsics_from_usd_apertures": [
+          [
+            2290.6227714035144,
+            0.0,
+            959.5
+          ],
+          [
+            0.0,
+            2354.356853615721,
+            719.5
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "usd_aperture_fy_relative_error": 0.027823680738922052,
+        "renderer_aperture_mm": [
+          20.954999923706055,
+          15.290800094604492
+        ]
+      },
+      "left_wrist": {
+        "timestamp_s": 4.05000021122396,
+        "depth_units": "m",
+        "depth_type": "optical_z",
+        "valid_fraction": 1.0,
+        "world_T_camera_optical": [
+          [
+            3.647916411229736e-05,
+            -0.9307787642555242,
+            -0.3655829463750051,
+            -0.24015290567213277
+          ],
+          [
+            -0.9372068378916378,
+            -0.12753766889043877,
+            0.32461898592526917,
+            -0.160078021369627
+          ],
+          [
+            -0.3487740553401698,
+            0.34261499532996526,
+            -0.8723368748921602,
+            1.164822480768896
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.9999999999999998
+          ]
+        ],
+        "extrinsics_source": "renderer_view_transform",
+        "usd_prim_pose_max_abs_difference": 2.220446049250313e-16,
+        "intrinsics": [
+          [
+            1649.2484609457738,
+            0.0,
+            959.5
+          ],
+          [
+            0.0,
+            1649.2484609457736,
+            719.5
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "intrinsics_source": "render_product_projection",
+        "pixel_convention": "opencv_integer_pixel_centres",
+        "focal_fit_from_depths": {
+          "fx": 1649.2478102826233,
+          "fy": 1649.247633550448,
+          "rms_residual": 8.187113115498137e-07,
+          "max_relative_disagreement": 5.016804685009646e-07
+        },
+        "intrinsics_from_usd_apertures": [
+          [
+            1649.2483954105305,
+            0.0,
+            959.5
+          ],
+          [
+            0.0,
+            1695.136934603319,
+            719.5
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "usd_aperture_fy_relative_error": 0.027824384961573134,
+        "renderer_aperture_mm": [
+          20.954999923706055,
+          15.290800094604492
+        ]
+      },
+      "right_wrist": {
+        "timestamp_s": 4.05000021122396,
+        "depth_units": "m",
+        "depth_type": "optical_z",
+        "valid_fraction": 1.0,
+        "world_T_camera_optical": [
+          [
+            -3.6431117662188367e-05,
+            0.930778739403152,
+            0.3655830096542411,
+            0.24015303795394435
+          ],
+          [
+            0.9372068517132891,
+            0.12753763547109262,
+            -0.3246189591507369,
+            0.1600779725209059
+          ],
+          [
+            -0.3487740182043936,
+            0.34261507528642404,
+            -0.8723368583362962,
+            1.1648223534145876
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "extrinsics_source": "renderer_view_transform",
+        "usd_prim_pose_max_abs_difference": 1.1102230246251565e-16,
+        "intrinsics": [
+          [
+            1649.2484609457738,
+            0.0,
+            959.5
+          ],
+          [
+            0.0,
+            1649.2484609457736,
+            719.5
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "intrinsics_source": "render_product_projection",
+        "pixel_convention": "opencv_integer_pixel_centres",
+        "focal_fit_from_depths": {
+          "fx": 1649.2488490168994,
+          "fy": 1649.2491515658992,
+          "rms_residual": 5.246478550368961e-07,
+          "max_relative_disagreement": 4.187482073314541e-07
+        },
+        "intrinsics_from_usd_apertures": [
+          [
+            1649.2483954105305,
+            0.0,
+            959.5
+          ],
+          [
+            0.0,
+            1695.136934603319,
+            719.5
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "usd_aperture_fy_relative_error": 0.02782343892301009,
+        "renderer_aperture_mm": [
+          20.954999923706055,
+          15.290800094604492
+        ]
+      }
+    },
+    "physics_dt": 0.008333333333333333
+  },
+  "failure_path_check": {
+    "method": "same layout, frames=2; force an exception inside run() after the scene is built",
+    "head_smoke_py": {
+      "forced_failure": "np.save raises",
+      "exit_code": 0,
+      "traceback_in_log": false,
+      "files_left": [
+        "agent.png"
+      ],
+      "smoke_json": false,
+      "meaning": "Kit fast shutdown inside app.close() in the finally block ended the process with status 0"
+    },
+    "new_smoke_py": {
+      "forced_failure": "FOCAL_AGREEMENT = -1",
+      "exit_code": 1,
+      "traceback_in_log": true,
+      "files_left": [
+        "smoke_failed.json"
+      ],
+      "smoke_json": false,
+      "marker": "SMOKE FAIL"
+    }
+  },
+  "conventions": "K uses the OpenCV pixel-centre convention (cx = W/2 - 0.5, cy = H/2 - 0.5), matching perception.depth_to_world; extrinsics come from the renderer view transform."
+}

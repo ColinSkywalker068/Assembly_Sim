@@ -1,4 +1,6 @@
 # CPU preparation/test environment, Python 3.12; separate from Isaac Sim Python.
+# Install with numpy pinned in the same command: unpinned installs (e.g. matplotlib) pull numpy 2.x,
+# which breaks scipy 1.12 ("numpy.dtype size changed").
 numpy==1.26.4
 scipy==1.12.0
 trimesh==4.12.2
@@ -6,3 +8,11 @@ networkx==3.4.2
 pytest==8.4.2
 Pillow==11.0.0
 rtree==1.4.1
+# S2 planner (tests use a fake client; the SDK is needed for live calls and the error-mapping test).
+anthropic==1.15.0
+# Optional: regenerate configs/crx10ial_kinematics.json; the mesh-envelope test skips without it.
+usd-core==26.8
+# Upstream dual_arm_breakingbad render tests.
+matplotlib==3.9.4
+# S1 tests additionally need torch/torchvision (versions in s1/requirements-train.txt); for CPU-only use
+# install them from https://download.pytorch.org/whl/cpu. Without torch the S1 policy/train tests skip.

@@ -6,8 +6,9 @@
     "arm_model": "FANUC CRX-10iA/L",
     "hardware_verified": false,
     "gripper_family": "YAM",
-    "gripper_model": null,
-    "gripper_asset": null,
+    "gripper_model": "I2RT linear_4310",
+    "gripper_asset": "core/assets/robots/i2rt_linear_4310/linear_4310.xml",
+    "gripper_asset_status": "official model (i2rt-robotics/i2rt 120c3c8, MIT), pinned by SOURCE.json; the CRX adapter plate is not designed, so s0.flange_T_tcp stays null",
     "calibration_file": null
   },
   "cameras": [
@@ -27,15 +28,43 @@
     "gt_usage": "expert_and_evaluation_only"
   },
   "s2": {
+    "planner": "aspire_program",
+    "execution_mode": "skills",
+    "program_path": null,
     "provider": "anthropic",
     "requested_model": "Claude Opus 5.5",
-    "api_model_id": null,
+    "api_model_id": "claude-opus-5-5",
+    "api_model_id_source": "Anthropic model table in the claude-api reference (cached 2026-10-06)",
+    "api_live_call_verified": false,
+    "effort": "high",
+    "server_fallbacks": "default",
+    "max_turns": 6,
+    "max_planning_s": 120.0,
     "trigger": "subtask_completion_or_failure",
     "output": "validated_skill_request",
     "tools": [
-      "propose_assembly",
-      "propose_assembly_candidates"
-    ]
+      "propose_assembly_candidates",
+      "submit_skill_request"
+    ],
+    "completion_defaults_status": "provisional design targets, to be replaced after printed fit tests",
+    "completion_defaults": {
+      "pick": {"type": "grasp_held"},
+      "place": {"type": "released_stable", "position_tolerance_m": 0.003, "rotation_tolerance_deg": 3.0, "settle_s": 1.0},
+      "align": {"type": "pose_within", "position_tolerance_m": 0.003, "rotation_tolerance_deg": 3.0},
+      "insert": {"type": "released_stable", "position_tolerance_m": 0.002, "rotation_tolerance_deg": 2.0, "settle_s": 1.0},
+      "support": {"type": "grasp_held"},
+      "retreat": {"type": "retreated", "clearance_m": 0.1},
+      "reobserve": {"type": "observed"}
+    },
+    "timeouts_s": {
+      "pick": 30.0,
+      "place": 30.0,
+      "align": 20.0,
+      "insert": 20.0,
+      "support": 30.0,
+      "retreat": 15.0,
+      "reobserve": 5.0
+    }
   },
   "s1": {
     "architecture": "conditional_unet1d_diffusion_policy",
@@ -53,7 +82,9 @@
       "gripper_widths",
       "inter_tcp_pose",
       "skill_id",
-      "observable_target"
+      "active_arm_mask",
+      "observable_target",
+      "fragment_observed_pose"
     ]
   },
   "s0": {
@@ -66,7 +97,19 @@
     "servo_hz": 60,
     "camera_hz": 10,
     "force_control_enabled": false,
-    "hardware_execution_enabled": false
+    "hardware_execution_enabled": false,
+    "max_joint_acceleration_rad_s2": null,
+    "gripper_width_range_m": null,
+    "flange_T_tcp": null,
+    "arm_arm_clearance_m": null,
+    "table_clearance_m": null,
+    "tcp_min_height_m": null,
+    "max_observation_age_s": null,
+    "anchor_position_tolerance_m": null,
+    "anchor_rotation_tolerance_rad": null,
+    "contact_table_clearance_m": null,
+    "contact_region_radius_m": null,
+    "contact_max_speed_m_s": null
   },
   "garf": {
     "repository": "https://github.com/ai4ce/GARF",
@@ -81,5 +124,46 @@
     "steps": 20,
     "iterations": 6,
     "geometry_seed": 42
+  },
+  "baselines": {
+    "status": "adapters_offline_tested_no_live_runs",
+    "seed_splits": {"practice": [101, 125], "selection": [126, 130], "heldout": [1, 100]},
+    "seed_splits_status": "provisional; mirrors ASPIRE's Robosuite bands, change only before any method sees held-out seeds",
+    "initial_condition": {"max_shift_m": 0.03, "max_yaw_deg": 30.0, "gap_m": 0.02, "attempts": 200},
+    "success_tolerances_from": "s2.completion_defaults.place",
+    "anchor": "fixture",
+    "anchor_status": "decided 2026-10-18: alone at its assembled pose the anchor tips 4.8 deg in 1 s (MuJoCo), so a fixture holds it there for every method",
+    "heldout_claims_dir": "runs/baseline_heldout_claims",
+    "dexagent": {
+      "repository": "https://github.com/dexagent1/DexAgent",
+      "upstream_commit": "e29bdad8ed3e95b2c9ee2eea9044a6b4115ec633",
+      "license": "MIT",
+      "source_clone": "third_party/DexAgent",
+      "venv_python": "envs/dexagent/bin/python",
+      "python": "3.11",
+      "embodiment": "native_bimanual_yam_sharpa",
+      "variant": "native_yam_sharpa_stage3",
+      "anchor_mode": "fixed",
+      "pad_xy_rig_m": [0.0, 0.4],
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "max_tokens": 64000,
+      "cache_ttl": "1h",
+      "budget_usd_per_trial": null,
+      "live_run_verified": false
+    },
+    "aspire": {
+      "repository": "https://github.com/NVlabs/ASPIRE",
+      "upstream_commit": "fa00f0ef2bc1d91d594b9aa502c22133c9f538f7",
+      "license": "Apache-2.0",
+      "checkout_path": "third_party/aspire-fa00f0e-fanuc_crx",
+      "patch": "baselines/aspire/patches/0001-fanuc-crx-embodiment.patch",
+      "patch_sha256": "df3e6fcee3c9d6e2a136e66ade42d6a5f03f59e02c0acb8404fb138b11377ea5",
+      "embodiment": "fanuc_crx",
+      "coding_agent": "claude_code",
+      "model": "claude-opus-5-5",
+      "budget_usd": null,
+      "live_run_verified": false
+    }
   }
 }
