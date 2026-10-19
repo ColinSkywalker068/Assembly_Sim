@@ -12,7 +12,9 @@ Status (2026-10-19): integration only, **no baseline results**.
     MuJoCo <-> Isaac calibration, a mock end-to-end trial. Its native YAM + Sharpa bench is unchanged.
 - Neither baseline has made a model API call; ASPIRE's coding-agent loop has not run.
 
-Live runs execute model-written code. They wait for the user's approval of the budget and the host.
+Live runs execute model-written code. Decided 2026-10-19: they run in a bwrap sandbox (`sandbox.py`, below) and pay
+from one model budget for both baselines together (`budget.py`: $100, no per-baseline or per-trial amount, failed and
+retried calls count, nothing tops it up); first one practice seed per baseline, held-out seeds stay closed.
 
 | `method` | What it is | Here | Status |
 |---|---|---|---|
@@ -171,14 +173,25 @@ review's surviving mutations and the new behaviour, 54 mutations are now caught.
 - **One step budget** for every method (ASPIRE's default 18,000 control steps is provisional).
 - **S0 reads a path's first segment differently from its later knots.** `check_joint_path` takes the measured
   `qd_now` as instantaneous and needs 2 (v1 - qd_now) / dt for the first segment, the velocity change over the
-  period at later knots. Both backends report the last period's velocity, so every path or chunk boundary reads
-  twice the acceleration the same motion reads inside one path, for every method (S1 chunks, ASPIRE commands,
-  DexAgent chunks). The DexAgent executor cuts its chunks where the velocity changes least; one convention in S0 (or
-  instantaneous velocities from the backends) would end the difference for all.
-- Contacts near the table: S0's contact phase (INTERFACES.md, "S1 -> S0") lets an arm come closer to the table than
-  `table_clearance_m` only inside a declared `ContactWindow`, with its fingers and slowly. Our S1 chunks declare one
-  per skill; ASPIRE programs declare them with `fanuc_crx.declare_contact` (`aspire/README.md`). S0 refuses targets
-  more than one servo period apart next to a contact, so contact motions need a backend at S0's servo rate.
+  period at later knots. Every simulated backend reports the velocity of the period just commanded: the kinematic
+  double and the replay by construction, Isaac as measured (a constant-acceleration ramp on joint 1: the reported
+  PhysX velocity is the commanded segment's to 0.3 mrad/s RMS, not that plus a dt/2 as a smooth motion's end
+  velocity would be; a step from rest reads at once, through the velocity feed-forward). So every path or chunk
+  boundary reads twice the acceleration the same motion reads inside one path, for every method (S1 chunks, ASPIRE
+  commands, DexAgent chunks). Decided 2026-10-19: S0 takes the velocity's meaning from the backend (the period it
+  averages over) and uses the matching formula, limits unchanged; historical verdicts that change are to be
+  reported. The real FANUC backend has no code yet.
+- **The fragments interlock: the task cannot be assembled as it stands (found 2026-10-19, every method).** The
+  fragments are 8 mm voxels (their collision boxes' smallest edge is 8 mm), so neighbours meet in 8 mm steps and
+  hook into each other by about one voxel. Moving straight out of its goal (rotation fixed, the DexAgent export's
+  collision boxes) with only the fixed anchor present, a fragment's best exit along the 26 lattice directions runs
+  into the anchor by: blue, yellow, magenta 0 mm; cyan 7.0, red 7.07, orange 8.0, green 10.0 mm (6.8-8.9 mm over 800
+  arbitrary directions; none goes in from above). With every fragment placed only yellow comes out within 3 mm;
+  even at 8 mm green stays locked. Another anchor does not help: for each of the 8 choices at most one fragment comes
+  out within 6 mm (the fixed anchor's own exits taken by symmetry from its neighbours'); ASPIRE's reference program
+  jammed on the anchor for this reason. Fixing it changes the task (for the user):
+  reassigning interface voxels so each fragment has a straight, interference-free insertion in some order, or finer
+  voxels / assembly clearance (the interlock is about one voxel edge).
 - **The anchor tips on its own.**
   - Found by DexAgent's export: the anchor fragment, standing alone at its assembled pose, tilts 4.8° within 1 s in MuJoCo. Isaac hides this because its bodies start asleep.
   - A staged fragment (`fragment_36d5ca6a07ba2b2f`) tips 18° while settling.
@@ -194,10 +207,16 @@ review's surviving mutations and the new behaviour, 54 mutations are now caught.
 
 ## Security
 
-- Both baselines execute model-written code without a sandbox.
-- Run live trials only:
-  - under a separate user or in a container;
-  - on a host whose other processes and files hold no credentials.
+- Model-written code runs in a bwrap sandbox (`sandbox.py`): an empty root with its own namespaces, so inside there
+  is no network (only the sandbox's own loopback), no home directory (a venv's interpreter directory alone, read-only),
+  no other run, environment or upstream clone; the system directories and the listed code read-only, and only the
+  trial directory writable. The model is called from outside: the relays hold the API key and talk to the sandboxed
+  process through files in the trial directory.
+- `python -m tasks.dual_arm_crag_skull.baselines sandbox-check` probes that sandbox with DexAgent's venv and its
+  scrubbed environment and exits 1 unless all of it holds; `tests/test_baselines_sandbox.py` checks the same and
+  that killing a sandbox leaves no process behind.
+- DexAgent: every process of a live trial after the export runs in it (Stage 3, the delivery re-check). ASPIRE's
+  programs run in-process with Isaac Sim on the GPU and are not sandboxed yet: no live ASPIRE run until they are.
 - Load the API key only in the process that calls the API, and never put it on a command line.
 - DexAgent's processes get a scrubbed environment, and the runner makes itself non-dumpable before a live trial. Neither stops code running as the same user from reading the user's files.
 - Details are in each baseline's README.

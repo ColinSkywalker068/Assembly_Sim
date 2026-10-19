@@ -14,12 +14,14 @@ import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
 
+from tasks.dual_arm_crag_skull.baselines.budget import BudgetPool
 from tasks.dual_arm_crag_skull.baselines.dexagent import dexenv, export, runner, trajectory, transport
 from tasks.dual_arm_crag_skull.baselines.dexagent.geometry import asset_mjcf, box_decomposition, load_mesh, voxel_surface
 from tasks.dual_arm_crag_skull.baselines.scoring import RunRecord, append_records, pose_errors
 from tasks.dual_arm_crag_skull.__main__ import DEFAULT_CONFIG
 from tasks.dual_arm_crag_skull.baselines.task import configured_initial_condition, task_from_layout
 from tasks.dual_arm_crag_skull.tests.baselines_fixtures import write_layout
+from tasks.dual_arm_crag_skull.workspace import REPO_ROOT
 
 PITCH = 0.008
 
@@ -361,8 +363,12 @@ def second_turn_messages(first_answer):
                                            'content': [{'type': 'text', 'text': '{"entries": []}'}]}]}]
 
 
-def responder(tmp_path, client, cap=5.0, **kwargs):
-    return transport.Responder(tmp_path / 'transport', cap_usd=cap, client=client, sleep=lambda s: None, **kwargs)
+def responder(tmp_path, client, cap=5.0, who='dexagent:test', **kwargs):
+    """A relay spending from the pool in tmp_path/pool (made with `cap` dollars if it is not there yet)."""
+    pool = BudgetPool(tmp_path / 'pool') if (tmp_path / 'pool' / 'pool.json').exists() else \
+        BudgetPool.create(tmp_path / 'pool', cap, note='test')
+    return transport.Responder(tmp_path / 'transport', pool=pool, who=who, client=client, sleep=lambda s: None,
+                               **kwargs)
 
 
 def ledger(tmp_path):
@@ -467,10 +473,11 @@ def test_transport_budget_stop_happens_before_the_call(tmp_path):
 
 
 def test_transport_budget_bound_grows_from_the_measured_input(tmp_path):
-    client = FakeClient([message(CALL_1, input_tokens=100000, output_tokens=2000), message(CALL_1)])
+    # realistic numbers: the first call's input within its own bound, its output within max_tokens
+    client = FakeClient([message(CALL_1, input_tokens=2000, output_tokens=900), message(CALL_1)])
     price = transport.Price.for_model('claude-opus-5-5')
-    first_cost = (100000 * 4 + 2000 * 20) / 1e6
-    second_bound = price.worst_case(100000 + 2000 + 500, 1000, '1h')  # plus the new message bytes
+    first_cost = (2000 * 4 + 900 * 20) / 1e6
+    second_bound = price.worst_case(2000 + 900 + 500, 1000, '1h')  # plus the new message bytes
     cap = first_cost + second_bound - 1e-6
     agent = responder(tmp_path, client, cap=cap, max_tokens=1000)
     first = request(tmp_path / 'transport', 1, [USER_0])
@@ -575,9 +582,64 @@ def test_transport_only_reads_images_from_its_own_folder(tmp_path):
     assert_stopped(tmp_path / 'b', value, 'transcript')
 
 
-def test_responder_requires_a_positive_cap(tmp_path):
-    with pytest.raises(ValueError, match='cap_usd'):
-        transport.Responder(tmp_path, cap_usd=0, client=FakeClient([]))
+def test_responder_spends_only_from_the_shared_pool(tmp_path):
+    with pytest.raises(TypeError):
+        transport.Responder(tmp_path, client=FakeClient([]), who='dexagent:t')  # no pool: no per-trial cap either
+    with pytest.raises(ValueError, match='BudgetPool'):
+        transport.Responder(tmp_path, pool=5.0, client=FakeClient([]), who='dexagent:t')
+    with pytest.raises(ValueError, match='who'):
+        transport.Responder(tmp_path, pool=BudgetPool.create(tmp_path / 'pool', 1.0, note='t'), client=FakeClient([]),
+                            who='')
+
+
+def test_two_relays_share_one_pool(tmp_path):
+    """DexAgent's and ASPIRE's relays spend one pool: what one spent is not there for the other."""
+    probe = responder(tmp_path / 'probe', FakeClient([message(CALL_1)]), cap=100.0, max_tokens=1000)
+    request(tmp_path / 'probe' / 'transport', 1, [USER_0])
+    probe.answer_pending()
+    bound = ledger(tmp_path / 'probe')[0]['bound_usd']  # what the first call of either relay reserves
+    first_cost = (1000 * 4 + 100 * 20) / 1e6
+    pool = BudgetPool.create(tmp_path / 'pool', bound + first_cost / 2, note='t')  # one call fits, not two
+    a = transport.Responder(tmp_path / 'a' / 'transport', pool=pool, who='dexagent:a', max_tokens=1000,
+                            client=FakeClient([message(CALL_1)]), sleep=lambda s: None)
+    b_client = FakeClient([message(CALL_1)])
+    b = transport.Responder(tmp_path / 'b' / 'transport', pool=pool, who='aspire:b', max_tokens=1000, client=b_client,
+                            sleep=lambda s: None)
+    request(tmp_path / 'a' / 'transport', 1, [USER_0])
+    a.answer_pending()
+    second = request(tmp_path / 'b' / 'transport', 1, [USER_0])
+    b.answer_pending()
+    assert b_client.calls == [] and b.summary()['stop']['kind'] == 'budget'
+    assert response(tmp_path / 'b' / 'transport', second)['content'][-1]['name'] == 'report_blocked'
+    status = pool.status()
+    assert status['spent_usd'] == pytest.approx(first_cost) and status['by_who'] == {'dexagent:a': pytest.approx(first_cost)}
+    assert status['open'] == 0
+
+
+def test_the_pool_charges_failed_attempts_as_the_ledger_does(tmp_path):
+    anthropic = pytest.importorskip('anthropic')
+    httpx2 = pytest.importorskip('httpx2')
+    req = httpx2.Request('POST', 'https://api.anthropic.com/v1/messages')
+    rate = anthropic.RateLimitError('rate limited', response=httpx2.Response(429, request=req), body=None)
+    dropped = anthropic.APIConnectionError(request=req)
+    agent = responder(tmp_path, FakeClient([rate, dropped, message(CALL_1)]), retries=4, max_tokens=1000)
+    request(tmp_path / 'transport', 1, [USER_0])
+    agent.answer_pending()
+    pool_log = [json.loads(line) for line in (tmp_path / 'pool' / 'pool.jsonl').read_text().splitlines()]
+    settled = [(e['outcome'], e['usd'] > 0) for e in pool_log if e['event'] == 'settle']
+    assert settled == [('api_error', False), ('api_error', True), ('call', True)]  # a dropped call may have been billed
+    spent, calls = transport.ledger_totals(tmp_path / 'llm_ledger.jsonl')
+    assert BudgetPool(tmp_path / 'pool').status()['spent_usd'] == pytest.approx(spent) and calls == 1
+
+
+def test_a_call_dearer_than_its_bound_is_charged_and_stops_the_run(tmp_path):
+    client = FakeClient([message(CALL_1, input_tokens=2_000_000, output_tokens=10), message(CALL_1)])
+    agent = responder(tmp_path, client, cap=50.0, max_tokens=1000)
+    first = request(tmp_path / 'transport', 1, [USER_0])
+    agent.answer_pending()
+    content = assert_stopped(tmp_path, first, 'budget')
+    assert all(b.get('id') != 'toolu_1' for b in content)  # the turn's tool calls are not run
+    assert BudgetPool(tmp_path / 'pool').status()['spent_usd'] == pytest.approx((2_000_000 * 4 + 10 * 20) / 1e6)
 
 
 # ------------------------------------------------------------------ trajectory
@@ -717,8 +779,8 @@ def test_trial_paths_are_absolute_even_from_a_relative_trial(tmp_path, monkeypat
     assert Path(yaml['agent']['transport_dir']).is_absolute() and Path(yaml['run']['output_dir']).is_absolute()
     with pytest.raises(ValueError, match='finite'):
         runner.TrialConfig(tmp_path, llm='mock:x.json', max_wall_minutes=float('nan'))
-    with pytest.raises(ValueError, match='finite budget'):
-        runner.TrialConfig(tmp_path, llm='claude', budget_usd=float('inf'))
+    with pytest.raises(FileNotFoundError, match='budget pool'):
+        runner.TrialConfig(tmp_path, llm='claude', budget_pool=tmp_path / 'no_pool_here')
 
 
 def test_a_trial_holds_the_anchor_by_a_fixture_as_the_protocol_says(tmp_path):
@@ -729,8 +791,9 @@ def test_a_trial_holds_the_anchor_by_a_fixture_as_the_protocol_says(tmp_path):
 
 
 def test_trial_config_and_command(tmp_path):
-    with pytest.raises(ValueError, match='budget_usd'):
+    with pytest.raises(ValueError, match='budget_pool'):
         runner.TrialConfig(tmp_path, llm='claude')
+    assert runner.TrialConfig(tmp_path, llm='claude', scoring_only=True).budget_pool is None  # rescoring calls no model
     with pytest.raises(ValueError, match='stage4_draws'):
         runner.TrialConfig(tmp_path, llm='mock:x.json', stage4_draws=0)
     config = runner.TrialConfig(tmp_path / 't', llm='mock:turns.json', methods=())
@@ -744,6 +807,38 @@ def test_trial_config_and_command(tmp_path):
     command = runner.stage3_command(config, tmp_path / 'clone', tmp_path / 't' / 'inputs')
     assert command[2].endswith('stage3_trajectory_generation/run_stage3.py') and '--yes' not in command
     assert command[-2:] == ['--llm', f'mock:{(Path("turns.json")).resolve()}']
+
+
+def test_dexagent_runs_in_the_sandbox_and_a_live_trial_cannot_opt_out(tmp_path):
+    pool = BudgetPool.create(tmp_path / 'pool', 1.0, note='t')
+    with pytest.raises(ValueError, match='sandbox'):
+        runner.TrialConfig(tmp_path / 'live', llm='claude', budget_pool=tmp_path / 'pool', sandbox=False)
+    assert pool.status()['spent_usd'] == 0.0
+    config = runner.TrialConfig(tmp_path / 't', llm='mock:turns.json')
+    config.trial_dir.mkdir()
+    clone, outside = config.trial_dir / 'DexAgent', tmp_path / 'stage2_elsewhere'
+    outside.mkdir()
+    launch = runner.stage3_launch(config, clone, config.trial_dir / 'inputs', extra_readonly=[outside])
+    command = runner.stage3_command(config, clone, config.trial_dir / 'inputs')
+    assert launch[0] == 'bwrap' and '--unshare-all' in launch and launch[launch.index('--') + 1:] == command
+    binds = [(launch[i], launch[i + 2]) for i in range(len(launch) - 2) if launch[i].endswith('bind')]
+    assert [inside for flag, inside in binds if flag == '--bind'] == [str(config.trial_dir)]  # the only writable place
+    readonly = {inside for flag, inside in binds if flag == '--ro-bind'}
+    venv = Path(config.python).absolute().parent.parent
+    assert {str(venv), str(REPO_ROOT / 'core'), str(REPO_ROOT / 'tasks'), str(outside)} <= readonly
+    assert not any(inside == str(Path.home()) or inside in (str(REPO_ROOT), str(REPO_ROOT / 'runs')) for _, inside in binds)
+    assert launch[launch.index('--chdir') + 1] == str(config.trial_dir)
+    turns = tmp_path / 'scripted' / 'turns.json'  # a mock trial's scripted turns, wherever they are: that file alone
+    turns.parent.mkdir()
+    turns.write_text('{}')
+    (turns.parent / 'neighbour.txt').write_text('not for the sandbox')
+    mocked = runner.sandbox_paths(runner.TrialConfig(tmp_path / 'm', llm=f'mock:{turns}'))
+    assert (turns.resolve(), turns.resolve()) in [entry for entry in mocked['readonly'] if isinstance(entry, tuple)]
+    assert not any(str(entry if not isinstance(entry, tuple) else entry[1]) == str(turns.parent)
+                   for entry in mocked['readonly'])
+    plain = runner.TrialConfig(tmp_path / 'u', llm='mock:turns.json', sandbox=False)
+    assert runner.stage3_launch(plain, clone, plain.trial_dir / 'inputs') == runner.stage3_command(plain, clone,
+                                                                                                 plain.trial_dir / 'inputs')
 
 
 def test_simulated_episodes_are_counted_from_the_trace(tmp_path):
@@ -970,7 +1065,9 @@ def run_stage3_mock(exported, name, turns, checkpoint=True, semantic=None, recon
     if checkpoint:
         (trial / 'transport' / 'operator_checkpoint.json').write_text('{"kind": "administrative_checkpoint"}')
     (trial / 'dexagent.yaml').write_text(json.dumps(runner.trial_yaml(config, exported.clone, exported.inputs, 'test')))
-    command = runner.stage3_command(config, exported.clone, exported.inputs)
+    extra = [exported.clone, exported.inputs] + [Path(path).parent for path in (semantic, recon) if path]
+    command = runner.stage3_launch(config, exported.clone, exported.inputs, extra_readonly=extra)  # in the sandbox
+    assert command[0] == 'bwrap'
     if semantic:
         command[command.index('--semantic') + 1] = str(semantic)
     if recon:
@@ -987,10 +1084,13 @@ def test_integration_stage3_accepts_the_exported_inputs(exported):
     trial, result, run = run_stage3_mock(exported, 'mock_ok', REPORT_BLOCKED)
     assert result.returncode == 1, result.stdout[-2000:] + result.stderr[-2000:]
     assert run['stop_reason'] == 'operator_checkpoint' and run['rounds'] == 1  # the agent loop was reached
+    sandbox = runner.sandbox_paths(runner.TrialConfig(trial, llm=f'mock:{trial / "turns.json"}'),
+                                   extra_readonly=[exported.clone, exported.inputs])
     directory, reason = trajectory.accepted_trajectory(trial / 'runs' / runner.RUN_NAME / 'stage3', clone=exported.clone,
                                                        python=dexenv.dexagent_python(), env=dexagent_env(trial),
                                                        log_path=trial / 'delivery.log',
-                                                       recon=exported.inputs / 'stage2' / 'scene_recon.json')
+                                                       recon=exported.inputs / 'stage2' / 'scene_recon.json',
+                                                       sandbox=sandbox)  # the re-check also runs in the sandbox
     assert directory is None and 'has not finished successful verification' in reason
     dexenv.verify_clone(exported.clone, export.DEXAGENT_COMMIT)
 
@@ -1036,7 +1136,7 @@ print(json.dumps({k: out.get(k) for k in ('finished', 'rounds', 'stop_reason', '
 
 
 @needs_dexagent
-@pytest.mark.parametrize('cap,first_input', [(5.0, 1000), (3.0, 500000)])
+@pytest.mark.parametrize('cap,first_input', [(5.0, 1000), (0.17, 15000)])
 def test_integration_responder_drives_dexagent_external_transport(exported, tmp_path, cap, first_input):
     script = tmp_path / 'dex_side.py'
     script.write_text(DEX_SIDE)
@@ -1045,7 +1145,8 @@ def test_integration_responder_drives_dexagent_external_transport(exported, tmp_
     process = subprocess.Popen([dexenv.dexagent_python(), '-I', '-B', str(script), str(exported.clone), str(tmp_path),
                                 '0'],
                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=dexagent_env(tmp_path))
-    agent = transport.Responder(tmp_path / 'transport', cap_usd=cap, client=client, max_tokens=100,
+    agent = transport.Responder(tmp_path / 'transport', pool=BudgetPool.create(tmp_path / 'pool', cap, note='t'),
+                                who='dexagent:integration', client=client, max_tokens=100,
                                 sleep=lambda s: time.sleep(min(s, 0.05)))
     assert agent.serve(process, deadline=time.monotonic() + 300) == 'exited'
     out, err = process.communicate()
@@ -1053,6 +1154,7 @@ def test_integration_responder_drives_dexagent_external_transport(exported, tmp_
     if cap == 5.0:
         assert result['finished'] is True and len(client.calls) == 2
         assert client.calls[1]['messages'][1]['content'][0] == THINK_1
-    else:  # $2.00 spent on 500k input tokens; the next call could cost $4.00 more: DexAgent stops at the checkpoint
+    else:  # the first call reserves $0.15 (DexAgent's first request bounds 18.6k input tokens), costs $0.06 on 15k;
+        # the next could cost $0.13 with $0.11 left in the pool: DexAgent stops at the checkpoint
         assert result['finished'] is False and result['stop_reason'] == 'operator_checkpoint', err[-2000:]
         assert len(client.calls) == 1 and agent.summary()['stop']['kind'] == 'budget'

@@ -103,10 +103,13 @@ streaming, `max_tokens` 64000 because thinking counts toward it, prompt caching 
   drops the invalidated earlier blocks (unbilled) and the ledger records each drop (`input_transformations`);
 - never passes on tool calls of a `refusal`, `max_tokens`, `model_context_window_exceeded` or other non
   `end_turn`/`tool_use` turn;
-- enforces a hard USD cap before each call: worst case = measured input of the previous call + its output + one
-  token per UTF-8 byte added since (w*h/750 per new image), all at the 1 h cache-write rate ($8/MTok), plus
-  `max_tokens` at $20/MTok. Prices: $4 / $20 per MTok in / out, cache writes 1.25x (5 min) or 2x (1 h), reads 0.05x
-  ($0.20/MTok).
+- pays from the budget pool every live baseline run shares (`../budget.py`, `baselines.llm_budget` in
+  `configs/jing.json`: $100 for DexAgent and ASPIRE together, no per-trial amount): before each attempt its worst
+  case is reserved there, and the call is not made if it does not fit in what is left; worst case = measured input
+  of the previous call + its output + one token per UTF-8 byte added since (w*h/750 per new image), all at the 1 h
+  cache-write rate ($8/MTok), plus `max_tokens` at $20/MTok. Prices: $4 / $20 per MTok in / out, cache writes 1.25x
+  (5 min) or 2x (1 h), reads 0.05x ($0.20/MTok). The reservation is settled at the measured cost; a call that cost
+  more than its reservation is charged in full and stops the run.
   Rate limits, 5xx and 529 overload are retried (3 times, 30/60/120 s); a dropped connection or an error event inside
   a started stream is retried too but charged its worst case, since it may have been billed;
 - stops by writing `transport/operator_checkpoint.json` `{"kind": "administrative_checkpoint"}` and answering
@@ -118,11 +121,16 @@ streaming, `max_tokens` 64000 because thinking counts toward it, prompt caching 
 
 ## Security
 
-Model-written code runs unsandboxed (`run_python`, `library_create` tests and every created tool execute as this
-user). Each trial gets a fresh clone of the pinned commit (verified clean, ignored files included), its own
-HOME/TMPDIR/XDG directories and an environment built from an allow list (no `ANTHROPIC_*`, `OPENAI_*`, cloud or SSH
-variables; `dexenv.scrubbed_env`). That keeps DexAgent's writes (tool library, `examples/asset_reuse`, caches)
-inside the trial, but it is not a sandbox:
+Model-written code (`run_python`, `library_create` tests and every created tool) runs in the bwrap sandbox of
+`../sandbox.py`: Stage 3 and the delivery re-check of a trial run inside it (`runner.stage3_launch`,
+`runner.sandbox_paths`), with the trial directory as the only writable place; DexAgent's venv and its interpreter
+directory, and this repository's `core/` and `tasks/` (the S0 delivery verifier imports them), read-only; no network,
+no home directory, no other run (`python -m tasks.dual_arm_crag_skull.baselines sandbox-check`). A live trial cannot
+turn it off. Inside it the key file, the runner's `/proc/<pid>/environ` and the user's other files do not exist,
+which is what the separate user below was asked for. Each trial also gets a fresh clone of the pinned commit
+(verified clean, ignored files included), its own HOME/TMPDIR/XDG directories and an environment built from an allow
+list (no `ANTHROPIC_*`, `OPENAI_*`, cloud or SSH variables; `dexenv.scrubbed_env`). What the earlier, unsandboxed
+design relied on still holds:
 
 - a scrubbed environment does not hide the parent's: a child of the same user reads `/proc/<pid>/environ` (shown by
   `test_protect_process_hides_the_runner_environment_from_children`). A live run therefore first makes the runner
@@ -138,8 +146,8 @@ inside the trial, but it is not a sandbox:
   `physics_recording_check`. This detects tampering with what scoring reads; it is not authentication against code
   running as the same user (`agent/artifacts.py:141-145` says the same of DexAgent's own certificate).
 
-Real isolation needs DexAgent under a separate user or in a container on a host whose other processes and files hold
-no credentials. `examples.reuse` is false (no example results are copied in).
+The export (before any model call) runs DexAgent's own code outside the sandbox. `examples.reuse` is false (no
+example results are copied in).
 
 ## Setup
 
@@ -163,8 +171,9 @@ h5py 3.16.0, sympy 1.14.0, pillow 13.0.0, pyyaml 6.0.3, jsonschema 4.26.0, anthr
 python -m tasks.dual_arm_crag_skull.baselines task --layout LAYOUT.json --anchor ID --seed 101 --output task.json
 python -m tasks.dual_arm_crag_skull.baselines.dexagent export --task task.json --out runs/dexagent/export1
 python -m tasks.dual_arm_crag_skull.baselines.dexagent run --task task.json --trial runs/dexagent/t1 --llm mock:turns.json
-python -m tasks.dual_arm_crag_skull.baselines.dexagent run --task task.json --trial runs/dexagent/t2 --live --budget-usd 40 \
-    --records runs/dexagent/runs.jsonl
+python -m tasks.dual_arm_crag_skull.baselines budget create --note 'practice round'   # once, for both baselines
+( set -a; . ~/.config/anthropic.env; set +a; exec python -B -m tasks.dual_arm_crag_skull.baselines.dexagent run \
+    --task task.json --trial runs/dexagent/t2 --live --records runs/dexagent/runs.jsonl )
 python -m tasks.dual_arm_crag_skull.baselines.dexagent score --trial runs/dexagent/t2 --records runs/dexagent/runs.jsonl
 ```
 
@@ -252,9 +261,9 @@ CLI. A mutation check of 35 changes to the port's code is caught 34 times (the o
 
 ## What remains
 
-- No live run yet: budget per trial (`configs/jing.json` `baselines.dexagent.budget_usd_per_trial` is null), cost
-  and wall time per trial are unknown; no accepted delivery has been produced, so `trajectory.py` is tested on
-  synthetic and shipped example recordings only.
+- No live run yet: the shared pool and the sandbox are in place (2026-10-19); the first live run is one practice
+  seed, whose cost, model calls, wall time and failure reasons decide how the rest of the pool is used. No accepted
+  delivery has been produced, so `trajectory.py` is tested on synthetic and shipped example recordings only.
 - The anchor stability finding is decided for the task itself: a fixture holds the anchor for every method (`baselines.anchor` in `configs/jing.json`), so a trial refuses `anchor_mode='free'`.
 - `object_reach_check` finds no pose witness for some staged fragments; DexAgent may need to move stations.
 - Runtime build cost (about 110 s per call) slows DexAgent's executions and gate suite; fewer boxes (set cover with

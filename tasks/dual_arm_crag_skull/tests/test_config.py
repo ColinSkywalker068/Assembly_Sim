@@ -138,7 +138,22 @@ class ConfigTests(unittest.TestCase):
                          (export.VARIANT, options.anchor_mode, options.pad_xy))
         self.assertEqual((dexagent['model'], dexagent['effort'], dexagent['max_tokens'], dexagent['cache_ttl']),
                          (trial['model'], trial['effort'], trial['max_tokens'], trial['cache_ttl']))
-        self.assertIsNone(dexagent['budget_usd_per_trial'])  # the user sets it before the first live trial
+        self.assertNotIn('budget_usd_per_trial', dexagent)  # one shared pool instead (llm_budget)
+
+    def test_live_baseline_runs_share_one_budget_pool(self):
+        from tasks.dual_arm_crag_skull.baselines.budget import configured_pool_dir, configured_total_usd
+        budget = self.config['baselines']['llm_budget']
+        self.assertEqual(configured_total_usd(self.config), 100.0)  # decided 2026-10-19 for DexAgent and ASPIRE together
+        self.assertEqual(configured_pool_dir(self.config), repo_path(budget['pool_dir']))
+        for bad in (0, -5, float('inf'), True, '100'):
+            config = json.loads(json.dumps(self.config))
+            config['baselines']['llm_budget']['total_usd'] = bad
+            with self.assertRaises(ValueError):
+                validate(config)
+        config = json.loads(json.dumps(self.config))
+        config['baselines']['llm_budget']['pool_dir'] = '/tmp/elsewhere'
+        with self.assertRaises(ValueError):
+            validate(config)
 
     def test_missing_baseline_section_is_a_value_error(self):
         del self.config['baselines']['seed_splits']

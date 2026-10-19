@@ -134,6 +134,11 @@
     "anchor": "fixture",
     "anchor_status": "decided 2026-10-18: alone at its assembled pose the anchor tips 4.8 deg in 1 s (MuJoCo), so a fixture holds it there for every method",
     "heldout_claims_dir": "runs/baseline_heldout_claims",
+    "llm_budget": {
+      "pool_dir": "runs/llm_budget",
+      "total_usd": 100.0,
+      "status": "decided 2026-10-19: one pool for DexAgent and ASPIRE together, no per-baseline or per-trial amount; failed, retried and corrective calls count; nothing tops it up; first one practice seed per baseline, held-out closed (baselines/budget.py)"
+    },
     "dexagent": {
       "repository": "https://github.com/dexagent1/DexAgent",
       "upstream_commit": "e29bdad8ed3e95b2c9ee2eea9044a6b4115ec633",
@@ -149,7 +154,6 @@
       "effort": "high",
       "max_tokens": 64000,
       "cache_ttl": "1h",
-      "budget_usd_per_trial": null,
       "live_run_verified": false
     },
     "aspire": {

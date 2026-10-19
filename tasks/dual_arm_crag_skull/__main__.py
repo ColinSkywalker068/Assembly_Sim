@@ -42,8 +42,11 @@ def validate_baselines(config):
 
 
 def _validate_baselines(config):
+    from .baselines.budget import configured_pool_dir, configured_total_usd
     from .baselines.task import PLACEMENT_KEYS, check_splits, success_criterion
     baselines = config["baselines"]
+    configured_total_usd(config)
+    configured_pool_dir(config)
     check_splits(baselines["seed_splits"])
     if set(baselines["initial_condition"]) != set(PLACEMENT_KEYS):
         raise ValueError(f"baselines.initial_condition must have exactly {PLACEMENT_KEYS}")

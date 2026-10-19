@@ -20,6 +20,7 @@ import sys
 from pathlib import Path
 
 from ...workspace import ENVS, THIRD_PARTY
+from ..sandbox import bwrap_prefix
 
 DEFAULT_PYTHON = str(ENVS / 'dexagent' / 'bin' / 'python')
 DEFAULT_SOURCE = str(THIRD_PARTY / 'DexAgent')
@@ -129,8 +130,9 @@ def credential_keys(env):
     return sorted(key for key in env if any(marker in key.upper() for marker in markers))
 
 
-def run_worker(python, command, spec, log_path, *, env, timeout_s=1800):
-    """Run worker.py `command` with `spec` in the DexAgent venv; returns its result or raises RuntimeError."""
+def run_worker(python, command, spec, log_path, *, env, timeout_s=1800, sandbox=None):
+    """Run worker.py `command` with `spec` in the DexAgent venv; returns its result or raises RuntimeError. With
+    `sandbox` (bwrap_prefix's paths, baselines/sandbox.py) it runs in a bwrap sandbox."""
     log_path = Path(log_path)
     spec_path = log_path.with_suffix('.json')
     spec_path.write_text(json.dumps(spec, indent=1))
@@ -138,10 +140,11 @@ def run_worker(python, command, spec, log_path, *, env, timeout_s=1800):
         raise ValueError('run_worker needs an explicit scrubbed environment (dexenv.scrubbed_env)')
     if credential_keys(env):
         raise ValueError(f'refusing to pass credentials to DexAgent: {credential_keys(env)}')
+    cwd = spec.get('out_dir') or spec_path.parent
+    prefix = [] if sandbox is None else bwrap_prefix(**sandbox, cwd=cwd)
     with log_path.open('w') as log:
-        result = subprocess.run([str(python), '-I', '-B', str(WORKER), command, f'@{spec_path}'], stdout=subprocess.PIPE,
-                                stderr=log, text=True, env=env, cwd=spec.get('out_dir') or spec_path.parent,
-                                timeout=timeout_s)
+        result = subprocess.run([*prefix, str(python), '-I', '-B', str(WORKER), command, f'@{spec_path}'],
+                                stdout=subprocess.PIPE, stderr=log, text=True, env=env, cwd=cwd, timeout=timeout_s)
     lines = result.stdout.strip().splitlines()
     try:
         reply = json.loads(lines[-1])

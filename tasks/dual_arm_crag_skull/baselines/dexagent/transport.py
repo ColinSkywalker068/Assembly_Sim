@@ -1,4 +1,4 @@
-"""Claude behind DexAgent's external model transport (agent/external.py), with a hard USD cap.
+"""Claude behind DexAgent's external model transport (agent/external.py), paid from the shared budget pool.
 
 DexAgent's StageRunner writes every model request to <transport_dir>/requests/<session>-<turn>.json (system,
 messages as DexAgent keeps them, tool schemas; images as files under images/) and waits for
@@ -7,10 +7,14 @@ own copy of every assistant turn exactly as the API returned it (thinking blocks
 sends that copy back to the API, after checking that DexAgent's history is exactly what was answered.
 
 Every call is priced (claude-opus-5-5: 4 / 20 USD per MTok in / out; prompt-cache writes 1.25x input for the
-5-minute TTL and 2x for 1 hour, reads 0.05x) and written to a JSONL ledger. Before a call, its worst case (every
-input token at the dearest input rate, max_tokens of output) is added to what was spent; if that could pass the
-cap the call is not made. The input bound is the previous call's measured input plus its output plus the UTF-8
-bytes of what was added since (at most one token per byte) and w*h/750 per new image.
+5-minute TTL and 2x for 1 hour, reads 0.05x) and written to a JSONL ledger. Money comes from one pool shared by every
+live baseline run (baselines/budget.py: DexAgent and ASPIRE together, no per-baseline or per-trial amount): before
+a call its worst case (every input token at the dearest input rate, max_tokens of output) is reserved there, and if
+it does not fit in what is left the call is not made. After the call the reservation is settled at the measured
+cost; a failed attempt at its worst case if it may have been billed, else at 0, and a retry reserves again. A call
+that cost more than its reservation is charged in full and stops the run (its bound was wrong). The input bound is
+the previous call's measured input plus its output plus the UTF-8 bytes of what was added since (at most one token
+per byte) and w*h/750 per new image.
 
 A stop writes operator_checkpoint.json {"kind": "administrative_checkpoint"} into the transport directory and
 answers with a report_blocked call, which DexAgent's runner accepts at once and ends the stage without verifying
@@ -40,6 +44,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from ...s2.claude import DEFAULT_MODEL
+from ..budget import BudgetExhausted, BudgetPool
 
 SCHEMA = 'dexagent.external.v1'
 # USD per MTok in and out, and the cache-read multiplier of the input price (claude-opus-5-5 reads at $0.20).
@@ -148,17 +153,18 @@ class Stop(Exception):
 class Responder:
     """Answers DexAgent's external transport with Claude; see the module docstring."""
 
-    def __init__(self, transport_dir, *, cap_usd, client=None, model=DEFAULT_MODEL, effort='high', max_tokens=64000,
+    def __init__(self, transport_dir, *, pool, who, client=None, model=DEFAULT_MODEL, effort='high', max_tokens=64000,
                  cache_ttl='1h', price=None, ledger=None, transcript=None, retries=3, backoff_s=30.0, sleep=time.sleep):
-        if isinstance(cap_usd, bool) or not isinstance(cap_usd, (int, float)) or not math.isfinite(cap_usd) \
-                or cap_usd <= 0:
-            raise ValueError('cap_usd must be a positive number of US dollars')
+        if not isinstance(pool, BudgetPool):
+            raise ValueError('pool must be the shared BudgetPool (baselines/budget.py)')
+        if not isinstance(who, str) or not who:
+            raise ValueError('who must name the run that spends from the pool')
         if cache_ttl not in (None, '5m', '1h'):
             raise ValueError("cache_ttl must be None, '5m' or '1h'")
         if effort not in ('low', 'medium', 'high', 'xhigh', 'max'):
             raise ValueError('effort must be an API effort level')
         self.dir = Path(transport_dir).resolve()
-        self.cap_usd, self.model, self.effort = float(cap_usd), model, effort
+        self.pool, self.who, self.model, self.effort = pool, who, model, effort
         self.max_tokens, self.cache_ttl = int(max_tokens), cache_ttl
         self.price = price or Price.for_model(model)
         self.ledger = Path(ledger) if ledger else self.dir.parent / 'llm_ledger.jsonl'
@@ -320,11 +326,15 @@ class Responder:
         else:
             estimate = self.last['input'] + self.last['output'] + added + new_tokens + 500
         worst = self.price.worst_case(estimate, self.max_tokens, self.cache_ttl)
-        if self.spent_usd + worst > self.cap_usd:
-            raise Stop('budget', f'the next call could cost up to ${worst:.2f} ({estimate} input tokens at most, '
-                                 f'{self.max_tokens} output) and ${self.spent_usd:.2f} of the ${self.cap_usd:.2f} cap '
-                                 f'is spent')
         return {'input_tokens_bound': estimate, 'usd_bound': worst, 'tools': tools}
+
+    def _reserve(self, request, bound, attempt):
+        try:
+            return self.pool.reserve(bound['usd_bound'], who=self.who,
+                                     what=f'{request["id"]} attempt {attempt} ({bound["input_tokens_bound"]} input '
+                                          f'tokens at most, {self.max_tokens} output)')
+        except BudgetExhausted as exc:
+            raise Stop('budget', str(exc)) from None
 
     def request_kwargs(self, request, api_messages):
         kwargs = {'model': self.model, 'max_tokens': self.max_tokens, 'messages': api_messages,
@@ -339,6 +349,7 @@ class Responder:
     def _call(self, request, api_messages, bound):
         kwargs = self.request_kwargs(request, api_messages)
         for attempt in range(self.retries + 1):
+            reservation = self._reserve(request, bound, attempt)
             started = time.monotonic()
             try:
                 with self.client.beta.messages.stream(**kwargs) as stream:
@@ -346,18 +357,24 @@ class Responder:
             except Exception as exc:  # noqa: BLE001 - classified below
                 retryable, maybe_billed = _classify(exc)
                 charge = bound['usd_bound'] if maybe_billed else 0.0
+                self.pool.settle(reservation, charge, outcome='api_error',
+                                 details={'request_id': request['id'], 'error': type(exc).__name__})
                 self.spent_usd += charge
                 self._log(self.ledger, {'event': 'api_error', 'request_id': request['id'], 'turn': request['turn'],
                                         'attempt': attempt, 'error': f'{type(exc).__name__}: {exc}'[:2000],
                                         'charged_usd': charge, 'spent_usd': round(self.spent_usd, 6)})
                 if not retryable or attempt == self.retries:
                     raise Stop('api_error', f'{type(exc).__name__}: {str(exc)[:500]}') from exc
-                if self.spent_usd + bound['usd_bound'] > self.cap_usd:
-                    raise Stop('budget', 'a retry could pass the cap after a possibly billed failed call') from exc
                 self.sleep(self.backoff_s * 2 ** attempt)
                 continue
-            usage = usage_record(getattr(response, 'usage', None), self.cache_ttl)
-            cost = self.price.cost(usage)
+            try:
+                usage = usage_record(getattr(response, 'usage', None), self.cache_ttl)
+                cost = self.price.cost(usage)
+            except Exception:  # an answered call that cannot be priced is charged at its worst case
+                self.pool.settle(reservation, bound['usd_bound'], outcome='unpriced', details={'request_id': request['id']})
+                raise
+            exceeded = self.pool.settle(reservation, cost, outcome='call',
+                                        details={'request_id': request['id'], 'response_id': getattr(response, 'id', None)})
             self.spent_usd += cost
             self.calls += 1
             self._log(self.ledger, {'event': 'call', 'request_id': request['id'], 'turn': request['turn'],
@@ -371,6 +388,9 @@ class Responder:
             measured = usage['input_tokens'] + usage['cache_write_5m_tokens'] + usage['cache_write_1h_tokens'] + \
                 usage['cache_read_tokens']
             self.last = {'input': measured, 'output': usage['output_tokens'], 'tools': bound['tools']}
+            if exceeded['exceeded']:
+                raise Stop('budget', f'the call cost ${cost:.4f}, more than its reserved worst case '
+                                     f'${bound["usd_bound"]:.4f}: the bound is wrong, so the run stops')
             return response
         raise Stop('api_error', 'no response')  # pragma: no cover - the loop returns or raises
 
@@ -429,7 +449,8 @@ class Responder:
             self._respond(request, content)
 
     def summary(self):
-        return {'spent_usd': round(self.spent_usd, 6), 'cap_usd': self.cap_usd, 'calls': self.calls, 'turns': self.turn,
+        return {'spent_usd': round(self.spent_usd, 6), 'pool': str(self.pool.dir), 'who': self.who,
+                'pool_left_usd': round(self.pool.status()['left_usd'], 6), 'calls': self.calls, 'turns': self.turn,
                 'model': self.model, 'effort': self.effort, 'max_tokens': self.max_tokens, 'cache_ttl': self.cache_ttl,
                 'stop': self.stopped, 'ledger': str(self.ledger), 'transcript': str(self.transcript)}
 

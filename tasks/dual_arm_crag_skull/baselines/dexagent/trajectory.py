@@ -93,13 +93,14 @@ def read_run(public):
         return None
 
 
-def accepted_trajectory(public, *, clone, python, env, log_path, recon, timeout_s=3600):
+def accepted_trajectory(public, *, clone, python, env, log_path, recon, timeout_s=3600, sandbox=None):
     """(delivery directory, trajectory.npz) of a run whose delivery DexAgent accepts and that passes the re-check
-    against our exported Stage 2 (`recon`), run from `clone` (a fresh clone), else (None, reason)."""
+    against our exported Stage 2 (`recon`), run from `clone` (a fresh clone), else (None, reason). `sandbox`: the
+    re-check's bwrap paths (runner.sandbox_paths), as for the run itself."""
     spec = {'clone': str(clone), 'public': str(Path(public).resolve()), 'recon': str(Path(recon).resolve()),
             'out_dir': str(Path(log_path).parent)}
     try:
-        result = dexenv.run_worker(python, 'delivery', spec, log_path, env=env, timeout_s=timeout_s)
+        result = dexenv.run_worker(python, 'delivery', spec, log_path, env=env, timeout_s=timeout_s, sandbox=sandbox)
     except (RuntimeError, subprocess.TimeoutExpired) as exc:
         return None, str(exc).splitlines()[0][:500]
     if not result.get('ok'):

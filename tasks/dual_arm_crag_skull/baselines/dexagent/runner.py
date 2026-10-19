@@ -25,6 +25,9 @@ import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from ... import workspace
+from .. import sandbox as box
+from ..budget import BudgetPool
 from ..scoring import RunRecord, append_records, claim_heldout, refuse_repeats
 from ..task import AssemblyTask, verify_task
 from . import dexenv
@@ -66,11 +69,16 @@ INPUT_GATE_FAILURES = ('Source video and Stage 1 provenance are inconsistent',
 
 @dataclass(frozen=True)
 class TrialConfig:
-    """Everything one trial needs besides the task. `llm` is 'claude' (live, needs budget_usd) or 'mock:<turns.json>'."""
+    """Everything one trial needs besides the task. `llm` is 'claude' (live: it spends from the shared budget pool in
+    `budget_pool`, baselines/budget.py) or 'mock:<turns.json>'; `scoring_only` configures a finished trial for
+    rescoring, which calls no model. DexAgent's processes run in the bwrap sandbox (baselines/sandbox.py); only a mock
+    trial may turn it off."""
 
     trial_dir: Path
     llm: str = 'claude'
-    budget_usd: float | None = None
+    budget_pool: Path | None = None
+    scoring_only: bool = False
+    sandbox: bool = True
     source: str = field(default_factory=dexenv.dexagent_source)
     python: str = field(default_factory=dexenv.dexagent_python)
     max_rounds: int = 100
@@ -94,9 +102,13 @@ class TrialConfig:
         object.__setattr__(self, 'trial_dir', Path(self.trial_dir).resolve())  # the stage runs with cwd = trial_dir
         if self.llm != 'claude' and not self.llm.startswith('mock:'):
             raise ValueError("llm must be 'claude' or 'mock:<turns.json>'")
-        if self.llm == 'claude' and (self.budget_usd is None or not math.isfinite(self.budget_usd)
-                                     or self.budget_usd <= 0):
-            raise ValueError('a live trial needs a finite budget_usd > 0 (the hard cap of the transport)')
+        if self.llm == 'claude' and not self.scoring_only:
+            if self.budget_pool is None:
+                raise ValueError('a live trial spends from the shared budget pool: budget_pool is required')
+            BudgetPool(self.budget_pool)  # FileNotFoundError when there is none
+            if not self.sandbox:
+                raise ValueError('a live trial runs DexAgent, and the code its agent writes, in the bwrap sandbox: '
+                                 'sandbox cannot be off')
         if self.export.anchor_mode != 'fixed':
             raise ValueError("a trial holds the anchor by a fixture (baselines.anchor in jing.json); anchor_mode "
                              "'free' is for diagnostic exports only")
@@ -158,6 +170,25 @@ def stage3_command(config, clone, inputs):
     if config.llm.startswith('mock:'):
         command += ['--llm', f'mock:{Path(config.llm[5:]).resolve()}']
     return command
+
+
+def sandbox_paths(config, extra_readonly=()):
+    """What DexAgent's processes of a trial see in the sandbox: the trial directory writable; the DexAgent venv and its
+    interpreter, this repository's code (the S0 delivery verifier imports it) and a mock trial's scripted turns (that
+    file alone) read-only; `extra_readonly` for inputs kept outside the trial (tests). bwrap_prefix's keyword
+    arguments, without cwd."""
+    mock = [] if not config.llm.startswith('mock:') else [(Path(config.llm[5:]).resolve(),) * 2]
+    return {'writable': [config.trial_dir],
+            'readonly': [*box.python_paths(config.python), workspace.REPO_ROOT / 'core', workspace.REPO_ROOT / 'tasks',
+                         *mock, *extra_readonly]}
+
+
+def stage3_launch(config, clone, inputs, extra_readonly=()):
+    """stage3_command in the sandbox (as it is without one only for a mock trial that turned it off)."""
+    command = stage3_command(config, clone, inputs)
+    if not config.sandbox:
+        return command
+    return [*box.bwrap_prefix(**sandbox_paths(config, extra_readonly), cwd=config.trial_dir), *command]
 
 
 def kill_group(process, grace_s=60.0):
@@ -318,11 +349,12 @@ def _run_trial(task, config, *, client, records):
     responder = None
     if config.llm == 'claude':
         dexenv.protect_process()  # the key in this process's environment is out of reach of DexAgent's processes
-        responder = Responder(config.transport_dir, cap_usd=config.budget_usd, client=client, model=config.model,
+        responder = Responder(config.transport_dir, pool=BudgetPool(config.budget_pool),
+                              who=f'dexagent:{config.trial_dir.name}', client=client, model=config.model,
                               effort=config.effort, max_tokens=config.max_tokens, cache_ttl=config.cache_ttl,
                               ledger=config.trial_dir / 'llm_ledger.jsonl',
                               transcript=config.trial_dir / 'llm_transcript.jsonl')
-    command = stage3_command(config, clone, config.trial_dir / 'inputs')
+    command = stage3_launch(config, clone, config.trial_dir / 'inputs')
     deadline_s = 60.0 * (config.max_wall_minutes + config.kill_margin_minutes)
     started = time.monotonic()
     with (config.trial_dir / 'stage3.log').open('w') as log:
@@ -372,7 +404,8 @@ def score_trial(task, config, *, env, manifest, exit_code, wall_s, timed_out, tr
             prepare_checkout(config.source, verifier, limits_record(config.s0_limits))
         directory, trajectory = accepted_trajectory(
             config.public, clone=verifier, python=config.python, env=env, log_path=verifier.parent / 'delivery.log',
-            recon=config.trial_dir / 'inputs' / 'stage2' / 'scene_recon.json')
+            recon=config.trial_dir / 'inputs' / 'stage2' / 'scene_recon.json',
+            sandbox=sandbox_paths(config) if config.sandbox else None)
     delivered = directory is not None
     # DexAgent accepts a delivery only after its own release_settle gate (settle 0.3 s, 4 mm / 10 deg by default).
     score = score_trajectory(task, manifest, trajectory, settled=True) if delivered else None
@@ -436,7 +469,7 @@ def rescore(trial_dir, *, python=None, records=None):
     if options.bench == 'crx_yam':  # the S0 limits the trial was prepared, and its bench generated, for
         from .s0_check import limits_from_record
         limits = limits_from_record(json.loads((trial / 'inputs' / 's0_spec.json').read_text())['limits'])
-    config = TrialConfig(trial, llm=llm, budget_usd=1.0, python=python or dexenv.dexagent_python(), export=options,
+    config = TrialConfig(trial, llm=llm, scoring_only=True, python=python or dexenv.dexagent_python(), export=options,
                          s0_limits=limits)
     env = dexenv.scrubbed_env(trial, config.python)
     return score_trial(task, config, env=env, manifest=manifest, exit_code=previous.get('exit_code'),

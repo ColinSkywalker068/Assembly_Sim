@@ -2,14 +2,16 @@
 
   python -m tasks.dual_arm_crag_skull.baselines.dexagent export --task TASK.json --out DIR [--bench crx_yam]
   python -m tasks.dual_arm_crag_skull.baselines.dexagent run --task TASK.json --trial DIR --llm mock:TURNS.json
-  python -m tasks.dual_arm_crag_skull.baselines.dexagent run --task TASK.json --trial DIR --live --budget-usd 40
+  python -m tasks.dual_arm_crag_skull.baselines.dexagent run --task TASK.json --trial DIR --live [--budget-pool DIR]
   python -m tasks.dual_arm_crag_skull.baselines.dexagent score --trial DIR [--records RUNS.jsonl]
   "$ISAAC_PYTHON" -m tasks.dual_arm_crag_skull.baselines.dexagent execute --trial DIR --backend isaac [--records R]
 
 A task is an AssemblyTask record (`python -m tasks.dual_arm_crag_skull.baselines task ...`) or --layout/--anchor
 [--seed] under the canonical protocol of configs/jing.json; `run` refuses a task that is not its layout under it. DEXAGENT_PYTHON and
 DEXAGENT_SOURCE select the DexAgent venv and the clone each trial is cloned from. `run --live` calls the Claude
-API through the transport (key from this process's environment) and needs --budget-usd; nothing else here does.
+API through the transport (key from this process's environment), paying from the budget pool every live baseline run
+shares (baselines.llm_budget, made once with `python -m tasks.dual_arm_crag_skull.baselines budget create`); nothing
+else here calls the model.
 
 --bench crx_yam puts DexAgent on the hardware every method shares (README "Port to the shared hardware"): the port's
 checkout with its CRX + YAM bench, under S0's TEST limits (ASPIRE's; configs/jing.json has no real ones yet, so every
@@ -24,6 +26,7 @@ from pathlib import Path
 
 from ...__main__ import DEFAULT_CONFIG, validate
 from ...contracts.actions import ARMS
+from ..budget import configured_pool_dir
 from ..task import AssemblyTask, configured_initial_condition, task_from_layout
 from . import dexenv
 from .bench.checkout import prepare_checkout
@@ -122,9 +125,10 @@ def main(argv=None):
     run_parser = commands.add_parser('run', help='one Stage 3 trial: clone, export, run, score')
     _task_arguments(run_parser)
     run_parser.add_argument('--trial', type=Path, required=True)
-    run_parser.add_argument('--llm', default='claude', help="'claude' (needs --live and --budget-usd) or mock:TURNS.json")
+    run_parser.add_argument('--llm', default='claude', help="'claude' (needs --live) or mock:TURNS.json")
     run_parser.add_argument('--live', action='store_true', help='allow live Claude API calls')
-    run_parser.add_argument('--budget-usd', type=float)
+    run_parser.add_argument('--budget-pool', type=Path,
+                            help='the shared budget pool a live run pays from (default: baselines.llm_budget.pool_dir)')
     run_parser.add_argument('--max-rounds', type=int, default=100)
     run_parser.add_argument('--max-wall-minutes', type=float, default=240.0)
     run_parser.add_argument('--methods', choices=('none', 'published'), default='none',
@@ -168,10 +172,11 @@ def main(argv=None):
         print(json.dumps({k: manifest[k] for k in ('checks_ok', 'checks_failed', 'order', 'anchor_object_id')}))
         return 0 if manifest['checks_ok'] else 1
     if args.llm == 'claude' and not args.live:
-        parser.error('a live run calls the Claude API: add --live (and --budget-usd), or use --llm mock:TURNS.json')
+        parser.error('a live run calls the Claude API: add --live, or use --llm mock:TURNS.json')
     methods = ('physics_informed_retargeting', 'sampling_mpc_refinement', 'reinforcement_learning_tracking') \
         if args.methods == 'published' else ()
-    trial = TrialConfig(args.trial, llm=args.llm, budget_usd=args.budget_usd, max_rounds=args.max_rounds,
+    pool = (args.budget_pool or configured_pool_dir(config)) if args.llm == 'claude' else None
+    trial = TrialConfig(args.trial, llm=args.llm, budget_pool=pool, max_rounds=args.max_rounds,
                         max_wall_minutes=args.max_wall_minutes, methods=methods, export=_options(args),
                         s0_limits=limits)
     record = run_trial(task, trial, records=args.records, allow_heldout=args.allow_heldout)
