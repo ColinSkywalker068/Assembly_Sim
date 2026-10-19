@@ -1,6 +1,12 @@
 """Offline kinematics for the Isaac CRX-10iA/L USD: FK built from the USD joint frames dumped by fanuc_probe.py,
 validated against Isaac's own link poses, plus damped-least-squares IK. Pure numpy; imported by asm_choreo.py."""
 import json, math, numpy as np
+from collections.abc import Mapping
+
+def probe_section(probe, key):
+    """`probe` is a probe JSON path or an already-loaded mapping (e.g. joints read from a live USD stage)."""
+    if isinstance(probe, Mapping): return probe[key]
+    with open(probe) as stream: return json.load(stream)[key]
 
 def quat_to_R(q):  # wxyz
     w, x, y, z = q
@@ -28,7 +34,7 @@ def rotvec(R):
 class Arm:
     """FK for a serial chain read from the probe JSON (PhysX joint convention: child = parent · T(pos0,rot0) · R(q) · T(pos1,rot1)^-1)."""
     def __init__(self, probe_json, dof_names=None):
-        d = json.load(open(probe_json))['arm']; self.dof = dof_names or d['dof_names']
+        d = probe_section(probe_json, 'arm'); self.dof = dof_names or d['dof_names']
         J = {j['path'].split('/')[-1]: j for j in d['joints']}
         self.chain = []
         for n in self.dof:
@@ -79,7 +85,7 @@ MIMIC_2F85 = {'finger_joint': 1.0, 'right_outer_knuckle_joint': 1.0, 'left_outer
 class Gripper:
     """Link transforms of the 2F-85 relative to base_link for a finger angle f (rad, 0 = open, 0.8 = closed), PhysX joint convention."""
     def __init__(self, probe_json, mimic=None):
-        GJ = json.load(open(probe_json))['grip']; self.names = GJ['dof_names']; self.mimic = dict(MIMIC_2F85, **(mimic or {}))
+        GJ = probe_section(probe_json, 'grip'); self.names = GJ['dof_names']; self.mimic = dict(MIMIC_2F85, **(mimic or {}))
         self.joints = {j['path'].split('/')[-1]: j for j in GJ['joints'] if j['path'].split('/')[-1] in self.names}
         self.parent_of = {j['body1'][0].split('/')[-1]: (j['body0'][0].split('/')[-1], nm) for nm, j in self.joints.items()}
         self.links = {l['path'].split('/')[-1]: l for l in GJ['links']}; base = np.array(self.links['base_link']['pos'])
