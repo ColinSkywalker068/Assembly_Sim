@@ -14,3 +14,7 @@ generated/
 captures/
 inspections/
 docs/superpowers/
+# Workspace folders that are not code (README.md "Workspace layout"): upstream clones, Python environments, outputs
+/third_party/
+/envs/
+/runs/
