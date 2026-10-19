@@ -190,7 +190,7 @@ def _validate_pose(pose: Pose, field: str) -> None:
 
 
 def _world_bounds(fragment: FragmentConfig, unit_size: float, pose: Pose):
-    from tasks.stack_sawtooth_shulker.conditions import oriented_fragment_bounds
+    from .conditions import oriented_fragment_bounds  # deferred: conditions imports this module
 
     local_min, local_max = oriented_fragment_bounds(
         fragment, unit_size, pose.orientation_wxyz
