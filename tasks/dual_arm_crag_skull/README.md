@@ -46,7 +46,7 @@ python -m tasks.dual_arm_crag_skull.smoke --assembly runs/PATH/layout.json --out
 | S2 | ASPIRE Python 程序（默认 skills，可选 direct） | 可观测场景、候选与执行反馈 | skills：技能请求；direct：CAP 运动 API | skills 随事件重跑；direct 执行冻结程序 |
 | S1 | 条件 1D U-Net Diffusion Policy | 图像历史、双 TCP/开口状态、双手相对位姿、skill 与可观测目标 | 双臂末端动作块 | 滚动时域 |
 | S0 | FANUC 原生伺服（实机）/ PhysX drives（仿真）+ 外部运动适配 | 动作块、机器人状态、碰撞环境 | 12 轴位置目标与两个夹爪宽度目标 | 初始仿真目标 60 Hz |
-| 物理 | Isaac Sim 4.5 / PhysX | 关节驱动、接触几何、质量和材料参数 | 实际运动与接触 | 初始 240 Hz |
+| 物理 | Isaac Sim 5.1 / PhysX | 关节驱动、接触几何、质量和材料参数 | 实际运动与接触 | 初始 240 Hz |
 
 S2 默认与 ASPIRE 共用程序运行器，配置为 `s2.planner = aspire_program`、
 `s2.execution_mode = skills`。两种执行方式：
@@ -281,10 +281,10 @@ python -m tasks.dual_arm_crag_skull.smoke \
 
 可选 `--straight-assembly-anchor ID`（`interlock_repair.py`）：8 mm 体素的相邻碎片在接缝处互相勾住，锚点固定时红、绿、青、橙沿任何直线都放不进去（`experiments/assembly_paths.py`）。该选项只改接缝处体素的归属，不增删体素，使锚点固定时每片都能按某个顺序沿坐标轴直线插入；改后各片连通，因此不再需要 `--allow-disconnected-rigid-proxy`。最后，活动碎片中游离的立方体会交给相邻碎片，前提是不挡装配顺序。修复结果写在 manifest 与 layout 的 `ownership_repair` 里，包括装配顺序、每片的方向、翻转格数和处理掉的孤立块。本头骨上试了两个候选：
 
-- 以红（底座）为锚点，62 格换了归属，白（头盖）最后从上方盖上，7 片中 5 片从上方放入；顺序要选对才不会在重力下压歪（见 `baselines/README.md`）；
+- 以红（底座）为锚点，62 格换了归属，白（头盖）最后从上方盖上，7 片中 5 片从上方放入；方向不变时有 36 种顺序能直线放入，在 Isaac 里每一种都不会在重力下移动（见 `baselines/README.md`）；
 - 以白为锚点，106 格换了归属，7 片全部水平插入。
 
-候选几何在 `runs/skull_straight_red/` 和 `runs/skull_straight/`，**尚未替换任务**（见 `baselines/README.md`）。输出目录须在仓库外，再移入 `runs/`。原 FANUC 资产还触发部分 link 的质量/惯量警告，动力学可信度须另行校准。
+`--assembly-order ID,...` 给出装配顺序（不含锚点），用修复给出的方向在体素格上精确判定能直线放入才接受，写进 `ownership_repair.plan`；不给时用修复自己的顺序。10-20 用户选红作锚点，并决定装配计划是 GT 的一部分、所有方法都给：任务几何换成 `runs/skull_red_plan/`，与 `runs/skull_straight_red/` 的网格逐字节相同，只多了计划，顺序取 橙、蓝、绿、黄、青、品红、白，在 Isaac 和 MuJoCo 里逐片放下时每一步都不动。任务在 `runs/baseline_tasks/`（见文末「基线」）。白锚点候选留在 `runs/skull_straight/`。输出目录须在仓库外，再移入 `runs/`。原 FANUC 资产还触发部分 link 的质量/惯量警告，动力学可信度须另行校准。
 
 ## 2026-10-14 实测结果
 
@@ -340,37 +340,57 @@ python -m tasks.dual_arm_crag_skull.smoke \
 
 **仍待完成**：S1 在仿真专家示范上的训练、Isaac 中的 S1/S0 执行器与放手后核验器、YAM 型号与标定、关节加速度上限等 S0 参数（`jing.json` 中为 null）、连续碰撞与单臂自碰撞、可打印几何修复、基线实跑所需的 Isaac 后端与 S0 接触阶段（见下一节），以及 GARF 在真实头骨上的精度问题（另一路审计）。
 
-## 基线：DexAgent 与 ASPIRE（2026-10-18，离线接入，尚未实跑）
+## 基线：DexAgent 与 ASPIRE（离线接入，尚未实跑；2026-10-20 更新）
 
-两个外部方法作为基线接入 `baselines/`，与我们的 S2/S1/S0 使用同一份任务、同一套种子和同一个评分。英文细节见 [`baselines/README.md`](baselines/README.md)、[`baselines/aspire/README.md`](baselines/aspire/README.md) 和 [`baselines/dexagent/README.md`](baselines/dexagent/README.md)。**目前没有任何基线成绩**：两个基线都没有调用过模型 API，ASPIRE 的学习循环没有运行，Isaac 后端也还没写。
+两个外部方法作为基线接入 `baselines/`，与我们的 S2/S1/S0 使用同一份任务、同一套种子和同一个评分。英文细节见 [`baselines/README.md`](baselines/README.md)、[`baselines/aspire/README.md`](baselines/aspire/README.md) 和 [`baselines/dexagent/README.md`](baselines/dexagent/README.md)。**目前没有任何基线成绩**：两个基线都没有调用过模型 API，ASPIRE 的学习循环没有运行。Isaac 后端已写好（`sim/backend.py`）：ASPIRE 的手写参考程序在上面跑过，DexAgent 的一条脚本交付也经 S0 在上面执行过，两者都不是基线成绩。
 
+- **任务**（10-20 起）：
+  - 几何是红锚点修复版 `runs/skull_red_plan/`，任务在 `runs/baseline_tasks/`（基础任务和种子 101），任务 id `view_gt-00f0cc2853e9-anchor-fragment_038755611176a8c9`。
+  - 旧任务（未修复的诊断几何、白锚点）归档在 `runs/baseline_tasks_diag_white/`，新协议下会被拒。
+  - **装配计划是 GT 的一部分，所有方法都给**（`baselines.assembly_plan = "given"`）：
+    - 顺序：橙 → 蓝 → 绿 → 黄 → 青 → 品红 → 白；
+    - 每片最后一段沿插入方向直线进入：5 片从上方放下，橙沿 +y、青沿 −x 水平推入。
+  - 计划来自 layout 的 `ownership_repair.plan`，prepare 时已在体素格上精确判定能直线放入，建任务时还会在 layout 自己的体素格上再判一次。`AssemblyTask.assembly_plan` 给出世界坐标系里的插入方向，`verify_task` 拒绝没有计划的任务。
+  - 方向不变时有 36 种顺序能直线放入。逐片放到目标位、静置到不动：
+    - 评分用的 Isaac 里，36 种顺序的每一步都不动，最大 0.0004 mm / 0.0007°（`experiments/assembly_settle_isaac.py`）；
+    - MuJoCo 里（机器人停在初始姿态）也都在容差内，只有先放蓝、后放橙时，蓝会滑 1.9 mm（`experiments/assembly_settle.py`）；
+    - 所以顺序只受碰撞约束；计划取的是两个引擎里每一步都不动的一种。
+  - **更正（10-20）**：之前说「只有 6 种顺序稳定，其余会把青压歪 3.9 mm / 6.3°」，这是早先的 MuJoCo 检查让机器人从 qpos0 起步造成的：那时机器人的手在头骨里、压进桌面，虽然没碰任何碎片，青还是歪了；机器人改从初始姿态起步后，就不再出现。
 - **公共层**：
   - `AssemblyTask`：来自真实 8 片头骨布局，锚点从目标位姿开始，其余碎片从摆放区开始；
   - 每个种子的初始条件：平移 ≤ 3 cm、偏航 ≤ 30°，互不重叠；
   - 种子三段：练习 101–125、挑选 126–130、留出 1–100（暂定）；
   - `score_assembly`：用仿真真值，相对锚点判定，容差取 place 的 3 mm / 3°，缺失或非有限的位姿判失败；
   - `RunRecord`：记录费用、调用次数、耗时和仿真次数，按 Wilson 区间统计；
-  - 仿真后端接口 `AssemblyBackend` 与测试用的 `KinematicBackend`；
-  - S0 的 `check_joint_path`：非有限的实测状态直接拒绝；加速度按相邻两段速度之差除以平均间隔，第一段的「前一段」是后端声明的实测速度平均窗口（2026-10-19 统一口径）；末端必须能在限位内制动。
-  - 协议（种子分段、摆放参数、成功判据）固定为 `jing.json`，每次试验前都从 layout 重建任务核对。
+  - 仿真后端接口 `AssemblyBackend`，加上测试用的 `KinematicBackend` 和 Isaac 后端；
+  - S0 的 `check_joint_path`：非有限的实测状态直接拒绝；加速度按相邻两段速度之差除以平均间隔，第一段的「前一段」是后端声明的实测速度平均窗口（10-19 统一口径）；末端必须能在限位内制动；
+  - 保护性停机（10-19）：某关节连续 3 个周期偏离指令超过 10 mrad，或超过最大速度的 1.1 倍，试验就此结束，记为失败，不评分。
+  - 协议（种子分段、摆放参数、成功判据、锚点夹具、装配计划）固定为 `jing.json`，每次试验前都从 layout 重建任务核对。
   - 评分前所有方法统一收尾：两爪张开，静置 1 s。
   - 留出种子在试验前原子占用，同一变体在同一任务的同一种子上只跑一次；中途崩溃或被中断也记为 `error`，换记录文件也不能重跑。
   - 公共层做过一次独立审查（4 个高危、6 个中等问题），全部修复并补了测试。
 - **ASPIRE**（NVlabs，Apache-2.0，`fa00f0e`）：
-  - 两处补丁，注册 6 轴 `fanuc_crx` 和我们的 IK `crx_dls`；
+  - 一个补丁（3 个文件，+11/−2 行），注册 6 轴 `fanuc_crx`、我们的 IK `crx_dls` 和两个接触工具；
   - 适配器把双 CRX 工作台接到 ASPIRE 的 `EnvironmentAdapter`，每条关节命令先过 S0 检查，被拒时什么都不动；
+  - 贴桌抓放前，程序用 `fanuc_crx.declare_contact` 声明接触，只能报碎片 ID，窗口由适配器按观测位姿或目标位姿算；
+  - 任务上下文给出目标位姿、观测位姿、锚点夹具、接触规则和装配计划（`metadata.assembly_plan`）；
   - 冻结的程序在留出种子上评估，产物由 ASPIRE 自己的 RunRecorder 写出。
-  - 已在运动学替身上用手写参考程序端到端跑通，这不是基线成绩。
 - **DexAgent**（MIT，`e29bdad`）：
-  - 保持原样：它自己的双 YAM 臂加 Sharpa 五指手、MuJoCo，只跑 Stage 3；
-  - Stage 1/2 的输入和一段替身视频（没有手，碎片在各自的时间窗内滑到目标位）由我们从任务构造，全部通过 DexAgent 自己的门禁；
-  - 模型调用走我们的中转：Claude Opus 5.5，effort high，保留 thinking，每次调用前按最坏情况检查美元上限，密钥不进入 DexAgent 的进程；
-  - 交付先用新的克隆复核，再把末帧位姿换回世界坐标系，用我们的评分。
+  - 只跑 Stage 3。Stage 1/2 的输入和一段替身视频由我们从任务构造，全部通过 DexAgent 自己的门禁。
+  - 子目标按装配计划排序，每个子目标写明最后一段直线移动的方向；替身视频里每片最后也沿插入方向直线进入；`stage3.notes` 写明顺序和方向。视频里没有手，不是示范。
+  - 模型调用走我们的中转：Claude Opus 5.5，effort high，保留 thinking，每次调用前按最坏情况从 100 美元共用池预留，密钥不进入 DexAgent 的进程；模型写的代码在 bwrap 沙箱里跑。
+  - 原生变体：DexAgent 代码不改，用它自己的双 YAM 臂加 Sharpa 五指手；交付先用新的克隆复核，再把末帧位姿换回世界坐标系，用我们的评分。
   - DexAgent 的 venv 与克隆位置由 `DEXAGENT_PYTHON`、`DEXAGENT_SOURCE` 指定，默认值记录在 `jing.json`。
-  - **移植到同一套硬件（10-19 用户决定，进行中）**：`--bench crx_yam` 让 DexAgent 在用同一套机器人模型搭的 CRX + YAM MuJoCo 工位上规划（代码补丁 21 个文件），门禁里由 S0 检查每个交付；交付再经 S0 在 `AssemblyBackend` 上执行（`execute`），收尾与 ASPIRE 相同。一条脚本交付（不是 agent 运行）已在 Isaac 上经 S0 跑通：被搬动的橙色碎片最终位姿与 DexAgent 自己的 MuJoCo 结果差 0.49 mm / 0.08°；两边落定的起点一致（≤0.09 mm / 0.17°）。平行夹爪改为沿碎片实际材料的弦对捏后，种子 101 的 7 片都有 20 个以上候选、前两名都能抓起。门禁分诊查出两个导出 bug（锚点写成 released、可视网格不水密，原生工位同样受影响），已修。还剩：放到目标位的脚本交付、更多 MuJoCo↔Isaac 配对探针和 mock 端到端。
-- **会挡住所有方法实跑的问题**：
-  - **ASPIRE 还不能声明接触**：S0 的接触阶段已经实现。动作块声明 `ContactWindow` 后，只在声明的区域里、只对手指、而且限速，手臂才可以比 `table_clearance_m` 更靠近桌面；我们的 S1 动作块按技能自动声明。ASPIRE 适配器还没有传声明，它的程序仍然不能贴桌抓取，正式比较前必须补上。用测试值在种子 101 上检验（`experiments/s0_contact_check.py`）：7 片移动碎片上方竖直、指尖离桌 3 mm 的位姿，不声明全拒，声明后每片至少一只手通过。
-  - **锚点单独放在装配位姿上不稳**：MuJoCo 里 1 秒内倾斜 4.8°（Isaac 的刚体初始休眠，所以看不出来）；另有一片碎片在摆放区落定时倾倒 18°。已决定（10-18）：所有方法的锚点都由夹具固定在目标位姿，写进协议（`baselines.anchor = "fixture"`）。运动学替身、DexAgent 试验和 ASPIRE 任务说明已经按此处理；Isaac 后端还要实现（锚点设为运动学刚体），并且要先让碎片落定、再记录起始状态。
-  - Isaac 后端已有（`sim/backend.py`，检验通过），但还没接到基线上；S0 的真实参数（加速度上限、间隙）仍为 null，YAM 转接板是暂定值。
-- **混杂因素**：原生 DexAgent 用的是另一套机器人和物理引擎（移植版只剩 MuJoCo 规划、Isaac 开环执行这一差别），成功的前提是通过它自己的整套门禁；它自己的放手检查只静置 0.3 s（4 mm / 10°），我们是 1 s（3 mm / 3°）。与我们比较时必须写明这些差别。
-- **安全**：两个基线都会执行模型写的代码，没有沙箱。实跑只能在独立用户或容器中、不存放任何凭据的机器上进行，并且先由用户确认预算。
+  - **移植到同一套硬件**（10-19 用户决定，进行中）：
+    - `--bench crx_yam` 让 DexAgent 在用同一套机器人模型搭的 CRX + YAM MuJoCo 工位上规划（补丁 21 个文件，+665/−122 行），门禁里由 S0 检查每个交付；
+    - 交付再经 S0 在 `AssemblyBackend` 上执行（`execute`），收尾与 ASPIRE 相同；
+    - 一条脚本交付（不是 agent 运行）已在 Isaac 上经 S0 跑通：被搬动的橙色碎片最终位姿与 DexAgent 自己的 MuJoCo 结果差 0.49 mm / 0.08°；
+    - 还剩：工具库分诊（放到目标位）、更多 MuJoCo↔Isaac 配对探针、mock 端到端。
+- **我们的 S2/S1/S0**：接 `AssemblyBackend` 的执行器还没写；接上时 S2 的任务上下文也要带上装配计划。
+- **还挡住正式比较的问题**：
+  - S0 的真实参数（加速度上限、间隙、接触三参数）仍为 null，用的是测试值，所有记录都是 `test_only`；YAM 转接板和手指驱动是暂定值；统一的步数预算还没定。
+  - ASPIRE 的程序与 Isaac 同进程，还没有沙箱；ASPIRE 的学习循环（benchmark 配置、试验计数、费用计量、墙钟上限）还没接通。
+  - DexAgent 移植的第 4、6、7 步。
+  - 10-19 已定、待实施：位置误差改量包围盒中心，静置判据对齐，会倾倒的起始摆放调稳。
+- **混杂因素**：原生 DexAgent 用的是另一套机器人和物理引擎；移植版只剩「MuJoCo 规划、Isaac 开环执行」这一差别。它成功的前提是通过自己的整套门禁；它自己的放手检查只静置 0.3 s（4 mm / 10°），我们是 1 s（3 mm / 3°）。与我们比较时必须写明这些差别。
+- **安全**：两个基线都会执行模型写的代码。DexAgent 的 Stage 3 和交付复核在 bwrap 沙箱里跑（无网络、无家目录，只有试验目录可写）；ASPIRE 的程序还没有沙箱，补上之前不实跑。实跑前先由用户确认预算和主机。

@@ -11,6 +11,9 @@ Status (2026-10-19): integration only, **no baseline results**.
     scripted delivery (not an agent run) ran on Isaac through S0. Left: DexAgent's tool library on the bench, the
     MuJoCo <-> Isaac calibration, a mock end-to-end trial. Its native YAM + Sharpa bench is unchanged.
 - Neither baseline has made a model API call; ASPIRE's coding-agent loop has not run.
+- The task (user, 2026-10-20): the red anchor's repaired geometry (`runs/skull_red_plan/`), and its assembly plan is
+  ground truth that every method is given (`baselines.assembly_plan = "given"`): the order the fragments go in and the
+  direction of each one's last straight move (below, "The fragments interlock").
 
 Live runs execute model-written code. Decided 2026-10-19: they run in a bwrap sandbox (`sandbox.py`, below) and pay
 from one model budget for both baselines together (`budget.py`: $100, no per-baseline or per-trial amount, failed and
@@ -34,10 +37,14 @@ review's surviving mutations and the new behaviour, 54 mutations are now caught.
     - start and goal `world_T_fragment`;
     - the anchor;
     - `goal_source`;
+    - the assembly plan (`PlanStep`s: each fragment but the anchor once, in the order they go in, with the world
+      direction of its last straight move into its goal);
     - the table, pad and exclusion zones;
     - the success criterion (tolerances and `settle_s`);
     - the seed and split.
-  - `task_from_layout` builds it from a schema-2 layout and checks the geometry:
+  - `task_from_layout` builds it from a schema-2 layout, takes the plan from the layout's `ownership_repair.plan`
+    (`prepare --straight-assembly-anchor`, checked there to go in straight on the voxel grid; refused for another
+    anchor) and checks the geometry:
     - meshes inside the layout directory;
     - each goal mesh over the pad and not below the table;
     - pad and exclusions on the table;
@@ -55,9 +62,10 @@ review's surviving mutations and the new behaviour, 54 mutations are now caught.
     - seed bands;
     - placement parameters;
     - the success criterion (`s2.completion_defaults.place`, a `released_stable` predicate: 3 mm / 3° after `settle_s` = 1 s);
+    - the anchor fixture and the assembly plan (`baselines.anchor = "fixture"`, `baselines.assembly_plan = "given"`);
     - the held-out claims directory.
   - `require_canonical(config)` refuses any other configuration.
-  - `verify_task(task)` rebuilds the task from its layout and refuses one that differs in any way: tolerance, placement, split label, layout or meshes.
+  - `verify_task(task)` rebuilds the task from its layout and refuses one that differs in any way: tolerance, placement, split label, layout, meshes or plan; and, since the protocol gives every method the plan, a task without one.
   - Both runners verify every task before a trial. Seed bands are provisional; fix them before any method sees a held-out seed.
 
   | Band | Seeds | Use |
@@ -112,12 +120,18 @@ review's surviving mutations and the new behaviour, 54 mutations are now caught.
   - `python -m tasks.dual_arm_crag_skull.baselines task --layout L --anchor ID [--seed N [--allow-heldout]] --output T.json`
   - `... summarize RUNS.jsonl... [--include-test-only]`
 
-  The real 8-fragment skull tasks, regenerated under the protocol, are in `runs/baseline_tasks/`: the base task and seeds 101 and 1. The task id is `view_gt-78b9204e3da1-anchor-fragment_45266904a743c03b`; all 130 seeds place in 0.6 s.
+  The real 8-fragment skull tasks are in `runs/baseline_tasks/` (2026-10-20): the base task and seed 101 (no held-out
+  seed is written). The task id is `view_gt-00f0cc2853e9-anchor-fragment_038755611176a8c9`; all 130 seeds place in
+  0.5 s. The earlier task (the
+  unrepaired diagnostic geometry, white anchor, no plan) is kept in `runs/baseline_tasks_diag_white/`; the protocol
+  refuses it.
 
 ## Fairness protocol
 
 1. **Same task and information.** Every method gets:
    - the same goals;
+   - the same assembly plan (ASPIRE: `metadata.assembly_plan`; DexAgent: the subgoal order, each subgoal's last
+     straight move, the stand-in video and `stage3.notes`; ours: S2's task context, when its executor is written);
    - the same observed fragment poses, with their source and time;
    - the camera frames.
 
@@ -187,7 +201,8 @@ review's surviving mutations and the new behaviour, 54 mutations are now caught.
   unchanged; the new reading is never stricter, and no recorded verdict changes (every recorded command passed the
   old one; the only refusal, ASPIRE's final hold at 16.7 rad/s, is a velocity check). ASPIRE's speed bound doubles
   with it (`aspire/README.md`). The real FANUC backend has no code yet: it declares its own window when written.
-- **The fragments interlock: the task cannot be assembled as it stands (found 2026-10-19, every method).** The
+- **The fragments interlock (found 2026-10-19, every method; resolved 2026-10-20: the red anchor's repair and its plan
+  are the task).** The
   fragments are 8 mm voxels, so neighbours meet in 8 mm steps and hook into each other by about one voxel. On the
   voxel grid (`experiments/assembly_paths.py`, exact for cubes moved straight, rotation fixed), with only the fixed
   anchor present red, green, cyan and orange have no free lattice direction, and for none of the 8 anchors does any
@@ -195,8 +210,9 @@ review's surviving mutations and the new behaviour, 54 mutations are now caught.
   the contacts its own pipeline makes) their best exits run into the anchor by red 3.55, cyan 3.55, orange 3.76 and
   green 10.0 mm. (The 7.0-10.0 mm reported before came from `mj_geomDistance`, which reports millimetres of
   penetration for boxes that only share an edge.) ASPIRE's reference program jammed on the anchor for this reason.
-  **Candidate fixes; the user chose the red anchor on 10-20** (the task files are not replaced yet: whether the
-  assembly plan goes into the task, and to every method, is decided first):
+  **Candidate fixes; the user chose the red anchor and made its assembly plan ground truth, given to every method
+  (10-20).** The task now uses it (`runs/skull_red_plan/`: the same meshes byte for byte as `runs/skull_straight_red/`,
+  plus the plan; `prepare --assembly-order` checks a given order on the voxel grid with the repair's directions):
   `prepare --straight-assembly-anchor ID` (`interlock_repair.py`) hands seam cubes to the neighbour across the seam,
   none added or removed, so that with the anchor fixed every other fragment goes in along an axis in some order, then
   gives a moving fragment's stray cubes to a neighbour that keeps that order clear. Two anchors were tried, the only
@@ -204,22 +220,28 @@ review's surviving mutations and the new behaviour, 54 mutations are now caught.
   - **red (the base, 40 cubes on the table):** 62 of 2116 cubes change owner; blue, green, yellow, magenta and white
     (the cranium, last) go in from above, orange and cyan slide in. The repair's own order is orange, blue, cyan,
     green, yellow, magenta, white; keeping each fragment's direction, 36 orders are collision-free. Released one by one
-    under gravity in MuJoCo (2 s each step, every step started from the goals), 6 of them move nothing; the others
-    tip cyan 3.9 mm / 6.3 deg when green goes in before yellow (beyond 3 mm / 3 deg) or slide blue 1.9 mm when it goes
-    in before orange. Recommended order: orange, blue, green, yellow, cyan, magenta, white
-    (`runs/assembly_paths/settle_red_orders.json`). A robot must carry white (1414 cubes, about 0.47 kg). Geometry
+    under gravity (every placed set started from the goals and settled): in Isaac, which scores every method, all 36
+    orders stay within 0.0004 mm / 0.0007 deg at every step (`experiments/assembly_settle_isaac.py`,
+    `runs/assembly_paths/settle_red_plan_isaac.json`); in MuJoCo, with the robot at its home keyframe, all stay within
+    3 mm / 3 deg and only blue slides, 1.9 mm, when it goes in before orange (`experiments/assembly_settle.py`). So
+    only collisions constrain the order. The plan's order (orange, blue, green, yellow, cyan, magenta, white) moves
+    nothing in either engine. Correction (10-20): an earlier MuJoCo check reported that only 6 orders move nothing and
+    the others tip cyan 3.9 mm / 6.3 deg; it started the robot at qpos0 (hands inside the skull, pressed into the
+    table, touching no fragment), and the tipping is gone with the robot at its keyframe
+    (`runs/assembly_paths/settle_red_orders.json` is that earlier result). A robot must carry white (1414 cubes, about 0.47 kg). Geometry
     `runs/skull_straight_red/`, tasks `runs/baseline_tasks_straight_red/`. (An earlier version, 92 cubes with white
     second, came from taking the cheapest fragment out at every step; now every first exit is tried and the cheapest
     plan in all is kept. It is in the `_v1` paths.)
-  - **white (today's anchor):** 106 cubes change owner (108 handovers; two cubes change twice); all 7 slide in
+  - **white (the other candidate):** 106 cubes change owner (108 handovers; two cubes change twice); all 7 slide in
     horizontally (one from above already costs 167 handovers, all from above cuts fragments into pieces), order green,
     orange, red, cyan, blue, magenta, yellow; nothing moves under gravity. Geometry `runs/skull_straight/`, tasks
     `runs/baseline_tasks_straight/`.
 
   For both: every fragment one connected piece, the grid check takes all 7 apart, MuJoCo contacts along the order
   are 0 mm, DexAgent's export checks pass (seed 101). Either way the order matters and some insertions are
-  horizontal, so a method that lowers every fragment from above still collides, and the DexAgent export's
-  demonstration (rise, glide, descend; bottom layer first) would have to show the slides instead.
+  horizontal, so a method that lowers every fragment from above still collides; the DexAgent export now follows the
+  plan (subgoal order, and each fragment's last straight move in its subgoal and the stand-in video), where it used to
+  lower every fragment from above, bottom layer first.
   The original (unvoxelized) meshes do not avoid this: they are closed solids of a solid skull with zero-gap seams,
   and with every fragment shrunk 0.5 mm, orange, yellow, cyan and green each cannot leave white along any sampled
   direction (about 1,100 on the upper hemisphere and their reverses); shrunk 1 mm, green is still held inside white

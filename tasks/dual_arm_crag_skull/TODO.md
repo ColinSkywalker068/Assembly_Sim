@@ -170,15 +170,14 @@
   - 还没接：ASPIRE 适配器跑在 envs/aspire，Isaac 跑在自己的解释器里，需要进程边界或在 Isaac 环境装 `cap_harness`；适配器的宽度范围与 S0 限值要换成 YAM 的（93.96 mm）；`evaluate_frozen_program` 每个种子新建后端，Isaac 后端每进程只能有一个。
   - 还没做：夹住已知宽度方块的检验（验证指垫凸分解接触几何）；两指耦合（`PhysxMimicJointAPI`，MJCF 是 1:1 等式约束）；落定后的起点写进 `RunRecord`（`backend.start.to_record()` 已有）；`fragment_36d5…` 倒下后重新检查足迹，或修改它的摆放位姿（改 layout 等于改任务，要在任何方法看留出种子之前定）。
 - [ ] `jing.json` 中 S0 的真实值（加速度上限、夹爪宽度范围、间隙、TCP 最低高度、接触阶段三个参数）与真实夹爪几何。
-- [ ] **ASPIRE 的接触声明（公平性，正式比较前必须补上）**：
-  - S0 接触阶段已经实现（见 P3），我们的 S1 动作块按技能声明接触。
-  - ASPIRE 适配器还没有传接触声明，所以 ASPIRE 的程序仍然不能贴桌抓取。
-  - 需要在 ASPIRE 的机器人接口里提供同样的声明方式，并同步更新补丁和任务上下文。窗口必须由适配器从 S2 校验过的目标或碎片位姿推出，不能用程序自己给的坐标；retreat 同样只沿用上一次被接受的窗口。
-  - 用代理夹爪竖直抓取时，TCP 至少要离桌 27.8 mm 再加接触余量；换成真实夹爪几何后这个数会变。
+- [x] **ASPIRE 的接触声明（公平性）**（10-19 完成，`baselines/aspire/README.md`）：
+  - 程序调用 `fanuc_crx.declare_contact(kind, fragment_id, arm)` 和 `clear_contact`；补丁注册了这两个工具，任务上下文写明规则（`metadata.contact_rule`）。
+  - 程序只能报碎片 ID：抓取窗口按该碎片的观测位姿算，放置窗口按它的目标位姿算，程序给不了坐标。
+  - 手臂在接触带里时不能声明或清除窗口（先抬出），所以窗口留在声明的地方，与 S1 的 retreat 规则一致。
 - [x] **锚点稳定性（任务定义问题，所有方法一致处理）**：锚点碎片单独放在装配位姿上，MuJoCo 里 1 秒内倾斜 4.8°（Isaac 因刚体初始休眠看不出来）；`fragment_36d5ca6a07ba2b2f` 在摆放区落定时倾倒 18°。10-18 用户决定：锚点由夹具固定。已写进协议 `baselines.anchor = "fixture"`（`require_canonical` 核对）；`KinematicBackend` 不让夹爪抓走锚点；DexAgent 试验拒绝 `anchor_mode='free'`（`export` 仍可导出自由锚点做诊断）；ASPIRE 任务说明和 metadata 写明夹具。
 - [x] Isaac 后端实现锚点夹具（锚点设为运动学刚体），其余碎片先落定再开始（`backend.start`）。
 - [ ] 实物夹具：按锚点网格打印托架。
-- [ ] 我们自己的 S2/S1/S0 走同一个 `AssemblyBackend` 和同一个评分，写同样的 `RunRecord`。
+- [ ] 我们自己的 S2/S1/S0 走同一个 `AssemblyBackend` 和同一个评分，写同样的 `RunRecord`；S2 的任务上下文要带上任务的 `assembly_plan`（协议给所有方法）。
 - [ ] ASPIRE 学习循环：benchmark profile 与任务上下文；计数 shim（拒绝留出种子和超出练习预算的 trial，记录 `sim_trials`）；成本计量（`cost_usd`/`llm_calls`，走共用预算池 `baselines/budget.py`）；每个 trial 的墙钟上限（被拒命令不耗步数，程序反复重试会永不结束）。上游的编码智能体是 Codex CLI 经 MCP 接 CAP 工具（`scripts/start_system2_agent.sh`），用 Claude 时需要：编码智能体外壳、沙箱外的计费中转（key 只在中转里）、带 GPU 的沙箱（程序与 Isaac 同进程）。
 - [x] 实跑前提（10-19 用户决定）：DexAgent 与 ASPIRE 共用 100 美元模型预算池（`baselines/budget.py`，`baselines.llm_budget`；无每基线/每试验上限，失败重试都计入，不追加；flock 下先预留最坏值再结算，死进程的预留按最坏值计）；模型写的代码在 bwrap 沙箱里跑（`baselines/sandbox.py`；DexAgent 的 Stage 3 与交付复核；无网络、无家目录、只有试验目录可写；`baselines sandbox-check` 自检）。
 - [ ] DexAgent 首次实跑（practice 种子 101，一个）：报告实际费用、模型调用数、耗时、失败原因，再定剩余额度；核实 `drop_block` 的丢弃情况，并在真实交付上验证轨迹导入（目前只在合成录制和官方示例上测过）。需要 key（`~/.config/anthropic.env` 目前装不下一个 key）。
@@ -200,16 +199,25 @@
   - [ ] MuJoCo ↔ Isaac 标定（第 6 步）；mock 端到端（第 7 步）；实跑要先定预算和隔离主机。
   - 注意：S0 限值仍是测试值，共享硬件上的记录一律 `test_only`。完整 DexAgent 流水线（Stage 1/2）需要真人视频，不在此列。
 - [x] **S0 首段加速度口径（所有方法；10-19 用户同意改，上限不变）**：实测速度语义——运动学替身与回放按构造报段速度；Isaac 的 PhysX 速度就是刚执行完的指令段速度（关节 1 匀加速斜坡 RMS 差 0.3 mrad/s，不是平滑运动的周期末速度 +a·dt/2；阶跃第一个周期就报出）⇒ 都是上一周期平均。实现：`RobotSnapshot.velocity_window_s`（后端必须声明）、`check_joint_path(qd_window_s=...)`：首段间隔 = (窗口 + 首段)/2（周期平均：与之后各节点同读法；瞬时速度窗口 0：仍为 2Δv/dt；不声明或非法即拒绝）；ASPIRE 速度上限随之翻倍（60 Hz、TEST 20 rad/s²：0.15→0.30 rad/s）；DexAgent 30 fps 斜坡的 8 rad/s² 规划上限不变（帧内速度变化落在一个伺服周期，与口径无关）。测试：切成两段与整段读数相同、恒定加速跨块边界不再被误拒；变异 9 处 8 处抓到，1 处等价（`sim/pick.py` 传 0：其规划器按更严读法留余量）。历史判定：无变化——新读法从不更严，记录里没有因加速度被拒的指令（ASPIRE Isaac 运行 26 次调用、各路径首步旧读法最大 17.98、新 8.99 rad/s²；DexAgent 交付全部执行；P2 抓放无拒绝）；唯一被拒的是 ASPIRE 收尾静置的速度 16.7 rad/s（速度检查，不受影响）。真机 FANUC 后端写时自行声明窗口。
-- [ ] **碎片按 8 mm 体素互锁，任务目前装不成（10-19 发现，影响所有方法）**：碎片几何是 8 mm 体素，相邻碎片的接缝是一格一格的台阶，彼此勾住约一格。按直线运动、不转动分析：体素格上精确判定（`experiments/assembly_paths.py`），只有锚点在场时，红、绿、青、橙没有任何一个格子方向可走；8 种锚点逐一算过，没有一种能按某个顺序全部拆开。MuJoCo 中（`experiments/assembly_depths.py`，用 DexAgent 导出的碰撞盒、取仿真自身产生的接触）这四片最好的出路仍要穿入锚点：红 3.55、青 3.55、橙 3.76、绿 10.0 mm。⚠️ 先前报的 7.0–10.0 mm 来自 `mj_geomDistance`：两个盒子只共一条棱时它也会报几毫米穿透，已改用接触深度。
+- [x] **碎片按 8 mm 体素互锁，原任务装不成（10-19 发现，影响所有方法；10-20 定案，见本条最后）**：碎片几何是 8 mm 体素，相邻碎片的接缝是一格一格的台阶，彼此勾住约一格。按直线运动、不转动分析：体素格上精确判定（`experiments/assembly_paths.py`），只有锚点在场时，红、绿、青、橙没有任何一个格子方向可走；8 种锚点逐一算过，没有一种能按某个顺序全部拆开。MuJoCo 中（`experiments/assembly_depths.py`，用 DexAgent 导出的碰撞盒、取仿真自身产生的接触）这四片最好的出路仍要穿入锚点：红 3.55、青 3.55、橙 3.76、绿 10.0 mm。⚠️ 先前报的 7.0–10.0 mm 来自 `mj_geomDistance`：两个盒子只共一条棱时它也会报几毫米穿透，已改用接触深度。
   - **10-20 候选修复，已验证；用户 10-20 选红作锚点**（任务文件尚未替换：先定装配计划是否写进任务、是否给所有方法，再一次换掉 `runs/baseline_tasks/` 和 DexAgent 示范）：`prepare --straight-assembly-anchor`（`interlock_repair.py`）只改接缝体素的归属，不增删体素，最后把活动碎片的孤立立方体交给不挡顺序的邻片。只有红、白两片贴桌面，两种锚点都试了：
-    - **红作锚点（底座）**：换了归属的立方体 62/2116。蓝、绿、黄、品红、白（头盖，最后放）从上方放入，橙、青水平推入。修复算法原来每步只挑当下最便宜的一片，得到 92 格、白第二个放；现在每一片都试作最先拆下的那片，取总改动最少的方案（白锚点结果不变）。方向不变时有 36 种无碰撞顺序，MuJoCo 带重力逐片放下只有 6 种全程不动：绿先于黄放时青被压歪 3.9 mm / 6.3°（超 3 mm / 3°），蓝先于橙放时蓝滑 1.9 mm。推荐顺序：橙、蓝、绿、黄、青、品红、白（`runs/assembly_paths/settle_red_orders.json`）。机器人要搬整块头盖（约 0.47 kg）。产物在 `runs/skull_straight_red/`、`runs/baseline_tasks_straight_red/`；旧版在 `_v1`。
-    - **白作锚点（现任务）**：换了归属的立方体 106 个（先前写的「108」是翻转次数），7 片全部水平推入，重力下无位移。产物在 `runs/skull_straight/`、`runs/baseline_tasks_straight/`。
+    - **红作锚点（底座）**：换了归属的立方体 62/2116。蓝、绿、黄、品红、白（头盖，最后放）从上方放入，橙、青水平推入。修复算法原来每步只挑当下最便宜的一片，得到 92 格、白第二个放；现在每一片都试作最先拆下的那片，取总改动最少的方案（白锚点结果不变）。方向不变时有 36 种无碰撞顺序。逐片放下静置：Isaac 里 36 种的每一步都不动（≤ 0.0004 mm / 0.0007°，`runs/assembly_paths/settle_red_plan_isaac.json`）；MuJoCo 里（机器人停在 keyframe 0）全部在容差内，只有蓝先于橙放时蓝滑 1.9 mm（`settle_red_plan_orders.json`）。⚠️ 先前记的「只有 6 种全程不动、绿先于黄放时青被压歪 3.9 mm / 6.3°」来自 scratch 检查让机器人从 qpos0 起步（手在头骨里、压进桌面，不接触碎片），作废；`settle_red_orders.json` 是那次的结果。计划顺序：橙、蓝、绿、黄、青、品红、白，两个引擎里每一步都不动。机器人要搬整块头盖（约 0.47 kg）。产物在 `runs/skull_straight_red/`、`runs/baseline_tasks_straight_red/`；旧版在 `_v1`。
+    - **白作锚点（另一个候选）**：换了归属的立方体 106 个（先前写的「108」是翻转次数），7 片全部水平推入，重力下无位移。产物在 `runs/skull_straight/`、`runs/baseline_tasks_straight/`。
     - 两种都已验证：各片连通；体素格判定 7/7 可拆；MuJoCo 沿顺序接触深度为 0；DexAgent 导出检查通过（种子 101）。
     - 无论选哪种，装配顺序都是固定的，且都有水平插入，DexAgent 导出的示范要改。
     - 改几何就是改任务，必须在任何方法看到 held-out 之前定。
     - **原始网格碎片（不体素化）也装不成（10-20 查）**：8 片是封闭实体，头骨是实心的，GT 接缝零间隙。0.5 mm 实体体素、约 1,100 个上半球方向及反向：每片缩 0.5 mm 时，橙、黄、青、绿各自和白往任何方向都分不开，任何锚点都没有直线顺序；缩 1 mm 时绿仍被白包住，最好的方向也要穿过 1.4 cm³ 的白（绿共 19 cm³）；缩 2 mm 仍锁（0.27 cm³），要缩到 4 mm（接缝 8 mm）才分得开。体素互锁不全是体素化造成的；改用原始碎片省不掉装配计划，还要处理凹形碰撞。代码 `experiments/mesh_paths.py`；产物 `runs/assembly_paths/mesh/`（0.5、1 mm）、`mesh_wide/`（2、4 mm），剖面图 `mesh/green_slices.png`。
     
     可视化页面：claude.ai artifact H1sBNuUK2Nc9yM2C13E12b。
+  - **10-20 定案（用户确认）**：红作锚点；装配计划是 GT 的一部分，主评测给所有方法看。已完成：
+    - `prepare --assembly-order`：按修复给出的方向在体素格上精确判定，能直线放入才接受，写进 `ownership_repair.plan`。几何在 `runs/skull_red_plan/`：网格与 `runs/skull_straight_red/` 逐字节相同，只多了计划。
+    - `AssemblyTask.assembly_plan`（世界坐标系的插入方向）；协议 `baselines.assembly_plan = "given"`；`verify_task` 拒绝没有计划的任务。
+    - 任务换成 `runs/baseline_tasks/`（基础任务、种子 101；id `view_gt-00f0cc2853e9-anchor-fragment_038755611176a8c9`）；旧任务归档到 `runs/baseline_tasks_diag_white/`。
+    - ASPIRE 任务上下文加了 `metadata.assembly_plan` 和一句说明。
+    - DexAgent 导出：子目标按计划排序并写明最后一段直线移动；替身视频最后沿插入方向直线进入；`stage3.notes` 写明顺序和方向。
+    - 重力检查搬进仓库：MuJoCo 版 `experiments/assembly_settle.py`（机器人停在 keyframe 0 并每步钳住，与 DexAgent 自己的落定一致）、Isaac 版 `experiments/assembly_settle_isaac.py`。结果见上一条：顺序只受碰撞约束。
+    - 独立代码审查（1 HIGH / 1 MEDIUM / 若干 LOW）已处理：执行器测试夹具缺计划（HIGH）；建任务时在 layout 自己的体素格上复核计划（MEDIUM）；协议值只认 `given`；重力检查从 keyframe 起步、核对 layout 的 sha256；`export_task` 也转绝对路径；按工位用词。变异检查 32/32 抓到。
+- [ ] 可选消融（以后再做）：不给计划，只给所有方法同样的检查工具（直线插入检查、重力静置），记录调用次数与费用；DexAgent 要另加规划器，必须标为改过的基线。
 - [ ] **10-19 用户决定，待实施**：S0 余量与接触三参数只作仿真开发候选值，与加速度、TCP 速度上限一起经正常抓放验证后给最终参数表再冻结，不靠改 `test_only` 标签认定有效；步数预算实测单片与完整 7 片耗时、留余量、加墙钟上限（只用 practice 种子）；手指 0.1 m/s / 20 N / 15 mm 转接板标为假设，正式评估前冻结，实测不同=新协议版本；位置误差改量碎片局部包围盒中心（旋转单独判；S2 放置判据与评分器同步改）；静置与成功判据尽量统一为 1 s、3 mm / 3°（重新验证，上游门禁对不齐要报告差异）；起始会倾倒的碎片调为稳定摆放，所有方法用同一套落定后的初始条件，held-out 前冻结。held-out 暂不开放。
 
 验收：每个方法的留出成绩都来自冻结的变体，每次 trial 都有记录，评分相同；结果附上费用、仿真次数和混杂因素。
