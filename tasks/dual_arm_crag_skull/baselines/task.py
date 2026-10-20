@@ -11,6 +11,11 @@ the table top, unrotated. The anchor starts at its goal (pre-placed) and a fixtu
 the whole trial (the protocol's `anchor`; alone it is not statically stable); every other fragment
 starts at its staging pose. Layout poses are `{'position': [x, y, z], 'orientation_wxyz': [w, x, y, z]}`.
 
+The assembly plan is part of the ground truth: the order the fragments go in and, for each, the direction of its last
+straight move into its goal, with the anchor and the fragments before it in place. It comes from the layout (the
+`ownership_repair` plan that prepare --straight-assembly-anchor records, checked there to go in straight on the voxel
+grid) and the protocol gives it to every method (`baselines.assembly_plan = 'given'`).
+
 `initial_condition(task, seed, ...)` shifts and yaws the staged fragments on the table, deterministic
 in the seed, and keeps their footprints apart, on the table, off the pad (touching it is allowed) and
 out of the exclusion zones. Seeds are split into practice / selection / held-out bands so no method is
@@ -128,10 +133,33 @@ class FragmentSpec:
 
 
 @dataclass(frozen=True)
+class PlanStep:
+    """One step of the assembly plan: the fragment goes in after the steps before it, its last move a straight one
+    along `insertion_direction` (a unit vector in the world) into its goal."""
+
+    fragment_id: str
+    insertion_direction: tuple
+
+    def __post_init__(self):
+        direction = np.asarray(self.insertion_direction, dtype=float)
+        if direction.shape != (3,) or not np.isfinite(direction).all() or abs(np.linalg.norm(direction) - 1) > 1e-9:
+            raise ValueError(f'{self.fragment_id}: insertion_direction must be a finite unit 3-vector')
+        object.__setattr__(self, 'insertion_direction', tuple(float(v) + 0.0 for v in direction))  # no -0.0
+
+    def to_record(self):
+        return {'fragment_id': self.fragment_id, 'insertion_direction': list(self.insertion_direction)}
+
+    @classmethod
+    def from_record(cls, record):
+        return cls(record['fragment_id'], tuple(record['insertion_direction']))
+
+
+@dataclass(frozen=True)
 class AssemblyTask:
     """One episode definition. `fragments` are sorted by id; `seed` and `split` are set together. Success: every
     fragment within the tolerances relative to the anchor, the anchor within them of its goal, read `settle_s`
-    seconds after both grippers have released (the `released_stable` completion predicate)."""
+    seconds after both grippers have released (the `released_stable` completion predicate). `assembly_plan`, when
+    the layout has one, names every fragment but the anchor once, in the order they go in (PlanStep)."""
 
     task_id: str
     layout: str
@@ -149,6 +177,7 @@ class AssemblyTask:
     fragments: tuple
     seed: int | None = None
     split: str | None = None
+    assembly_plan: tuple | None = None
 
     def __post_init__(self):
         if not isinstance(self.task_id, str) or not self.task_id:
@@ -172,6 +201,15 @@ class AssemblyTask:
         if not np.isfinite(self.table_top_z_m):
             raise ValueError('table_top_z_m must be finite')
         object.__setattr__(self, 'fragments', fragments)
+        if self.assembly_plan is not None:
+            try:
+                steps = tuple(step if isinstance(step, PlanStep) else PlanStep.from_record(step)
+                              for step in self.assembly_plan)
+            except (KeyError, TypeError) as exc:
+                raise ValueError(f'assembly_plan steps need fragment_id and insertion_direction ({exc!r})') from exc
+            if sorted(step.fragment_id for step in steps) != sorted(self.moving_ids):
+                raise ValueError('assembly_plan must name every fragment but the anchor once')
+            object.__setattr__(self, 'assembly_plan', steps)
         object.__setattr__(self, 'world_T_assembly', _frozen_pose(self.world_T_assembly, 'world_T_assembly'))
         object.__setattr__(self, 'table_top_z_m', float(self.table_top_z_m))
         object.__setattr__(self, 'table_bounds_m', _rectangle(self.table_bounds_m, 'table_bounds_m'))
@@ -215,7 +253,8 @@ class AssemblyTask:
                 'position_tolerance_m': self.position_tolerance_m,
                 'rotation_tolerance_deg': self.rotation_tolerance_deg, 'settle_s': self.settle_s,
                 'fragments': [fragment.to_record() for fragment in self.fragments],
-                'seed': self.seed, 'split': self.split}
+                'seed': self.seed, 'split': self.split,
+                'assembly_plan': None if self.assembly_plan is None else [s.to_record() for s in self.assembly_plan]}
 
     @classmethod
     def from_record(cls, record):
@@ -224,7 +263,8 @@ class AssemblyTask:
                    tuple(record['table_bounds_m']), tuple(record['pad_bounds_m']),
                    tuple(tuple(r) for r in record['exclusions_m']), record['position_tolerance_m'],
                    record['rotation_tolerance_deg'], record['settle_s'],
-                   tuple(FragmentSpec.from_record(f) for f in record['fragments']), record['seed'], record['split'])
+                   tuple(FragmentSpec.from_record(f) for f in record['fragments']), record['seed'], record['split'],
+                   record.get('assembly_plan'))
 
 
 def _rectangle(value, name):
@@ -271,10 +311,43 @@ def check_layout_geometry(task):
             raise ValueError(f'{key}: the staging footprint overlaps another fragment or an exclusion zone')
 
 
+def layout_plan(data, anchor_id, world_T_assembly):
+    """The layout's assembly plan as PlanSteps (insertion directions in the world: the reverse of each exit direction,
+    which is in the layout's assembly frame), or None when it has none. It is checked again on the layout's own
+    cells, as prepare checked it: each exit along a grid axis (never down), every fragment but the anchor once, and
+    each going in straight in that order (interlock_repair.blocked); a plan made with another anchor is refused."""
+    from ..interlock_repair import AXES, blocked
+    repair = (data.get('source') or {}).get('ownership_repair') or {}
+    if repair.get('plan') is None:
+        return None
+    if repair.get('anchor') != anchor_id:
+        raise ValueError(f"the layout's assembly plan holds {repair.get('anchor')} fixed, not {anchor_id}")
+    try:
+        steps = [(step['fragment'], tuple(step['exit_direction'])) for step in repair['plan']]
+    except (KeyError, TypeError) as exc:
+        raise ValueError(f"the layout's assembly plan needs a fragment and an exit_direction in every step ({exc!r})") \
+            from exc
+    if any(direction not in AXES for _, direction in steps):
+        raise ValueError(f"the layout's assembly plan has an exit_direction off the grid axes, or down: {steps}")
+    names = [piece['name'] for piece in data['pieces']]
+    if sorted(name for name, _ in steps) != sorted(name for name in names if name != anchor_id):
+        raise ValueError("the layout's assembly plan must name every fragment but the anchor once")
+    if any('cells' not in piece for piece in data['pieces']):
+        raise ValueError("the layout's assembly plan cannot be checked: its pieces have no cells")
+    owner_of = {tuple(cell): piece['name'] for piece in data['pieces'] for cell in piece['cells']}
+    stuck = blocked(owner_of, [{'fragment': name, 'direction': list(direction)} for name, direction in reversed(steps)],
+                    anchor_id)
+    if stuck is not None:
+        raise ValueError(f"the layout's assembly plan does not go together: {stuck!r} cannot go in straight in its order")
+    rotation = world_T_assembly[:3, :3]
+    return tuple(PlanStep(name, tuple(-(rotation @ np.asarray(direction, dtype=float)))) for name, direction in steps)
+
+
 def task_from_layout(layout_path, *, anchor_id, criterion=None, task_id=None):
-    """Oracle task from a schema-2 layout: goals are the layout's assembled poses on the pad. `criterion` is
-    {'position_tolerance_m', 'rotation_tolerance_deg', 'settle_s'}, by default the canonical one
-    (configs/jing.json). The default task id names the layout's object, its sha256 prefix and the anchor."""
+    """Oracle task from a schema-2 layout: goals are the layout's assembled poses on the pad, and the assembly plan is
+    the layout's (layout_plan). `criterion` is {'position_tolerance_m', 'rotation_tolerance_deg', 'settle_s'}, by
+    default the canonical one (configs/jing.json). The default task id names the layout's object, its sha256 prefix
+    and the anchor."""
     criterion = canonical_protocol()['success'] if criterion is None else criterion
     path = Path(layout_path).resolve()
     data = json.loads(path.read_text())
@@ -299,7 +372,8 @@ def task_from_layout(layout_path, *, anchor_id, criterion=None, task_id=None):
                         anchor_id, 'oracle_layout', world_T_assembly, staging['table_top_z'],
                         tuple(staging['table_bounds']), (xmin, xmax, ymin, ymax),
                         tuple(tuple(r) for r in staging.get('exclusions', ())), criterion['position_tolerance_m'],
-                        criterion['rotation_tolerance_deg'], criterion['settle_s'], tuple(fragments))
+                        criterion['rotation_tolerance_deg'], criterion['settle_s'], tuple(fragments),
+                        assembly_plan=layout_plan(data, anchor_id, world_T_assembly))
     check_layout_geometry(task)
     return task
 
@@ -321,12 +395,16 @@ def success_criterion(config):
 
 def protocol(config):
     """What every compared trial is held to: seed bands, placement parameters, success criterion, how the anchor is
-    held ('fixture': at its goal for the whole trial, so nothing can move it), claims directory."""
+    held ('fixture': at its goal for the whole trial, so nothing can move it), whether every method is given the
+    task's assembly plan ('given'), claims directory."""
     baselines = config['baselines']
+    if baselines.get('assembly_plan') != 'given':
+        raise ValueError("baselines.assembly_plan must be 'given' (every method is given the task's assembly plan, the "
+                         f"only protocol the runners implement), not {baselines.get('assembly_plan')!r}")
     return {'seed_splits': check_splits(baselines['seed_splits']),
             'initial_condition': dict(baselines['initial_condition']),
             'success': success_criterion(config), 'anchor': baselines['anchor'],
-            'heldout_claims_dir': baselines['heldout_claims_dir']}
+            'assembly_plan': baselines.get('assembly_plan'), 'heldout_claims_dir': baselines['heldout_claims_dir']}
 
 
 def canonical_protocol():
@@ -338,8 +416,9 @@ def require_canonical(config):
     """Raise unless `config` carries the canonical protocol, so a trial cannot be relabelled or judged differently by
     passing another configuration."""
     if protocol(config) != canonical_protocol():
-        raise ValueError('baselines.seed_splits, baselines.initial_condition, the success criterion, baselines.anchor '
-                         f'and baselines.heldout_claims_dir must be the ones in {DEFAULT_CONFIG.name}')
+        raise ValueError('baselines.seed_splits, baselines.initial_condition, the success criterion, baselines.anchor, '
+                         f'baselines.assembly_plan and baselines.heldout_claims_dir must be the ones in '
+                         f'{DEFAULT_CONFIG.name}')
 
 
 def canonical_split(seed):
@@ -354,8 +433,8 @@ def configured_initial_condition(task, seed, config):
 
 def verify_task(task):
     """Return `task` if it is what its layout gives under the canonical protocol (the layout and meshes by sha256,
-    the success criterion, the default task id and, when seeded, the canonical initial condition and split of its
-    seed); raise otherwise."""
+    the success criterion, the default task id, the assembly plan, which the protocol requires, and, when seeded,
+    the canonical initial condition and split of its seed); raise otherwise."""
     base = task_from_layout(task.layout, anchor_id=task.anchor_id)
     if task.seed is not None:
         base = configured_initial_condition(base, task.seed, json.loads(DEFAULT_CONFIG.read_text()))
@@ -364,6 +443,9 @@ def verify_task(task):
         differing = sorted(key for key in expected if expected[key] != actual.get(key))
         raise ValueError(f'task {task.task_id} is not its layout under the canonical protocol (differs in '
                          f'{differing})')
+    if canonical_protocol()['assembly_plan'] == 'given' and task.assembly_plan is None:
+        raise ValueError(f'task {task.task_id} has no assembly plan, which the protocol gives every method '
+                         f'(baselines.assembly_plan); its layout needs one (prepare --straight-assembly-anchor)')
     return task
 
 

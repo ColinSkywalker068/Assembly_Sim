@@ -59,13 +59,16 @@ def write_layout(directory):
     pieces = []
     for name in GOALS:
         np.savez(directory / f'{name}.npz', v=vertices, f=np.array([[0, 1, 3], [0, 3, 2]], np.int32))
-        pieces.append({'name': name, 'mesh': f'{name}.npz', 'local_bounds': [[-.02, -.02, 0.0], [.02, .02, HEIGHT]],
+        pieces.append({'name': name, 'mesh': f'{name}.npz', 'cells': [[int(GOALS[name][0] > 0), 0, 0]],
+                       'local_bounds': [[-.02, -.02, 0.0], [.02, .02, HEIGHT]],
                        'goal_pose': {'position': GOALS[name], 'orientation_wxyz': [1.0, 0.0, 0.0, 0.0]},
                        'staging_pose': {'position': STAGING[name], 'orientation_wxyz': [1.0, 0.0, 0.0, 0.0]}})
     path = directory / 'layout.json'
     path.write_text(json.dumps({'schema_version': 2, 'object_id': 'tall_boxes', 'pieces': pieces, 'staging': {
         'pad_bounds': [-.15, .15, -.15, .15], 'table_bounds': [-.97, .97, -.57, .57], 'table_top_z': 0.75,
-        'exclusions': [[-.95, -.61, -.17, .17], [.61, .95, -.17, .17]]}}))
+        'exclusions': [[-.95, -.61, -.17, .17], [.61, .95, -.17, .17]]},
+        'source': {'ownership_repair': {'anchor': 'frag_a', 'plan_source': 'given',  # frag_b goes in along +x
+                                        'plan': [{'fragment': 'frag_b', 'exit_direction': [-1, 0, 0]}]}}}))
     return path
 
 

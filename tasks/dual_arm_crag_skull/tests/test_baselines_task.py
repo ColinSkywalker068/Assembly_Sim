@@ -399,3 +399,88 @@ def test_cli_writes_base_and_seeded_task_records(tmp_path, capsys):
     assert verify_task(AssemblyTask.from_record(json.loads(heldout.read_text()))).split == 'heldout'
     with pytest.raises(SystemExit):
         main(['task', '--layout', str(layout), '--anchor', 'frag_a', '--output', str(base)])
+
+
+# ------------------------------------------------------------------ the assembly plan
+
+
+def test_the_layouts_plan_is_given_in_order_with_world_insertion_directions(task):
+    # frag_b sits on the anchor's +x side and leaves along +x, so it goes in along -x; frag_c the mirror image
+    assert [(step.fragment_id, step.insertion_direction) for step in task.assembly_plan] == [
+        ('frag_b', (-1.0, 0.0, 0.0)), ('frag_c', (1.0, 0.0, 0.0))]
+    record = json.loads(json.dumps(task.to_record()))
+    assert record['assembly_plan'] == [{'fragment_id': 'frag_b', 'insertion_direction': [-1.0, 0.0, 0.0]},
+                                       {'fragment_id': 'frag_c', 'insertion_direction': [1.0, 0.0, 0.0]}]
+    assert AssemblyTask.from_record(record).assembly_plan == task.assembly_plan
+    assert configured_initial_condition(task, 101, CONFIG).assembly_plan == task.assembly_plan
+    assert canonical_protocol()['assembly_plan'] == 'given'
+
+
+def test_a_plan_made_for_another_anchor_is_refused(tmp_path):
+    with pytest.raises(ValueError, match='plan holds frag_a fixed'):
+        task_from_layout(write_layout(tmp_path / 'layout'), anchor_id='frag_b')
+
+
+def plan_record(*steps):
+    return tuple({'fragment_id': name, 'insertion_direction': direction} for name, direction in steps)
+
+
+@pytest.mark.parametrize('steps, message', [
+    ((('frag_b', (-1, 0, 0)),), 'every fragment but the anchor once'),
+    ((('frag_b', (-1, 0, 0)), ('frag_b', (-1, 0, 0))), 'every fragment but the anchor once'),
+    ((('frag_b', (-1, 0, 0)), ('frag_c', (1, 0, 0)), ('frag_a', (0, 0, -1))), 'every fragment but the anchor once'),
+    ((('frag_b', (-1, 0, 0)), ('frag_z', (1, 0, 0))), 'every fragment but the anchor once'),
+    ((('frag_b', (-2, 0, 0)), ('frag_c', (1, 0, 0))), 'unit'),
+    ((('frag_b', (float('nan'), 0, 0)), ('frag_c', (1, 0, 0))), 'unit'),
+    ((('frag_b', (-1, 0)), ('frag_c', (1, 0, 0))), 'unit'),
+])
+def test_invalid_plans_are_refused(task, steps, message):
+    with pytest.raises(ValueError, match=message):
+        replace(task, assembly_plan=plan_record(*steps))
+
+
+def test_a_task_without_its_layouts_plan_is_not_the_canonical_task(task, tmp_path):
+    plain = task_from_layout(write_layout(tmp_path / 'plain', plan=False), anchor_id='frag_a')
+    assert plain.assembly_plan is None and plain.to_record()['assembly_plan'] is None
+    with pytest.raises(ValueError, match='assembly plan'):
+        verify_task(plain)
+    for forged in (replace(task, assembly_plan=plan_record(('frag_c', (1, 0, 0)), ('frag_b', (-1, 0, 0)))),
+                   replace(task, assembly_plan=plan_record(('frag_b', (0, 0, -1)), ('frag_c', (1, 0, 0)))),
+                   replace(task, assembly_plan=None)):
+        with pytest.raises(ValueError, match='assembly'):
+            verify_task(forged)
+
+
+@pytest.mark.parametrize('edit, message', [
+    (lambda plan, pieces: plan[0].update(exit_direction=[-1, 0, 0]), "'frag_b' cannot go in straight"),  # into the anchor
+    (lambda plan, pieces: plan[0].update(exit_direction=[1, 1, 0]), 'grid axes'),
+    (lambda plan, pieces: plan[0].update(exit_direction=[0, 0, -1]), 'grid axes'),  # down, through the table
+    (lambda plan, pieces: [piece.pop('cells') for piece in pieces], 'cells'),
+    (lambda plan, pieces: plan[0].pop('exit_direction'), 'exit_direction'),
+])
+def test_the_layouts_plan_is_checked_on_its_own_cells(tmp_path, edit, message):
+    path = write_layout(tmp_path / 'layout')
+    data = json.loads(path.read_text())
+    edit(data['source']['ownership_repair']['plan'], data['pieces'])
+    path.write_text(json.dumps(data))
+    with pytest.raises(ValueError, match=message):
+        task_from_layout(path, anchor_id='frag_a')
+
+
+def test_a_record_from_before_the_plan_loads_without_one(task):
+    record = json.loads(json.dumps(task.to_record()))
+    record.pop('assembly_plan')
+    assert AssemblyTask.from_record(record).assembly_plan is None
+
+
+def test_a_malformed_plan_step_is_a_value_error(task):
+    with pytest.raises(ValueError, match='fragment_id and insertion_direction'):
+        replace(task, assembly_plan=({'fragment_id': 'frag_b'}, {'fragment_id': 'frag_c', 'insertion_direction': [1, 0, 0]}))
+
+
+@pytest.mark.parametrize('value', ['withheld', 'Given', None])
+def test_the_plan_protocol_is_given_and_nothing_else(value):
+    config = copy.deepcopy(CONFIG)
+    config['baselines']['assembly_plan'] = value  # a typo must not switch the requirement off
+    with pytest.raises(ValueError, match="assembly_plan must be 'given'"):
+        require_canonical(config)

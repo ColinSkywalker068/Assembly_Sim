@@ -1,4 +1,5 @@
-"""A small synthetic schema-2 layout for the baseline tests: three 4 cm cubes, frag_a is the anchor."""
+"""A small synthetic schema-2 layout for the baseline tests: three 4 cm cubes, frag_a is the anchor. Its assembly plan
+(as prepare --straight-assembly-anchor records it) puts frag_b in from +x, then frag_c from -x."""
 import json
 
 import numpy as np
@@ -12,19 +13,25 @@ STAGING = {'frag_a': [0.42, 0.25, 0.75], 'frag_b': [-0.42, 0.10, 0.75], 'frag_c'
 PAD = [-0.2, 0.2, -0.2, 0.2]
 TABLE = [-0.97, 0.97, -0.57, 0.57]
 EXCLUSIONS = [[-0.95, -0.61, -0.17, 0.17], [0.61, 0.95, -0.17, 0.17]]
+EXITS = {'frag_b': [1, 0, 0], 'frag_c': [-1, 0, 0]}
+CELLS = {'frag_a': [[0, 0, 0]], 'frag_b': [[1, 0, 0]], 'frag_c': [[-1, 0, 0]]}  # one 4 cm cell each
 
 
-def write_layout(directory, names=('frag_a', 'frag_b', 'frag_c')):
+def write_layout(directory, names=('frag_a', 'frag_b', 'frag_c'), plan=True):
     directory.mkdir(parents=True, exist_ok=True)
     pieces = []
     for name in names:
         np.savez(directory / f'{name}.npz', v=BOX_V, f=BOX_F)
-        pieces.append({'name': name, 'mesh': f'{name}.npz',
+        pieces.append({'name': name, 'mesh': f'{name}.npz', 'cells': CELLS[name],
                        'local_bounds': [[-HALF, -HALF, 0.0], [HALF, HALF, 2 * HALF]],
                        'goal_pose': {'position': GOALS[name], 'orientation_wxyz': [1.0, 0.0, 0.0, 0.0]},
                        'staging_pose': {'position': STAGING[name], 'orientation_wxyz': [1.0, 0.0, 0.0, 0.0]}})
     layout = {'schema_version': 2, 'object_id': 'cubes', 'pieces': pieces,
               'staging': {'pad_bounds': PAD, 'table_bounds': TABLE, 'table_top_z': 0.75, 'exclusions': EXCLUSIONS}}
+    if plan:
+        layout['source'] = {'ownership_repair': {
+            'anchor': 'frag_a', 'plan_source': 'given',
+            'plan': [{'fragment': name, 'exit_direction': EXITS[name]} for name in names if name != 'frag_a']}}
     path = directory / 'layout.json'
     path.write_text(json.dumps(layout))
     return path

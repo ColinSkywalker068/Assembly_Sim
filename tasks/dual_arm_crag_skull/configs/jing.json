@@ -139,6 +139,8 @@
     "success_tolerances_from": "s2.completion_defaults.place",
     "anchor": "fixture",
     "anchor_status": "decided 2026-10-18: alone at its assembled pose the anchor tips 4.8 deg in 1 s (MuJoCo), so a fixture holds it there for every method",
+    "assembly_plan": "given",
+    "assembly_plan_status": "decided 2026-10-20 (user): the task's assembly plan (the order the fragments go in and the direction of each one's last straight move, from the layout's ownership_repair plan) is ground truth and every method is given it; the order constraint comes from the 8 mm voxel geometry, not from the real skull. A track that withholds the plan and offers checking tools instead is a later, optional ablation",
     "heldout_claims_dir": "runs/baseline_heldout_claims",
     "llm_budget": {
       "pool_dir": "runs/llm_budget",
