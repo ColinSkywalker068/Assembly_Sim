@@ -195,7 +195,8 @@ review's surviving mutations and the new behaviour, 54 mutations are now caught.
   the contacts its own pipeline makes) their best exits run into the anchor by red 3.55, cyan 3.55, orange 3.76 and
   green 10.0 mm. (The 7.0-10.0 mm reported before came from `mj_geomDistance`, which reports millimetres of
   penetration for boxes that only share an edge.) ASPIRE's reference program jammed on the anchor for this reason.
-  **Candidate fixes, not adopted** (changing the geometry changes the task; the user decides):
+  **Candidate fixes; the user chose the red anchor on 10-20** (the task files are not replaced yet: whether the
+  assembly plan goes into the task, and to every method, is decided first):
   `prepare --straight-assembly-anchor ID` (`interlock_repair.py`) hands seam cubes to the neighbour across the seam,
   none added or removed, so that with the anchor fixed every other fragment goes in along an axis in some order, then
   gives a moving fragment's stray cubes to a neighbour that keeps that order clear. Two anchors were tried, the only
@@ -219,6 +220,11 @@ review's surviving mutations and the new behaviour, 54 mutations are now caught.
   are 0 mm, DexAgent's export checks pass (seed 101). Either way the order matters and some insertions are
   horizontal, so a method that lowers every fragment from above still collides, and the DexAgent export's
   demonstration (rise, glide, descend; bottom layer first) would have to show the slides instead.
+  The original (unvoxelized) meshes do not avoid this: they are closed solids of a solid skull with zero-gap seams,
+  and with every fragment shrunk 0.5 mm, orange, yellow, cyan and green each cannot leave white along any sampled
+  direction (about 1,100 on the upper hemisphere and their reverses); shrunk 1 mm, green is still held inside white
+  (its best direction sweeps through 1.4 cm3 of white; green is 19 cm3), and it comes free only with every fragment
+  shrunk 4 mm. `experiments/mesh_paths.py`; `runs/assembly_paths/mesh/`, `runs/assembly_paths/mesh_wide/`.
 - **The anchor tips on its own.**
   - Found by DexAgent's export: the anchor fragment, standing alone at its assembled pose, tilts 4.8° within 1 s in MuJoCo. Isaac hides this because its bodies start asleep.
   - A staged fragment (`fragment_36d5ca6a07ba2b2f`) tips 18° while settling.
