@@ -6,7 +6,8 @@ direction d exactly when, on every line of the grid along d, the cells it owns c
 fragment's cells. `straighten` takes the fragments out one at a time: for each it finds, line by line, the fewest
 cells that change owner to make that so (it takes the other fragments' cells ahead of its last one, or gives its
 cells behind to the nearest other owner on the line), takes out the fragment whose changes split no fragment into
-more pieces and are fewest (straight up first on a tie), and repeats. The union of cells is unchanged; only who owns a cell at a seam changes.
+more pieces and are fewest (straight up first on a tie), and repeats. Last, a stray cube or piece of a moving
+fragment (not its largest) goes to a neighbour, if one can take it without blocking that order. The union of cells is unchanged; only who owns a cell at a seam changes.
 """
 from __future__ import annotations
 
@@ -58,6 +59,42 @@ def pieces(owner_of, flips, names):
     return {name: len(components(cells[name])) for name in names}
 
 
+FACES = ((1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1))
+
+
+def clear(owner_of, order, anchor):
+    """Whether every fragment of `order` still leaves, in that order and direction, without a change."""
+    present = set(owner_of.values())
+    for step in order:
+        if exit_flips(owner_of, step['fragment'], present, step['direction']):
+            return False
+        present.discard(step['fragment'])
+    return present <= {anchor}
+
+
+def merge_islands(owner_of, order, anchor):
+    """Hand each piece of a moving fragment other than its largest (stray cubes the voxelization left) to the
+    neighbour it touches most that keeps `order` clear; a piece no neighbour can take stays. The anchor keeps its
+    pieces: the fixture holds them all. Returns what moved."""
+    moved = []
+    for name in sorted(set(owner_of.values()) - {anchor}):
+        groups = sorted(components({c for c, o in owner_of.items() if o == name}), key=lambda g: (-len(g), min(g)))
+        for group in groups[1:]:
+            touching = defaultdict(int)
+            for cell in group:
+                for face in FACES:
+                    other = owner_of.get(tuple(a + b for a, b in zip(cell, face)))
+                    if other is not None and other != name:
+                        touching[other] += 1
+            for other in sorted(touching, key=lambda o: (-touching[o], o)):
+                trial = {**owner_of, **{cell: other for cell in group}}
+                if clear(trial, order, anchor):
+                    owner_of.update({cell: other for cell in group})
+                    moved.append({'fragment': name, 'cells': len(group), 'to': other})
+                    break
+    return moved
+
+
 def straighten(owned, anchor):
     """(cells of each fragment after the repair, report) for `owned` {name: cells} with `anchor` fixed in place."""
     if anchor not in owned:
@@ -83,6 +120,7 @@ def straighten(owned, anchor):
         owner_of.update(flips)
         order.append({'fragment': name, 'direction': list(direction), 'flipped': count})
         present.remove(name)
+    islands = merge_islands(owner_of, order, anchor)
     result = {name: [] for name in owned}
     for cell, owner in owner_of.items():
         result[owner].append(cell)
@@ -92,5 +130,6 @@ def straighten(owned, anchor):
         before, after = {tuple(int(v) for v in c) for c in cells}, set(result[name])
         if before != after:
             changed[name] = {'lost': len(before - after), 'gained': len(after - before)}
-    report = {'anchor': anchor, 'flipped': sum(step['flipped'] for step in order), 'order': order, 'changed': changed}
+    report = {'anchor': anchor, 'flipped': sum(step['flipped'] for step in order), 'order': order, 'islands': islands,
+              'changed': changed}
     return result, report

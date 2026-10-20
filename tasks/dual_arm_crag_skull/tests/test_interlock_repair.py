@@ -60,3 +60,21 @@ def test_a_fragment_is_not_cut_in_two_when_another_way_out_costs_the_same():
     owned_after, report = straighten(owned, 'anchor')
     assert report['order'] == [{'fragment': 'bar', 'direction': [1, 0, 0], 'flipped': 1}]
     assert sorted(owned_after['bar']) == [(0, 0, 0), (1, 0, 0), (2, 0, 0), (3, 0, 0)]
+
+
+def test_a_stray_cube_joins_a_neighbour_that_keeps_the_order_clear():
+    # p's cube at (1, 0, 2) touches nothing of p; the anchor touches it most, but owning it would cover q's way up,
+    # so it goes to q instead
+    owned = {'anchor': [(0, 0, 2), (1, 1, 2), (1, -1, 2)],
+             'q': [(1, 0, 1), (2, 0, 1), (2, 0, 2)],
+             'p': [(5, 0, 5), (5, 0, 6), (1, 0, 2)]}
+    owned_after, report = straighten(owned, 'anchor')
+    assert sorted(owned_after['p']) == [(5, 0, 5), (5, 0, 6)] and (1, 0, 2) in owned_after['q']
+    assert report['islands'] == [{'fragment': 'p', 'cells': 1, 'to': 'q'}]
+    assert disassemble(arrays(owned_after), 'anchor')[1] == []
+
+
+def test_a_stray_cube_no_neighbour_can_take_stays():
+    owned = {'anchor': [(0, 0, 0)], 'p': [(5, 0, 0), (9, 0, 0)]}
+    owned_after, report = straighten(owned, 'anchor')
+    assert sorted(owned_after['p']) == [(5, 0, 0), (9, 0, 0)] and report['islands'] == []

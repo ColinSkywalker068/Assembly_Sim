@@ -195,17 +195,25 @@ review's surviving mutations and the new behaviour, 54 mutations are now caught.
   the contacts its own pipeline makes) their best exits run into the anchor by red 3.55, cyan 3.55, orange 3.76 and
   green 10.0 mm. (The 7.0-10.0 mm reported before came from `mj_geomDistance`, which reports millimetres of
   penetration for boxes that only share an edge.) ASPIRE's reference program jammed on the anchor for this reason.
-  **Candidate fix, not adopted** (changing the geometry changes the task; the user decides):
-  `prepare --straight-assembly-anchor ID` (`interlock_repair.py`) hands 108 seam cubes of 2116 to the neighbour
-  across the seam, none added or removed, so that with the anchor fixed every fragment slides in along an axis in
-  some order; every fragment is then one connected piece (the anchor was four). Its geometry is `runs/skull_straight/`,
-  its tasks `runs/baseline_tasks_straight/` (task id `view_gt-42177f6755ba-...`). Verified: the grid check takes all
-  7 apart; MuJoCo contacts along the repair's order and directions are 0 mm; DexAgent's export checks pass (seed 101).
-  All 7 insertions are horizontal: making even one of them straight down raises the change to 167 cubes, and all
-  straight down cuts fragments into pieces (red into 6) and leaves blue 4 of its 40 cubes, because the skull is a
-  dome whose pieces wrap round each other. So a method that lowers each fragment onto its goal from above
-  still collides, the order matters (green first, yellow last), and the DexAgent export's demonstration (rise, glide,
-  descend; bottom layer first) would have to show the slides instead.
+  **Candidate fixes, not adopted** (changing the geometry changes the task; the user decides):
+  `prepare --straight-assembly-anchor ID` (`interlock_repair.py`) hands seam cubes to the neighbour across the seam,
+  none added or removed, so that with the anchor fixed every other fragment goes in along an axis in some order, then
+  gives a moving fragment's stray cubes to a neighbour that keeps that order clear. Two anchors were tried, the only
+  two fragments on the table:
+  - **red (the base, 40 cubes on the table):** 92 of 2116 cubes change owner; white (the cranium) and green go in
+    from above, the other five slide in; order green, white, orange, cyan, blue, magenta, yellow. Released one by one
+    in that order under gravity in MuJoCo (2 s each step, every step started from the goals), only the white-on-green
+    step moves anything: green 1.2 mm / 1.6 deg, white 0.85 mm / 0.68 deg. A robot must carry white (1390 cubes,
+    about 0.46 kg). Geometry `runs/skull_straight_red/`, tasks `runs/baseline_tasks_straight_red/`.
+  - **white (today's anchor):** 106 cubes change owner (108 handovers; two cubes change twice); all 7 slide in
+    horizontally (one from above already costs 167 handovers, all from above cuts fragments into pieces), order green,
+    orange, red, cyan, blue, magenta, yellow; nothing moves under gravity. Geometry `runs/skull_straight/`, tasks
+    `runs/baseline_tasks_straight/`.
+
+  For both: every fragment one connected piece, the grid check takes all 7 apart, MuJoCo contacts along the order
+  are 0 mm, DexAgent's export checks pass (seed 101). Either way the order matters and some insertions are
+  horizontal, so a method that lowers every fragment from above still collides, and the DexAgent export's
+  demonstration (rise, glide, descend; bottom layer first) would have to show the slides instead.
 - **The anchor tips on its own.**
   - Found by DexAgent's export: the anchor fragment, standing alone at its assembled pose, tilts 4.8° within 1 s in MuJoCo. Isaac hides this because its bodies start asleep.
   - A staged fragment (`fragment_36d5ca6a07ba2b2f`) tips 18° while settling.
