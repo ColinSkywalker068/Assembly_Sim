@@ -11,11 +11,12 @@ Stages 1-2, so every one of those inputs is constructed here from the AssemblyTa
   table the assembled anchor of the skull layout is not statically stable;
 - the video is a stand-in, not a demonstration: that Stage 2 scene rendered through `video_cam` (straight above
   the table) with the robot hidden and no hands, each moving fragment gliding from its settled start to its goal
-  during its subgoal's time window;
+  during its subgoal's time window and going in by its last straight move (waypoints);
 - frame 0 and the masks come from DexAgent's CPU segment_source_frame on that video, run through DexAgent's own
   reference-evidence registry, which writes the replay recipes Stage 3 re-runs before the agent starts;
-- Stage 1 has one `place` subgoal per moving fragment, bottom layer first, each with a relative_pose predicate to
-  the anchor at the task's tolerances, plus task_success_predicates for every moving fragment and the anchor.
+- Stage 1 has one `place` subgoal per moving fragment, in the order of the task's assembly plan (bottom layer first
+  for a task without one), each naming its last straight move and with a relative_pose predicate to the anchor at
+  the task's tolerances, plus task_success_predicates for every moving fragment and the anchor.
 
 Frames: world is the task frame; rig is DexAgent's (origin between the arm mounts on the tabletop, x toward the
 right station, y away from the operator, z up). `rig_T_world` yaws about z and puts the assembly pad centre at
@@ -57,6 +58,18 @@ TASK_PROMPT = ('Reassemble the fractured skull: place every skull fragment at it
 STAND_IN = ('The video is a stand-in rendering, not a human demonstration: there are no hands in it; each skull '
             'fragment glides from where it starts to its assembled pose during its subgoal window.')
 REPO_ROOT = Path(__file__).resolve().parents[4]
+PLAN_NOTE = ('The subgoals follow the assembly plan of the task: with the anchor and the fragments of the earlier '
+             'subgoals in place, each fragment goes into its assembled pose by the last straight move its subgoal names '
+             'without colliding; other orders or approaches can collide.')
+# What rig +x and +y point toward, for naming a straight move along a rig direction in the task text: DexAgent's own
+# bench (x toward the right station, y away from the operator, setup.yaml) and the shared one (the world shifted down:
+# the right arm stands at +x, the third-person camera at -y).
+RIG_LANDMARKS = {'native': (('the right station', 'the left station'), ('away from the operator', 'toward the operator')),
+                 'crx_yam': (('the right arm', 'the left arm'),
+                             ('away from the third-person camera', 'toward the third-person camera'))}
+# Fractions of a fragment's window at its waypoints: it rises, glides over (turning to its goal orientation), comes
+# down outside the skull and goes in straight.
+PHASES = (0.0, 0.2, 0.5, 0.7, 0.95)
 REQUIRED_CHECKS = ('source_video_identity_check', 'source_reference_provenance_check', 'scene_semantic_schema_check',
                    'scene_semantic_consistency_check', 'goal_language_coverage_check', 'initial_keyframe_state_check',
                    'rigid_runtime_compile', 'hand_scene_from_recon')
@@ -192,6 +205,7 @@ class FragmentPlan:
     touching: tuple
     settled_rig: np.ndarray | None = None
     hand_reason: str = 'side of the robot it starts on'
+    insertion_rig: tuple | None = None  # the direction of its last straight move into the goal, from the task's plan
 
     def __post_init__(self):
         if not SAFE_ID.match(self.object_id):
@@ -316,7 +330,9 @@ def plan_export(task, options=None):
     goal_points = {fid: meshes[fid][0] @ pose[:3, :3].T + pose[:3, 3] for fid, pose in goal.items()}
     start_points = {fid: meshes[fid][0] @ pose[:3, :3].T + pose[:3, 3] for fid, pose in initial.items()}
     touching = goal_neighbours(decompositions, goal)
-    order = _bottom_up(task, goal_points)
+    steps = {step.fragment_id: step for step in task.assembly_plan or ()}
+    order = (tuple(step.fragment_id for step in task.assembly_plan) if task.assembly_plan is not None
+             else _bottom_up(task, goal_points))
     windows = {fid: (options.lead_s + k * options.seconds_per_fragment, options.lead_s + (k + 1) *
                      options.seconds_per_fragment) for k, fid in enumerate(order)}
     fragments = []
@@ -324,10 +340,12 @@ def plan_export(task, options=None):
         object_id, colour, rgb = ids[fid]
         is_anchor = fid == task.anchor_id
         hand = None if is_anchor else ('left' if start_points[fid][:, 0].mean() < 0 else 'right')
+        insertion = (None if fid not in steps else
+                     tuple(float(v) + 0.0 for v in rig_T_world[:3, :3] @ np.asarray(steps[fid].insertion_direction)))
         fragments.append(FragmentPlan(fid, object_id, colour, tuple(rgb), decompositions[fid], meshes[fid][0],
                                       meshes[fid][1], initial[fid], goal[fid],
                                       not (is_anchor and options.anchor_mode == 'fixed'), hand, windows.get(fid),
-                                      tuple(ids[k][0] for k in sorted(touching[fid]))))
+                                      tuple(ids[k][0] for k in sorted(touching[fid])), insertion_rig=insertion))
     points = np.concatenate([*goal_points.values(), *start_points.values()])
     duration = options.lead_s + len(order) * options.seconds_per_fragment + options.tail_s
     return ExportPlan(task, options, rig_T_world, tuple(fragments), tuple(ids[fid][0] for fid in order), duration,
@@ -339,35 +357,45 @@ def _smooth(u):
     return u * u * (3.0 - 2.0 * u)
 
 
+def waypoints(plan, fragment):
+    """Rig positions a moving fragment passes through in the stand-in video, at PHASES of its window: its start; above
+    it, higher than every fragment by the clearance; above where it begins to go in; that point, from which the reverse
+    of its insertion direction (straight up for a task without a plan) clears, by the clearance, the anchor and the
+    fragments placed before it; its goal, reached by the straight insertion. Fragments still at their starts are not
+    avoided (the starts are in the side lanes, off the pad)."""
+    clearance = plan.options.clearance_m
+    top = max(float(f.points(pose)[:, 2].max()) for f in plan.fragments for pose in (f.start_rig, f.goal_rig))
+    start, goal = fragment.start_rig, fragment.goal_rig
+    lift = max(top + clearance - float((fragment.vertices @ pose[:3, :3].T)[:, 2].min()) for pose in (start, goal))
+    out = -np.asarray((0.0, 0.0, -1.0) if fragment.insertion_rig is None else fragment.insertion_rig)
+    placed = [plan.anchor, *(plan.fragment(key) for key in plan.order[:plan.order.index(fragment.object_id)])]
+    ahead = max(float((f.points(f.goal_rig) @ out).max()) for f in placed) - float((fragment.points(goal) @ out).min())
+    p0, p1 = np.array(start[:3, 3]), np.array(goal[:3, 3])
+    begin = p1 + (max(ahead, 0.0) + clearance) * out
+    return [p0, np.array([p0[0], p0[1], lift]), np.array([begin[0], begin[1], max(lift, begin[2])]), begin, p1]
+
+
 def video_poses(plan):
     """(frames, objects, 7) rig poses [x, y, z, qw, qx, qy, qz] per video frame, in plan.fragments order: a moving
-    fragment rises above everything, glides over its goal while turning to its goal orientation, and descends."""
-    options = plan.options
-    times = np.arange(int(round(plan.duration_s * options.fps))) / options.fps
-    top = max(float(f.points(pose)[:, 2].max()) for f in plan.fragments for pose in (f.start_rig, f.goal_rig))
+    fragment passes through its waypoints during its window, turning to its goal orientation while it glides."""
+    times = np.arange(int(round(plan.duration_s * plan.options.fps))) / plan.options.fps
     out = np.zeros((len(times), len(plan.fragments), 7))
     for index, fragment in enumerate(plan.fragments):
-        start, goal = fragment.start_rig, fragment.goal_rig
-        r0, r1 = _rotation(start), _rotation(goal)
-        lift = max(top + options.clearance_m - float((fragment.vertices @ pose[:3, :3].T)[:, 2].min())
-                   for pose in (start, goal))
-        p0, p1 = np.array(start[:3, 3]), np.array(goal[:3, 3])
-        up0, up1 = np.array([p0[0], p0[1], lift]), np.array([p1[0], p1[1], lift])
+        r0, r1 = _rotation(fragment.start_rig), _rotation(fragment.goal_rig)
+        points = None if fragment.window_s is None else waypoints(plan, fragment)
         slerp = Slerp([0.0, 1.0], Rotation.concatenate([r0, r1]))
         for t, time in enumerate(times):
-            if fragment.window_s is None or time <= fragment.window_s[0]:
-                position, rotation = p0, r0
-            elif time >= fragment.window_s[1]:
-                position, rotation = p1, r1
+            if points is None or time <= fragment.window_s[0]:
+                position, rotation = np.array(fragment.start_rig[:3, 3]), r0
             else:
                 u = (time - fragment.window_s[0]) / (fragment.window_s[1] - fragment.window_s[0])
-                if u < 0.25:
-                    position, rotation = p0 + _smooth(u / 0.25) * (up0 - p0), r0
-                elif u < 0.7:
-                    s = float(_smooth((u - 0.25) / 0.45))
-                    position, rotation = up0 + s * (up1 - up0), slerp([s])[0]
+                k = int(np.searchsorted(PHASES, u, side='right')) - 1
+                if k >= len(PHASES) - 1:
+                    position, rotation = points[-1], r1
                 else:
-                    position, rotation = up1 + _smooth((u - 0.7) / 0.25) * (p1 - up1), r1
+                    s = float(_smooth((u - PHASES[k]) / (PHASES[k + 1] - PHASES[k])))
+                    position = points[k] + s * (points[k + 1] - points[k])
+                    rotation = r0 if k == 0 else slerp([s])[0] if k == 1 else r1
             out[t, index] = [*position, *_wxyz(rotation)]
     return out
 
@@ -395,6 +423,19 @@ def relative_pose_params(anchor_goal, goal, position_tolerance_m, rotation_toler
     relative = np.linalg.inv(anchor_goal) @ goal
     return {'rel_pos': [float(v) for v in relative[:3, 3]], 'rel_quat': _wxyz(_rotation(relative)),
             'pos_tol_m': float(position_tolerance_m), 'rot_tol_deg': float(rotation_tolerance_deg)}
+
+
+def insertion_text(direction, bench='native'):
+    """A rig direction as the task text names a straight move along it on `bench`: 'downward', 'along rig -x (toward
+    the left station)', ..."""
+    (right, left), (away, toward) = RIG_LANDMARKS[bench]
+    named = (((1.0, 0.0, 0.0), f'along rig +x (toward {right})'), ((-1.0, 0.0, 0.0), f'along rig -x (toward {left})'),
+             ((0.0, 1.0, 0.0), f'along rig +y ({away})'), ((0.0, -1.0, 0.0), f'along rig -y ({toward})'),
+             ((0.0, 0.0, -1.0), 'downward'), ((0.0, 0.0, 1.0), 'upward'))
+    for axis, text in named:
+        if np.allclose(direction, axis, atol=1e-6):
+            return text
+    return 'along rig ({:.3f}, {:.3f}, {:.3f})'.format(*direction)
 
 
 def _extent_text(fragment):
@@ -439,12 +480,17 @@ def scene_semantics(plan, identity):
     for index, object_id in enumerate(plan.order, 1):
         fragment = plan.fragment(object_id)
         other = 'right' if fragment.acting_hand == 'left' else 'left'
+        if fragment.insertion_rig is None:
+            action, role = '', 'sets it down at its assembled pose'
+        else:
+            move = f'a last straight move {insertion_text(fragment.insertion_rig, plan.options.bench)}'
+            action, role = f', with {move}', f'brings it into its assembled pose with {move}'
         subgoals.append({
             'index': index, 'acting_hand': fragment.acting_hand,
-            'action': f'Place the {fragment.name} at its assembled pose against the skull.',
+            'action': f'Place the {fragment.name} at its assembled pose against the skull{action}.',
             'object_refs': [object_id, anchor.object_id], 'motion': 'place',
-            'hand_roles': {fragment.acting_hand: (f'Picks up the {fragment.name}, carries it to the skull, sets it '
-                                                  f'down at its assembled pose and lets go.'),
+            'hand_roles': {fragment.acting_hand: (f'Picks up the {fragment.name}, carries it to the skull, {role} '
+                                                  f'and lets go.'),
                            other: 'Holds still, clear of the fragments.'},
             'goal': f'The {fragment.name} is released.',
             'goal_predicates': [{'class': 'relative_pose', 'bodies': {'A': object_id, 'B': anchor.object_id},
@@ -482,7 +528,8 @@ def scene_semantics(plan, identity):
                   (f'Goals are the assembled poses relative to the anchor within {1000 * tol_m:.1f} mm and '
                    f'{tol_deg:.1f} deg (goal_predicates, task_success_predicates); the anchor must stay within the '
                    f'same tolerance of its start, which is its assembled pose.{fixture}'),
-                  'Constructed by Assembly_Sim from its AssemblyTask; DexAgent Stage 1 did not run.'],
+                  'Constructed by Assembly_Sim from its AssemblyTask; DexAgent Stage 1 did not run.',
+                  *([PLAN_NOTE] if task.assembly_plan is not None else [])],
         'input_identity': dict(identity),
     }
 
@@ -621,6 +668,7 @@ def export_manifest(plan, out_dir, commit, media, failed):
                          'goal_rig_wxyz': pose_to_wxyz(f.goal_rig), 'acting_hand': f.acting_hand,
                          'hand_reason': f.hand_reason if f.acting_hand else None,
                          'window_s': None if f.window_s is None else list(f.window_s), 'touching': list(f.touching),
+                         'insertion_rig': None if f.insertion_rig is None else list(f.insertion_rig),
                          'exact_collision': f.decomposition.exact, 'boxes': len(f.decomposition.boxes)}
                         for f in plan.fragments],
             'order': list(plan.order), 'anchor_object_id': plan.anchor.object_id, 'task': plan.task.to_record(),

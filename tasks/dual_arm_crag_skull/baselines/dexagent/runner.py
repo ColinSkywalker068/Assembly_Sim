@@ -25,13 +25,16 @@ import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import numpy as np
+
 from ... import workspace
 from .. import sandbox as box
 from ..budget import BudgetPool
 from ..scoring import RunRecord, append_records, claim_heldout, refuse_repeats
 from ..task import AssemblyTask, verify_task
 from . import dexenv
-from .export import DEXAGENT_COMMIT, TASK_PROMPT, VARIANT, VARIANTS, ExportOptions, export_task, load_manifest
+from .export import (DEXAGENT_COMMIT, TASK_PROMPT, VARIANT, VARIANTS, ExportOptions, export_task, insertion_text,
+                     load_manifest)
 from .trajectory import accepted_trajectory, read_run, score_trajectory
 from .transport import Responder, ledger_totals
 
@@ -59,6 +62,16 @@ def stage3_note(manifest):
             'hidden, in which each skull fragment glides to its assembled pose during its Stage 1 time window; there '
             f'are no hands in it to track or retarget. The anchor, the {anchor["name"]}, {held} its assembled pose. '
             'Each fragment collides as the exact union of the boxes in its asset.')
+    plan = manifest['task'].get('assembly_plan')
+    if plan:
+        names = {o['fragment_id']: o['name'] for o in manifest['objects']}
+        rotation = np.asarray(manifest['rig_T_world'], dtype=float)[:3, :3]
+        bench = 'crx_yam' if manifest.get('variant') == VARIANTS['crx_yam'] else 'native'
+        steps = '; '.join(f'{k}. the {names[step["fragment_id"]]}, '
+                          f'{insertion_text(rotation @ np.asarray(step["insertion_direction"], dtype=float), bench)}'
+                          for k, step in enumerate(plan, 1))
+        note += (f' The fragments go in in the order of the assembly plan, each by a last straight move: {steps}. '
+                 'With the anchor and the fragments before it in place, that move does not collide.')
     return note + (' ' + SHARED_HARDWARE_NOTE if manifest.get('variant') == VARIANTS['crx_yam'] else '')
 
 

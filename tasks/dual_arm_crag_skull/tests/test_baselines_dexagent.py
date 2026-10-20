@@ -154,8 +154,8 @@ def test_plan_maps_ids_frames_hands_and_order(cube_task):
     assert plan.duration_s == pytest.approx(windows[-1][1] + plan.options.tail_s)
 
 
-def test_bottom_layer_goes_first(tmp_path):
-    layout = write_layout(tmp_path / 'layout')
+def test_bottom_layer_goes_first_without_a_plan(tmp_path):
+    layout = write_layout(tmp_path / 'layout', plan=False)
     data = json.loads(layout.read_text())
     for piece in data['pieces']:
         if piece['name'] == 'frag_b':
@@ -164,6 +164,104 @@ def test_bottom_layer_goes_first(tmp_path):
     task = task_from_layout(layout, anchor_id='frag_a')
     plan = export.plan_export(task)
     assert plan.order == ('green_fragment', 'blue_fragment')
+
+
+def test_the_tasks_plan_sets_the_order_and_each_insertion_in_the_rig(cube_task):
+    plan = export.plan_export(cube_task)
+    assert plan.order == ('blue_fragment', 'green_fragment')  # frag_b, then frag_c
+    np.testing.assert_allclose(plan.fragment('blue_fragment').insertion_rig, (-1, 0, 0), atol=1e-12)
+    np.testing.assert_allclose(plan.fragment('green_fragment').insertion_rig, (1, 0, 0), atol=1e-12)
+    assert plan.anchor.insertion_rig is None
+    yawed = export.plan_export(cube_task, export.ExportOptions(yaw_deg=90.0))  # world -x turns to rig -y
+    np.testing.assert_allclose(yawed.fragment('blue_fragment').insertion_rig, (0, -1, 0), atol=1e-12)
+
+
+def test_the_plans_order_wins_over_the_bottom_layer_rule(tmp_path):
+    layout = write_layout(tmp_path / 'layout')
+    data = json.loads(layout.read_text())
+    data['source']['ownership_repair']['plan'].reverse()  # frag_c first; the bottom-layer rule puts frag_b first
+    layout.write_text(json.dumps(data))
+    assert export.plan_export(task_from_layout(layout, anchor_id='frag_a')).order == ('green_fragment', 'blue_fragment')
+
+
+def straight_tail(plan, object_id):
+    """Video rig positions and rotations of a fragment over the last part of its window (0.72-0.95 of it)."""
+    poses = export.video_poses(plan)
+    index = [f.object_id for f in plan.fragments].index(object_id)
+    low, high = plan.fragment(object_id).window_s
+    frames = [t for t in range(len(poses)) if 0.72 <= (t / plan.options.fps - low) / (high - low) <= 0.95]
+    return poses[frames, index, :3], poses[frames, index, 3:]
+
+
+@pytest.mark.parametrize('object_id, exit_', [('blue_fragment', (1.0, 0.0, 0.0)), ('green_fragment', (-1.0, 0.0, 0.0))])
+def test_the_stand_in_video_ends_each_placement_with_its_straight_insertion(cube_task, object_id, exit_):
+    plan = export.plan_export(cube_task)
+    fragment, exit_ = plan.fragment(object_id), np.asarray(exit_)
+    start, above, over, begin, goal = export.waypoints(plan, fragment)
+    np.testing.assert_allclose(start, fragment.start_rig[:3, 3])
+    np.testing.assert_allclose(goal, fragment.goal_rig[:3, 3])
+    np.testing.assert_allclose(np.cross(begin - goal, exit_), 0, atol=1e-12)  # it goes in along the plan's line
+    placed = [plan.anchor] + ([plan.fragment('blue_fragment')] if object_id == 'green_fragment' else [])
+    at_begin = fragment.points(fragment.goal_rig) + (begin - goal)
+    for other in placed:  # where it starts going in it is clear, along that line, of what is in place
+        gap = (at_begin @ exit_).min() - (other.points(other.goal_rig) @ exit_).max()
+        assert gap == pytest.approx(plan.options.clearance_m) if other is plan.anchor else gap >= 0
+    assert above[2] == over[2] and np.allclose(over[:2], begin[:2])  # it comes down outside the skull
+    positions, quaternions = straight_tail(plan, object_id)
+    assert len(positions) > 10
+    np.testing.assert_allclose(np.cross(positions - goal, exit_), 0, atol=1e-9)
+    along = (positions - goal) @ exit_
+    assert (np.diff(along) <= 1e-12).all() and along.min() >= -1e-12 and along.max() <= (begin - goal) @ exit_ + 1e-12
+    np.testing.assert_allclose(np.abs(quaternions @ export.pose_to_wxyz(fragment.goal_rig)[3:]), 1, atol=1e-9)
+
+
+def test_a_fragment_planned_from_above_comes_straight_down(tmp_path):
+    layout = write_layout(tmp_path / 'layout')
+    data = json.loads(layout.read_text())
+    data['source']['ownership_repair']['plan'][0]['exit_direction'] = [0, 0, 1]
+    layout.write_text(json.dumps(data))
+    plan = export.plan_export(task_from_layout(layout, anchor_id='frag_a'))
+    blue = plan.fragment('blue_fragment')
+    np.testing.assert_allclose(blue.insertion_rig, (0, 0, -1), atol=1e-12)
+    begin, goal = export.waypoints(plan, blue)[3:]
+    assert np.allclose(begin[:2], goal[:2])
+    assert begin[2] - goal[2] == pytest.approx(0.04 + plan.options.clearance_m)  # over the 4 cm anchor, clear
+    positions, _ = straight_tail(plan, 'blue_fragment')
+    np.testing.assert_allclose(positions[:, :2], np.broadcast_to(goal[:2], positions[:, :2].shape), atol=1e-9)
+    assert (np.diff(positions[:, 2]) <= 1e-12).all()
+    semantics = export.scene_semantics(plan, IDENTITY)
+    assert semantics['subgoals'][0]['action'].endswith('with a last straight move downward.')
+
+
+def test_the_subgoals_and_notes_carry_the_plan(cube_task):
+    plan = export.plan_export(cube_task)
+    semantics = export.scene_semantics(plan, IDENTITY)
+    blue, green = semantics['subgoals']
+    assert (blue['object_refs'][0], green['object_refs'][0]) == ('blue_fragment', 'green_fragment')
+    assert blue['action'].endswith('with a last straight move along rig -x (toward the left station).')
+    assert 'last straight move along rig -x (toward the left station)' in blue['hand_roles']['left']
+    assert green['action'].endswith('with a last straight move along rig +x (toward the right station).')
+    assert any('assembly plan' in note for note in semantics['notes'])
+    note = runner.stage3_note(manifest_for(plan))
+    assert ('1. the blue skull fragment, along rig -x (toward the left station); 2. the green skull fragment, along '
+            'rig +x (toward the right station).') in note
+
+
+def test_the_shared_bench_names_directions_by_its_own_landmarks(cube_task):
+    plan = export.plan_export(cube_task, export.ExportOptions(bench='crx_yam'))  # rig = the world, shifted down
+    blue = export.scene_semantics(plan, IDENTITY)['subgoals'][0]
+    assert blue['action'].endswith('with a last straight move along rig -x (toward the left arm).')
+    assert export.insertion_text((0, 1, 0), 'crx_yam') == 'along rig +y (away from the third-person camera)'
+    manifest = {**manifest_for(plan), 'variant': export.VARIANTS['crx_yam']}
+    assert '1. the blue skull fragment, along rig -x (toward the left arm)' in runner.stage3_note(manifest)
+
+
+def test_without_a_plan_the_note_names_no_order(tmp_path):
+    plan = export.plan_export(task_from_layout(write_layout(tmp_path / 'layout', plan=False), anchor_id='frag_a'))
+    assert 'assembly plan' not in runner.stage3_note(manifest_for(plan))
+    semantics = export.scene_semantics(plan, IDENTITY)
+    assert not any('assembly plan' in note for note in semantics['notes'])
+    assert all(goal['action'].endswith('against the skull.') for goal in semantics['subgoals'])
 
 
 IDENTITY = {'path': '/x/video.mp4', 'sha256': 'a' * 64, 'frames': 540, 'fps': 30.0, 'duration_s': 18.0,
