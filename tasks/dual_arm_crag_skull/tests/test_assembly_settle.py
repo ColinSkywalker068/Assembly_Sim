@@ -49,9 +49,10 @@ def test_a_fragment_not_placed_is_moved_out_of_the_way():
     assert max(drift(model, JOINTS, same_place, {'a'}, 0.5)['a']) < 0.5
 
 
-ARM = SCENE.replace('<body name="a">', """<body name="robot_arm" pos="-0.12 0 0.07"><joint name="robot_hinge" axis="0 1 0"/>
-<geom type="capsule" fromto="0 0 0 0.2 0 0" size="0.01" density="8000"/></body>
-<body name="a">""").replace('</mujoco>', '<keyframe><key qpos="0  0 0 0.02 1 0 0 0  0.1 0 0.3 1 0 0 0"/></keyframe></mujoco>')
+ARM = SCENE.replace('<body name="a">', """<body name="robot_arm" pos="-0.12 0 0.07">
+<joint name="robot_hinge" axis="0 1 0"/><geom type="capsule" fromto="0 0 0 0.2 0 0" size="0.01" density="8000"/></body>
+<body name="a">""").replace('</mujoco>',
+                         '<keyframe><key qpos="0  0 0 0.02 1 0 0 0  0.1 0 0.3 1 0 0 0"/></keyframe></mujoco>')
 
 
 def test_the_robot_is_held_at_its_keyframe():
@@ -62,14 +63,15 @@ def test_the_robot_is_held_at_its_keyframe():
 
 def test_orders_come_from_the_export_or_from_its_layouts_plan(tmp_path):
     import hashlib
-    layout = {'pieces': [{'name': 'c', 'cells': [[x, y, 0] for x in range(3) for y in range(3)] + [[0, 1, 1], [2, 1, 1]]},
-                         {'name': 'p', 'cells': [[1, 1, 1]]}, {'name': 'q', 'cells': [[3, 1, 0]]}],
-              'source': {'ownership_repair': {'anchor': 'c', 'plan': [{'fragment': 'q', 'exit_direction': [1, 0, 0]},
-                                                                       {'fragment': 'p', 'exit_direction': [0, 0, 1]}]}}}
+    cup = [[x, y, 0] for x in range(3) for y in range(3)] + [[0, 1, 1], [2, 1, 1]]
+    layout = {'pieces': [{'name': 'c', 'cells': cup}, {'name': 'p', 'cells': [[1, 1, 1]]},
+                         {'name': 'q', 'cells': [[3, 1, 0]]}],
+              'source': {'ownership_repair': {'anchor': 'c', 'plan': [
+                  {'fragment': 'q', 'exit_direction': [1, 0, 0]}, {'fragment': 'p', 'exit_direction': [0, 0, 1]}]}}}
     path = tmp_path / 'layout.json'
     path.write_text(json.dumps(layout))
-    manifest = {'order': ['blue', 'green'], 'objects': [{'fragment_id': 'p', 'object_id': 'green'},
-                                                        {'fragment_id': 'q', 'object_id': 'blue'}],
+    manifest = {'order': ['blue', 'green'],
+                'objects': [{'fragment_id': 'p', 'object_id': 'green'}, {'fragment_id': 'q', 'object_id': 'blue'}],
                 'task': {'layout': str(path), 'layout_sha256': hashlib.sha256(path.read_bytes()).hexdigest()}}
     assert orders_of(manifest, False) == [['blue', 'green']]
     assert orders_of(manifest, True) == [['green', 'blue'], ['blue', 'green']]  # p and q go in either way

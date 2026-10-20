@@ -2,10 +2,14 @@
 
 For an insertion order, each prefix (the fragments placed so far, with the anchor the scene holds fixed) is put at its
 goals, every other fragment far off along x, the robot held at keyframe 0 as DexAgent's own settle holds it (the
-joints of bodies named robot_*), and stepped for `seconds`; a placed fragment's drift is its worst distance (mm) and rotation (deg) from its goal over the run. Every
-prefix starts again from the goals, so a set's drift depends on the set alone. The orders are the export's own (its
-task's assembly plan) or, with --all-orders, every order the layout's plan directions allow
-(interlock_repair.insertion_orders); each order's worst step is read against the task's tolerances.
+joints of bodies named robot_*), and stepped for `seconds`; a placed fragment's drift is its worst distance (mm) and
+rotation (deg) from its goal over the run. Every prefix starts again from the goals, so a set's drift depends on the
+set alone. The orders are the export's own (its task's assembly plan) or, with --all-orders, every order the layout's
+plan directions allow (plan_orders); each order's worst step is read against the task's tolerances.
+
+MuJoCo's answer for a stack that barely holds depends on more than the stack: with the robot started at qpos0 instead
+(its hands inside the skull, pressed into the table, touching no fragment) cyan tipped 3.9 mm / 6.3 deg in 12 of the
+red anchor's 36 orders; at keyframe 0 nothing does. assembly_settle_isaac.py asks Isaac Sim, which scores every method.
 
   envs/dexagent/bin/python -B -m tasks.dual_arm_crag_skull.experiments.assembly_settle --export EXPORT_DIR \
       --out OUT.json [--all-orders] [--seconds 2] [--workers 12]
@@ -57,8 +61,8 @@ def drift(model, joints, goals, placed, seconds):
             pose[0] += FAR_M + k
         data.qpos[address[name]:address[name] + 7] = pose
     mujoco.mj_forward(model, data)
-    target = {name: (np.asarray(goals[name][:3], dtype=float), Rotation.from_quat(np.asarray(goals[name])[[4, 5, 6, 3]]))
-              for name in placed}
+    target = {name: (np.asarray(goals[name][:3], dtype=float),
+                     Rotation.from_quat(np.asarray(goals[name])[[4, 5, 6, 3]])) for name in placed}
     worst = {name: [0.0, 0.0] for name in placed}
     for _ in range(int(round(seconds / model.opt.timestep))):
         mujoco.mj_step(model, data)
@@ -104,22 +108,29 @@ def settle_orders(export, orders, seconds, workers):
     return {'sets': {','.join(placed): drift for placed, drift in table.items()}, 'orders': rows}
 
 
+def plan_orders(layout_path, layout_sha256):
+    """Every insertion order (fragment names, sorted) that the plan directions of the layout at `layout_path` allow;
+    the file must still be the layout with `layout_sha256`."""
+    from ..interlock_repair import insertion_orders
+    path = Path(layout_path)
+    if _sha256(path) != layout_sha256:
+        raise ValueError(f'{path} is not the layout expected (its sha256 differs)')
+    layout = json.loads(path.read_text())
+    repair = (layout.get('source') or {}).get('ownership_repair') or {}
+    if not repair.get('plan'):
+        raise ValueError(f'{path} has no assembly plan to take the directions from')
+    owner_of = {tuple(cell): piece['name'] for piece in layout['pieces'] for cell in piece['cells']}
+    directions = {step['fragment']: step['exit_direction'] for step in repair['plan']}
+    return insertion_orders(owner_of, directions, repair['anchor'])
+
+
 def orders_of(manifest, all_orders):
     """Insertion orders (object ids): the export's own, or every one its layout's plan directions allow."""
     if not all_orders:
         return [list(manifest['order'])]
-    from ..interlock_repair import insertion_orders
-    path = Path(manifest['task']['layout'])
-    if _sha256(path) != manifest['task']['layout_sha256']:
-        raise ValueError(f'{path} is not the layout the export was made from (its sha256 differs)')
-    layout = json.loads(path.read_text())
-    repair = (layout.get('source') or {}).get('ownership_repair') or {}
-    if not repair.get('plan'):
-        raise ValueError(f"{manifest['task']['layout']} has no assembly plan to take the directions from")
-    owner_of = {tuple(cell): piece['name'] for piece in layout['pieces'] for cell in piece['cells']}
-    directions = {step['fragment']: step['exit_direction'] for step in repair['plan']}
     ids = {o['fragment_id']: o['object_id'] for o in manifest['objects']}
-    return [[ids[name] for name in order] for order in insertion_orders(owner_of, directions, repair['anchor'])]
+    return [[ids[name] for name in order]
+            for order in plan_orders(manifest['task']['layout'], manifest['task']['layout_sha256'])]
 
 
 def _sha256(path):
