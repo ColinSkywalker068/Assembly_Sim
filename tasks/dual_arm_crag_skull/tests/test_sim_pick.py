@@ -44,7 +44,20 @@ def test_grasp_closes_across_the_narrow_side_through_the_middle():
     assert grasp.chord_m == pytest.approx(0.03, abs=1e-4)
     np.testing.assert_allclose(grasp.center_xy, (0.3, -0.1), atol=1e-4)
     assert grasp.open_width_m == pytest.approx(0.03 + 2 * pick.OPEN_MARGIN_M, abs=2e-4)
+    assert grasp.clear_width_m == pytest.approx(0.03, abs=2e-4)
     assert grasp.close_width_m == pytest.approx(grasp.chord_m - pick.SQUEEZE_M)
+
+
+def test_grasp_lines_can_be_offset_across_the_closing_axis():
+    """Closing across a 60 x 30 mm box's narrow side, lines parallel to the one through the middle meet its faces at
+    the same chord, their centres moved along its length by the offset; a line well past its end meets nothing."""
+    points = box_points((0.06, 0.03, 0.04), (0.3, -0.1), 0)
+    found = pick.grasp_candidates('f', points, TABLE, 0.094, yaws_deg=(90,), offsets_m=(0.0, 0.01, -0.02, 0.2))
+    assert len(found) == 3
+    across = np.array([math.sin(math.pi / 2), -math.cos(math.pi / 2)])
+    for grasp, offset in zip(found, (0.0, 0.01, -0.02)):
+        assert grasp.chord_m == pytest.approx(found[0].chord_m, abs=1e-4)
+        assert (np.asarray(grasp.center_xy) - found[0].center_xy) @ across == pytest.approx(offset, abs=1e-6)
 
 
 def test_a_wide_part_the_fingers_would_land_on_blocks_a_top_down_grasp():
@@ -64,6 +77,7 @@ def test_a_bar_in_the_window_does_not_stop_the_pads_but_must_be_cleared_on_the_w
     grasp = pick.choose_grasp('f', np.vstack([foot, bar]), TABLE, 0.094, yaws_deg=(0,))
     assert grasp.chord_m == pytest.approx(0.03, abs=1e-4)
     assert grasp.open_width_m == pytest.approx(0.05 + 2 * pick.OPEN_MARGIN_M, abs=2e-4)
+    assert grasp.clear_width_m == pytest.approx(0.05, abs=2e-4)  # what the fingers must open to to rise past it
 
 
 def test_a_fragment_wider_than_the_opening_everywhere_is_refused():
@@ -284,3 +298,13 @@ def test_joint_rates_measure_the_first_step_as_strictly_as_s0_can():
     instantaneous measured velocity, twice its reading for a period's average (what the backends report)."""
     speed, accel = pick._joint_rates(np.zeros(6), np.array([[0.1, 0.0, 0.0, 0.0, 0.0, 0.0]]), 60)
     assert speed[0] == pytest.approx(6.0) and accel[0] == pytest.approx(720.0)
+
+
+def test_grasp_candidates_list_every_yaw_that_fits_and_the_narrowest_is_chosen():
+    points = box_points((0.06, 0.03, 0.04), (0.3, -0.1), 30)
+    candidates = list(pick.grasp_candidates('f', points, TABLE, 0.094))
+    assert len({round(math.degrees(c.yaw_rad)) for c in candidates}) == len(candidates) > 10
+    assert all(c.open_width_m <= 0.094 for c in candidates)
+    narrowest = min(candidates, key=lambda c: c.chord_m)
+    assert pick.choose_grasp('f', points, TABLE, 0.094) == narrowest
+    assert list(pick.grasp_candidates('f', points, TABLE, 0.02)) == []  # nothing fits a 20 mm opening

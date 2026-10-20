@@ -67,7 +67,8 @@ def surface_points(vertices, faces, spacing_m=SURFACE_SPACING_M):
 
 @dataclass(frozen=True)
 class Grasp:
-    """A top-down grasp: TCP xy, closing-axis yaw, the chord the pads meet, and the open and closing widths."""
+    """A top-down grasp: TCP xy, closing-axis yaw, the chord the pads meet, the open and closing widths, and the
+    width at which the fingers just come straight down (or rise) past the fragment."""
 
     fragment_id: str
     yaw_rad: float
@@ -75,46 +76,66 @@ class Grasp:
     chord_m: float
     open_width_m: float
     close_width_m: float
+    clear_width_m: float
 
 
-def choose_grasp(fragment_id, points, table_z, max_width_m, *, fingers=None, yaws_deg=YAWS_DEG):
-    """The narrowest top-down grasp of the fragment the open fingers can come down around; ValueError if none.
-    `points` (N, 3) must cover its surface densely (surface_points of its mesh in the world); `fingers` is a
-    FingerReach (the YAM's by default)."""
+def _candidates(fragment_id, points, table_z, max_width_m, fingers, yaws_deg, offsets_m=(0.0,)):
+    """([Grasp] one per yaw and offset that has one, in yaw order and then offset order; whether the pads met the
+    fragment on any line). Each line closes along the yaw's closing axis, `offset` across it from the middle of the
+    points' footprint."""
     from .fingers import yam_finger_reach
     fingers = yam_finger_reach() if fingers is None else fingers
     plus, minus = (next(tip for tip, side in fingers.side.items() if side == sign) for sign in (1.0, -1.0))
     points = np.asarray(points, dtype=float)
     centre = (points[:, :2].min(axis=0) + points[:, :2].max(axis=0)) / 2
     heights = points[:, 2] - (table_z + FINGERTIP_HEIGHT_M)
-    best, met = None, False
+    found, met = [], False
     for yaw in np.radians(yaws_deg):
         # the TCP's closing axis (its y) and the axis across it (its z, approach x closing) for this yaw
         closing, across = np.array([math.cos(yaw), math.sin(yaw)]), np.array([math.sin(yaw), -math.cos(yaw)])
-        offsets = points[:, :2] - centre
-        along, lateral = offsets @ closing, offsets @ across
-        stops = fingers.stop_joints(heights, lateral, along)
-        if not (np.isfinite(stops[plus]) and np.isfinite(stops[minus])):
-            continue
-        met = True
-        shift = (stops[plus] - stops[minus]) / 2  # along the closing axis, to where both tips stop at the same joint
-        meet = max((stops[plus] + stops[minus]) / 2, fingers.gripper.contact_joint_m)
-        clear = fingers.clear_joints(heights, lateral, along - shift)
-        opened = max(clear.values()) + OPEN_MARGIN_M
-        if not opened <= fingers.gripper.travel_m:
-            continue
-        chord, open_width = fingers.gripper.width(meet), fingers.gripper.width(opened)
-        if open_width > max_width_m or (best is not None and chord >= best.chord_m):
-            continue
-        middle = centre + closing * shift
-        best = Grasp(fragment_id, float(yaw), tuple(float(v) for v in middle), chord, open_width,
-                     max(0.0, chord - SQUEEZE_M))
-    if best is None:
+        relative = points[:, :2] - centre
+        along, across_middle = relative @ closing, relative @ across
+        for offset in offsets_m:
+            lateral = across_middle - offset
+            stops = fingers.stop_joints(heights, lateral, along)
+            if not (np.isfinite(stops[plus]) and np.isfinite(stops[minus])):
+                continue
+            met = True
+            shift = (stops[plus] - stops[minus]) / 2  # along the closing axis, to where both tips stop together
+            meet = max((stops[plus] + stops[minus]) / 2, fingers.gripper.contact_joint_m)
+            clear = fingers.clear_joints(heights, lateral, along - shift)
+            cleared = max(*clear.values(), meet)
+            opened = cleared + OPEN_MARGIN_M
+            if not opened <= fingers.gripper.travel_m:
+                continue
+            chord, clear_width, open_width = (fingers.gripper.width(q) for q in (meet, cleared, opened))
+            if open_width > max_width_m:
+                continue
+            middle = centre + closing * shift + across * offset
+            found.append(Grasp(fragment_id, float(yaw), tuple(float(v) for v in middle), chord, open_width,
+                               max(0.0, chord - SQUEEZE_M), clear_width))
+    return found, met
+
+
+def grasp_candidates(fragment_id, points, table_z, max_width_m, *, fingers=None, yaws_deg=YAWS_DEG, offsets_m=(0.0,)):
+    """Every top-down grasp of the fragment the open fingers can come down around, one per yaw and grasp line that has
+    one, in yaw order and then in the order of `offsets_m` (each line that far across the closing axis from the middle
+    of the fragment's footprint; the fingertips FINGERTIP_HEIGHT_M above `table_z`; choose_grasp says how each is
+    found)."""
+    return _candidates(fragment_id, points, table_z, max_width_m, fingers, yaws_deg, offsets_m)[0]
+
+
+def choose_grasp(fragment_id, points, table_z, max_width_m, *, fingers=None, yaws_deg=YAWS_DEG):
+    """The narrowest top-down grasp of the fragment the open fingers can come down around; ValueError if none.
+    `points` (N, 3) must cover its surface densely (surface_points of its mesh in the world); `fingers` is a
+    FingerReach (the YAM's by default)."""
+    found, met = _candidates(fragment_id, points, table_z, max_width_m, fingers, yaws_deg)
+    if not found:
         if not met:
             raise ValueError(f'{fragment_id}: the pads meet the fragment at no yaw (nothing between them above the '
                              'fingertips)')
         raise ValueError(f'{fragment_id}: no top-down grasp fits inside a {max_width_m * 1000:.1f} mm opening')
-    return best
+    return min(found, key=lambda grasp: grasp.chord_m)
 
 
 def down_pose(xy, z, yaw):
