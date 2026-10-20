@@ -4,7 +4,9 @@ The voxel check (assembly_paths.py) says whether a straight way in exists; this 
 For every fragment i, every other fragment j (the anchor included; the table plane too, for directions going down) and
 each direction d, the deepest penetration of i's collision geoms into j's while i moves out of its goal along d by
 0.5..150 mm (rotation fixed), with every other fragment at its goal: pen[i, j, d] in mm, saved with the fragment ids
-and directions. `lattice` takes the 26 directions of the voxel grid, `sphere` 800 directions spread over the sphere.
+and directions, read from the contacts MuJoCo's own collision pipeline makes there (not mj_geomDistance, which reports
+millimetres of penetration for boxes that only share an edge). `lattice` takes the 26 directions of the voxel grid,
+`sphere` 800 directions spread over the sphere.
 Needs a DexAgent export (inputs/stage2/scene.xml, inputs/export_manifest.json) and its venv's MuJoCo; the fixed anchor
 has no free joint, so its own row is NaN (its exits are its neighbours' reversed).
 
@@ -56,8 +58,10 @@ def work(index):
     moving = objs[index]
     if moving['free_joint'] is None:
         return index, None
-    mine = geoms(moving['root_body'])
-    others = [geoms(o['root_body']) for o in objs]
+    owner = {}  # collision geom -> column: the fragment's index, or len(objs) for the table
+    for j, o in enumerate(objs):
+        owner.update({g: j for g in geoms(o['root_body'])})
+    owner[table] = len(objs)
     goal = np.asarray(moving['goal_rig_wxyz'], float)
     a = adr[moving['object_id']]
     base = data.qpos.copy()
@@ -66,17 +70,16 @@ def work(index):
         for s in TRAVEL:
             data.qpos[:] = base
             data.qpos[a:a + 3] = goal[:3] + s * d_
-            mujoco.mj_kinematics(model, data)
-            for j, theirs in enumerate(others + [[table]] if d_[2] < 0 else others):
-                if j == index:
+            mujoco.mj_fwdPosition(model, data)  # the contacts the simulation itself would make
+            if data.warning[mujoco.mjtWarning.mjWARN_CONTACTFULL].number:
+                raise RuntimeError('contact buffer full: contacts were dropped')
+            for c in data.contact[:data.ncon]:
+                pair = owner.get(int(c.geom1)), owner.get(int(c.geom2))
+                if index not in pair or None in pair:
                     continue
-                worst = pen[j, k]
-                for g in mine:
-                    for og in theirs:
-                        if og != table and np.linalg.norm(data.geom_xpos[g] - data.geom_xpos[og]) > model.geom_rbound[g] + model.geom_rbound[og]:
-                            continue
-                        worst = max(worst, -mujoco.mj_geomDistance(model, data, g, og, 0.0, None))
-                pen[j, k] = worst
+                j = pair[1] if pair[0] == index else pair[0]
+                if j != index and (j < len(objs) or d_[2] < 0):
+                    pen[j, k] = max(pen[j, k], -float(c.dist))
     return index, 1000 * pen
 
 
