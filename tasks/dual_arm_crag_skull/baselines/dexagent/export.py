@@ -624,7 +624,7 @@ def export_task(task, out_dir, *, clone, python, env, options=None, timeout_s=36
     manifest's `checks_ok` says whether every gate DexAgent applies before or at Stage 3 to these inputs passed. The
     shared-hardware bench needs the port's checkout, verified for `s0_limits`."""
     options = options or ExportOptions()
-    out = Path(out_dir)
+    out = Path(out_dir).resolve()  # the workers run in other directories
     if out.exists() and any(out.iterdir()):
         raise ValueError(f'{out} is not empty; exports are never overwritten')
     if options.bench == 'native':

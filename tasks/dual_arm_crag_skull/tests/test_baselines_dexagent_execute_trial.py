@@ -202,6 +202,21 @@ def test_cli_exports_on_the_shared_hardware_from_the_port_checkout(task, tmp_pat
     assert options.bench == 'crx_yam' and limits == s0_check.limits_record(LIMITS)
 
 
+def test_cli_export_resolves_a_relative_output_directory(task, tmp_path, monkeypatch):
+    (tmp_path / 'task.json').write_text(json.dumps(task.to_record()))
+    calls = {}
+    monkeypatch.setattr(cli.dexenv, 'fresh_clone', lambda source, clone, commit: calls.update(clone=clone))
+
+    def export_task(task, out, *, clone, python, env, options, s0_limits=None):
+        calls['out'] = out
+        return {'checks_ok': True, 'checks_failed': [], 'order': [], 'anchor_object_id': task.anchor_id}
+
+    monkeypatch.setattr(cli, 'export_task', export_task)
+    monkeypatch.chdir(tmp_path)
+    assert cli.main(['export', '--task', 'task.json', '--out', 'out']) == 0  # DexAgent's workers run elsewhere
+    assert calls['out'] == tmp_path.resolve() / 'out' / 'inputs' and calls['clone'] == tmp_path.resolve() / 'out' / 'DexAgent'
+
+
 class Failing(KinematicBackend):
     """The kinematic double failing at its `fail_at`-th step, as a simulator can."""
 

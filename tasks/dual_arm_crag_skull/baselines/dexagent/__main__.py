@@ -159,15 +159,16 @@ def main(argv=None):
     if limits is not None:
         print(f'warning: {TEST_ONLY_WARNING}', file=sys.stderr)
     if args.command == 'export':
-        if args.out.exists() and any(args.out.iterdir()):
-            parser.error(f'{args.out} is not empty')
-        clone = args.out / 'DexAgent'
+        out = args.out.resolve()  # DexAgent's workers run in other directories
+        if out.exists() and any(out.iterdir()):
+            parser.error(f'{out} is not empty')
+        clone = out / 'DexAgent'
         if limits is None:
             dexenv.fresh_clone(dexenv.dexagent_source(), clone, DEXAGENT_COMMIT)
         else:
             prepare_checkout(dexenv.dexagent_source(), clone, limits_record(limits))
-        manifest = export_task(task, args.out / 'inputs', clone=clone, python=dexenv.dexagent_python(),
-                               env=dexenv.scrubbed_env(args.out), options=_options(args),
+        manifest = export_task(task, out / 'inputs', clone=clone, python=dexenv.dexagent_python(),
+                               env=dexenv.scrubbed_env(out), options=_options(args),
                                s0_limits=None if limits is None else limits_record(limits))
         print(json.dumps({k: manifest[k] for k in ('checks_ok', 'checks_failed', 'order', 'anchor_object_id')}))
         return 0 if manifest['checks_ok'] else 1

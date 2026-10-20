@@ -386,6 +386,21 @@ def test_export_writes_stage_documents_and_a_manifest(cube_task, tmp_path, monke
         export.export_task(cube_task, out, clone=tmp_path / 'clone', python='python', env={})
 
 
+def test_export_hands_its_workers_absolute_paths(cube_task, tmp_path, monkeypatch):
+    plan = export.plan_export(cube_task)
+    monkeypatch.setattr(export.dexenv, 'verify_clone', lambda clone, commit: commit)
+    seen, run = [], fake_worker(plan)
+
+    def recording(python, command, spec, log_path, *, env, timeout_s):
+        seen.append(Path(log_path))
+        return run(python, command, spec, log_path, env=env, timeout_s=timeout_s)
+
+    monkeypatch.setattr(export.dexenv, 'run_worker', recording)
+    monkeypatch.chdir(tmp_path)
+    manifest = export.export_task(cube_task, 'inputs', clone=tmp_path / 'clone', python='python', env={})
+    assert manifest['checks_ok'] and len(seen) == 3 and all(path.is_absolute() for path in seen)  # workers run elsewhere
+
+
 def test_export_refuses_a_tilted_initial_pose(tmp_path):
     layout = write_layout(tmp_path / 'layout')
     data = json.loads(layout.read_text())
