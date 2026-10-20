@@ -355,6 +355,7 @@ python -m tasks.dual_arm_crag_skull.smoke \
     - 评分用的 Isaac 里，36 种顺序的每一步都不动，最大 0.0004 mm / 0.0007°（`experiments/assembly_settle_isaac.py`）；
     - MuJoCo 里（机器人停在初始姿态）也都在容差内，只有先放蓝、后放橙时，蓝会滑 1.9 mm（`experiments/assembly_settle.py`）；
     - 所以顺序只受碰撞约束；计划取的是两个引擎里每一步都不动的一种。
+  - 按计划逐片放入的 Isaac 回放（`experiments/assembly_replay_isaac.py`）：每片运动学搬运、碰撞开着、沿插入方向慢慢直线进入，松手后静置 1 s；7 步后所有已放碎片最大漂移 0.0003 mm / 0.0005°。视频和逐步截图在 `runs/assembly_paths/replay_red_plan_isaac/`。
   - **更正（10-20）**：之前说「只有 6 种顺序稳定，其余会把青压歪 3.9 mm / 6.3°」，这是早先的 MuJoCo 检查让机器人从 qpos0 起步造成的：那时机器人的手在头骨里、压进桌面，虽然没碰任何碎片，青还是歪了；机器人改从初始姿态起步后，就不再出现。
 - **公共层**：
   - `AssemblyTask`：来自真实 8 片头骨布局，锚点从目标位姿开始，其余碎片从摆放区开始；

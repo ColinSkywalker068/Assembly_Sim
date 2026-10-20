@@ -215,6 +215,7 @@
     - 任务换成 `runs/baseline_tasks/`（基础任务、种子 101；id `view_gt-00f0cc2853e9-anchor-fragment_038755611176a8c9`）；旧任务归档到 `runs/baseline_tasks_diag_white/`。
     - ASPIRE 任务上下文加了 `metadata.assembly_plan` 和一句说明。
     - DexAgent 导出：子目标按计划排序并写明最后一段直线移动；替身视频最后沿插入方向直线进入；`stage3.notes` 写明顺序和方向。
+    - Isaac 回放（`experiments/assembly_replay_isaac.py`，用户 10-20 要求「每一步可视化、记录回放」）：按计划逐片运动学搬运（碰撞开着、不是机器人抓），松手静置 1 s；7 步后最大漂移 0.0003 mm；两路视频与逐步截图在 `runs/assembly_paths/replay_red_plan_isaac/`，已放进流程总览页。碎片按 DexAgent 导出的颜色名上色（layout 自带配色和名字对不上）。
     - 重力检查搬进仓库：MuJoCo 版 `experiments/assembly_settle.py`（机器人停在 keyframe 0 并每步钳住，与 DexAgent 自己的落定一致）、Isaac 版 `experiments/assembly_settle_isaac.py`。结果见上一条：顺序只受碰撞约束。
     - 独立代码审查（1 HIGH / 1 MEDIUM / 若干 LOW）已处理：执行器测试夹具缺计划（HIGH）；建任务时在 layout 自己的体素格上复核计划（MEDIUM）；协议值只认 `given`；重力检查从 keyframe 起步、核对 layout 的 sha256；`export_task` 也转绝对路径；按工位用词。变异检查 32/32 抓到。
 - [ ] 可选消融（以后再做）：不给计划，只给所有方法同样的检查工具（直线插入检查、重力静置），记录调用次数与费用；DexAgent 要另加规划器，必须标为改过的基线。

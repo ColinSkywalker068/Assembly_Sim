@@ -225,7 +225,10 @@ review's surviving mutations and the new behaviour, 54 mutations are now caught.
     `runs/assembly_paths/settle_red_plan_isaac.json`); in MuJoCo, with the robot at its home keyframe, all stay within
     3 mm / 3 deg and only blue slides, 1.9 mm, when it goes in before orange (`experiments/assembly_settle.py`). So
     only collisions constrain the order. The plan's order (orange, blue, green, yellow, cyan, magenta, white) moves
-    nothing in either engine. Correction (10-20): an earlier MuJoCo check reported that only 6 orders move nothing and
+    nothing in either engine. A recorded Isaac replay of the plan (`experiments/assembly_replay_isaac.py`: each fragment
+    carried kinematically with collisions on, slid in along its insertion direction, let go, settled 1 s) leaves every
+    placed fragment within 0.0003 mm of its goal after all 7 steps (`runs/assembly_paths/replay_red_plan_isaac/`).
+    Correction (10-20): an earlier MuJoCo check reported that only 6 orders move nothing and
     the others tip cyan 3.9 mm / 6.3 deg; it started the robot at qpos0 (hands inside the skull, pressed into the
     table, touching no fragment), and the tipping is gone with the robot at its keyframe
     (`runs/assembly_paths/settle_red_orders.json` is that earlier result). A robot must carry white (1414 cubes, about 0.47 kg). Geometry
