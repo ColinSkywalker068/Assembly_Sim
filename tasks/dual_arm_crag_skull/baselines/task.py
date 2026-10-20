@@ -338,7 +338,8 @@ def layout_plan(data, anchor_id, world_T_assembly):
     stuck = blocked(owner_of, [{'fragment': name, 'direction': list(direction)} for name, direction in reversed(steps)],
                     anchor_id)
     if stuck is not None:
-        raise ValueError(f"the layout's assembly plan does not go together: {stuck!r} cannot go in straight in its order")
+        raise ValueError(f"the layout's assembly plan does not go together: {stuck!r} cannot go in straight in its "
+                         f"order")
     rotation = world_T_assembly[:3, :3]
     return tuple(PlanStep(name, tuple(-(rotation @ np.asarray(direction, dtype=float)))) for name, direction in steps)
 

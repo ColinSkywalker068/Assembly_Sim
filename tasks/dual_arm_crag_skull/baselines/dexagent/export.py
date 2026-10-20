@@ -59,12 +59,13 @@ STAND_IN = ('The video is a stand-in rendering, not a human demonstration: there
             'fragment glides from where it starts to its assembled pose during its subgoal window.')
 REPO_ROOT = Path(__file__).resolve().parents[4]
 PLAN_NOTE = ('The subgoals follow the assembly plan of the task: with the anchor and the fragments of the earlier '
-             'subgoals in place, each fragment goes into its assembled pose by the last straight move its subgoal names '
-             'without colliding; other orders or approaches can collide.')
+             'subgoals in place, each fragment goes into its assembled pose by the last straight move its subgoal '
+             'names without colliding; other orders or approaches can collide.')
 # What rig +x and +y point toward, for naming a straight move along a rig direction in the task text: DexAgent's own
 # bench (x toward the right station, y away from the operator, setup.yaml) and the shared one (the world shifted down:
 # the right arm stands at +x, the third-person camera at -y).
-RIG_LANDMARKS = {'native': (('the right station', 'the left station'), ('away from the operator', 'toward the operator')),
+RIG_LANDMARKS = {'native': (('the right station', 'the left station'),
+                            ('away from the operator', 'toward the operator')),
                  'crx_yam': (('the right arm', 'the left arm'),
                              ('away from the third-person camera', 'toward the third-person camera'))}
 # Fractions of a fragment's window at its waypoints: it rises, glides over (turning to its goal orientation), comes
