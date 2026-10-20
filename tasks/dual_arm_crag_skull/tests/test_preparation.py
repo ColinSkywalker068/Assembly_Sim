@@ -61,3 +61,21 @@ def test_simulation_only_never_exports_failed_print_geometry(tmp_path):
     assert manifest['simulation_only'] and not manifest['manufacturing_validated']
     assert not list(output.glob('*.stl'))
     assert not all(manifest['topology_checks'].values())
+
+
+def test_straight_assembly_repair_is_recorded_and_needs_a_real_anchor(tmp_path):
+    import json
+    source = scene_file(tmp_path)
+    anchor = load_skull(source).fragments[0].name
+    with pytest.raises(ValueError, match='anchor'):
+        prepare(source, tmp_path / 'bad', pitch=.01, target_length=.2, simulation_only=True,
+                straight_assembly_anchor='fragment_unknown')
+    assert not (tmp_path / 'bad').exists()
+    output = tmp_path / 'straight'
+    layout = load_layout(prepare(source, output, pitch=.01, target_length=.2, simulation_only=True,
+                                 straight_assembly_anchor=anchor))
+    manifest = json.loads((output / 'geometry_manifest.json').read_text())
+    assert manifest['ownership_repair']['anchor'] == anchor and manifest['ownership_repair']['flipped'] == 0
+    assert layout.data['source']['ownership_repair'] == manifest['ownership_repair']
+    prepare(source, tmp_path / 'plain', pitch=.01, target_length=.2, simulation_only=True)
+    assert json.loads((tmp_path / 'plain' / 'geometry_manifest.json').read_text())['ownership_repair'] is None

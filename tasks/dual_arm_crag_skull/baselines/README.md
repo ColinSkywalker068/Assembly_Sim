@@ -188,16 +188,24 @@ review's surviving mutations and the new behaviour, 54 mutations are now caught.
   old one; the only refusal, ASPIRE's final hold at 16.7 rad/s, is a velocity check). ASPIRE's speed bound doubles
   with it (`aspire/README.md`). The real FANUC backend has no code yet: it declares its own window when written.
 - **The fragments interlock: the task cannot be assembled as it stands (found 2026-10-19, every method).** The
-  fragments are 8 mm voxels (their collision boxes' smallest edge is 8 mm), so neighbours meet in 8 mm steps and
-  hook into each other by about one voxel. Moving straight out of its goal (rotation fixed, the DexAgent export's
-  collision boxes) with only the fixed anchor present, a fragment's best exit along the 26 lattice directions runs
-  into the anchor by: blue, yellow, magenta 0 mm; cyan 7.0, red 7.07, orange 8.0, green 10.0 mm (6.8-8.9 mm over 800
-  arbitrary directions; none goes in from above). With every fragment placed only yellow comes out within 3 mm;
-  even at 8 mm green stays locked. Another anchor does not help: for each of the 8 choices at most one fragment comes
-  out within 6 mm (the fixed anchor's own exits taken by symmetry from its neighbours'); ASPIRE's reference program
-  jammed on the anchor for this reason. Fixing it changes the task (for the user):
-  reassigning interface voxels so each fragment has a straight, interference-free insertion in some order, or finer
-  voxels / assembly clearance (the interlock is about one voxel edge).
+  fragments are 8 mm voxels, so neighbours meet in 8 mm steps and hook into each other by about one voxel. On the
+  voxel grid (`experiments/assembly_paths.py`, exact for cubes moved straight, rotation fixed), with only the fixed
+  anchor present red, green, cyan and orange have no free lattice direction, and for none of the 8 anchors does any
+  order take all of them apart. In MuJoCo (`experiments/assembly_depths.py`, the DexAgent export's collision boxes,
+  the contacts its own pipeline makes) their best exits run into the anchor by red 3.55, cyan 3.55, orange 3.76 and
+  green 10.0 mm. (The 7.0-10.0 mm reported before came from `mj_geomDistance`, which reports millimetres of
+  penetration for boxes that only share an edge.) ASPIRE's reference program jammed on the anchor for this reason.
+  **Candidate fix, not adopted** (changing the geometry changes the task; the user decides):
+  `prepare --straight-assembly-anchor ID` (`interlock_repair.py`) hands 108 seam cubes of 2116 to the neighbour
+  across the seam, none added or removed, so that with the anchor fixed every fragment slides in along an axis in
+  some order; every fragment is then one connected piece (the anchor was four). Its geometry is `runs/skull_straight/`,
+  its tasks `runs/baseline_tasks_straight/` (task id `view_gt-42177f6755ba-...`). Verified: the grid check takes all
+  7 apart; MuJoCo contacts along the repair's order and directions are 0 mm; DexAgent's export checks pass (seed 101).
+  All 7 insertions are horizontal: making even one of them straight down raises the change to 167 cubes, and all
+  straight down cuts fragments into pieces (red into 6) and leaves blue 4 of its 40 cubes, because the skull is a
+  dome whose pieces wrap round each other. So a method that lowers each fragment onto its goal from above
+  still collides, the order matters (green first, yellow last), and the DexAgent export's demonstration (rise, glide,
+  descend; bottom layer first) would have to show the slides instead.
 - **The anchor tips on its own.**
   - Found by DexAgent's export: the anchor fragment, standing alone at its assembled pose, tilts 4.8° within 1 s in MuJoCo. Isaac hides this because its bodies start asleep.
   - A staged fragment (`fragment_36d5ca6a07ba2b2f`) tips 18° while settling.

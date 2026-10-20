@@ -158,6 +158,7 @@ def main(argv=None):
     parser.add_argument("--target-length", type=float)
     parser.add_argument("--allow-disconnected-rigid-proxy", action="store_true")
     parser.add_argument("--bridge-single-cell-gaps", action="store_true")
+    parser.add_argument("--straight-assembly-anchor", help="hand seam cells over so every fragment goes in straight with this one fixed")
     parser.add_argument("--simulation-only", action="store_true")
     parser.add_argument("--source-is-assembled-gt", action="store_true")
     add_gripper_arguments(parser)
@@ -169,7 +170,7 @@ def main(argv=None):
         if not args.source_is_assembled_gt or any(v is None for v in (args.input, args.output, args.pitch, args.target_length)):
             parser.error("prepare requires input, output, pitch, target-length and explicit assembled-GT declaration")
         from .preparation import prepare
-        print(prepare(args.input, args.output, pitch=args.pitch, target_length=args.target_length, simulation_only=args.simulation_only, bridge_single_cell_gaps=args.bridge_single_cell_gaps, allow_disconnected_rigid_proxy=args.allow_disconnected_rigid_proxy))
+        print(prepare(args.input, args.output, pitch=args.pitch, target_length=args.target_length, simulation_only=args.simulation_only, bridge_single_cell_gaps=args.bridge_single_cell_gaps, allow_disconnected_rigid_proxy=args.allow_disconnected_rigid_proxy, straight_assembly_anchor=args.straight_assembly_anchor))
         return
     config = json.loads(args.config.read_text())
     validate(config)

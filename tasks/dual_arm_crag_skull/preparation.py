@@ -54,7 +54,19 @@ def require_connected(cells):
         raise ValueError("fragment is not six-connected; change pitch or repair source")
 
 
-def prepare(source, output, *, pitch, target_length, seed=0, simulation_only=False, bridge_single_cell_gaps=False, allow_disconnected_rigid_proxy=False):
+def straight_assembly(anchor):
+    """process_assembly's ownership_repair: interlock_repair.straighten with `anchor` fixed."""
+    from .interlock_repair import straighten
+
+    def repair(names, cells):
+        owned, report = straighten(dict(zip(names, cells)), anchor)
+        return [owned[name] for name in names], report
+    return repair
+
+
+def prepare(source, output, *, pitch, target_length, seed=0, simulation_only=False, bridge_single_cell_gaps=False, allow_disconnected_rigid_proxy=False, straight_assembly_anchor=None):
+    """`straight_assembly_anchor`: hand seam cells between fragments (interlock_repair.straighten) so that, with that
+    fragment fixed, every other one can be put in place by a straight move; no cell is added or removed."""
     if not all(np.isfinite(v) and v > 0 for v in (pitch, target_length)):
         raise ValueError("pitch and target length must be finite and positive")
     if allow_disconnected_rigid_proxy and not simulation_only:
@@ -64,7 +76,10 @@ def prepare(source, output, *, pitch, target_length, seed=0, simulation_only=Fal
     config = VoxelizationConfig(pitch=pitch, target_length=target_length, seed=seed,
                                 preserve_all_components=True)
     from .voxel_repair import bridge_one_cell
-    processed = process_assembly(assembly, config, cell_repair=bridge_one_cell if bridge_single_cell_gaps else None)
+    if straight_assembly_anchor is not None and straight_assembly_anchor not in {f.name for f in assembly.fragments}:
+        raise ValueError(f"straight-assembly anchor {straight_assembly_anchor} is not a fragment of {source}")
+    processed = process_assembly(assembly, config, cell_repair=bridge_one_cell if bridge_single_cell_gaps else None,
+                                 ownership_repair=None if straight_assembly_anchor is None else straight_assembly(straight_assembly_anchor))
     meshes = {}
     topology = {}
     disconnected = []
@@ -90,7 +105,8 @@ def prepare(source, output, *, pitch, target_length, seed=0, simulation_only=Fal
         "schema_version": 1, "source_sha256": hashlib.sha256(Path(source).read_bytes()).hexdigest(),
         "source_pose_semantics": "assembled_ground_truth", "minimum_connectivity": 6,
         "disconnected_rigid_proxies": disconnected,
-        "voxelization": "sampled_surface_not_solid_fill", "bridge_single_cell_gaps": bridge_single_cell_gaps, "clearance_m": 0,
+        "voxelization": "sampled_surface_not_solid_fill", "bridge_single_cell_gaps": bridge_single_cell_gaps,
+        "ownership_repair": processed.source["ownership_repair"], "clearance_m": 0,
         "manufacturing_validated": False, "simulation_only": simulation_only, "topology_checks": topology, "gripper": "robotiq_proxy_not_yam",
         "source_to_canonical": processed.source_to_canonical.tolist(), "pieces": [],
     }

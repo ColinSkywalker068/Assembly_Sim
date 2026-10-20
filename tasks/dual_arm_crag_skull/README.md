@@ -277,7 +277,9 @@ python -m tasks.dual_arm_crag_skull.smoke \
   --allow-robotiq-proxy
 ```
 
-该诊断模式保留所有体素，把不连通分量作为一个刚体近似，并明确写入 manifest；不导出 STL，不适合打印或装配验收。可选单格补桥保持全部原体素并避免侵占其他片，但在本次头骨上未解决全部断裂，因此没有用于上述运行。原 FANUC 资产还触发部分 link 的质量/惯量警告，动力学可信度须另行校准。
+该诊断模式保留所有体素，把不连通分量作为一个刚体近似，并明确写入 manifest；不导出 STL，不适合打印或装配验收。可选单格补桥保持全部原体素并避免侵占其他片，但在本次头骨上未解决全部断裂，因此没有用于上述运行。
+
+可选 `--straight-assembly-anchor ID`（`interlock_repair.py`）：8 mm 体素的相邻碎片在接缝处互相勾住，锚点固定时红、绿、青、橙沿任何直线都放不进去（`experiments/assembly_paths.py`）。该选项只改接缝处体素的归属，不增删体素，使锚点固定时每片都能按某个顺序沿坐标轴直线插入；改后各片连通，因此不再需要 `--allow-disconnected-rigid-proxy`。修复结果写在 manifest 与 layout 的 `ownership_repair` 里，包括装配顺序、每片的方向和改动格数。在本头骨上（锚点 `fragment_45266904a743c03b`），2116 格中改了 108 格，7 片全部水平插入。候选几何在 `runs/skull_straight/`，**尚未替换任务**（见 `baselines/README.md`）。输出目录须在仓库外，再移入 `runs/`。原 FANUC 资产还触发部分 link 的质量/惯量警告，动力学可信度须另行校准。
 
 ## 2026-10-14 实测结果
 

@@ -216,9 +216,12 @@ def _grasp_for(cells: tuple[Cell, ...], all_cells: set[Cell], pitch: float, max_
 
 
 def process_assembly(
-    assembly: AssemblyInput, config: VoxelizationConfig | None = None, cell_repair=None
+    assembly: AssemblyInput, config: VoxelizationConfig | None = None, cell_repair=None, ownership_repair=None
 ) -> ProcessedAssembly:
-    """Normalize and surface-voxelize every fragment on one common grid."""
+    """Normalize and surface-voxelize every fragment on one common grid.
+
+    `ownership_repair(names, cells)`, if given, runs after `cell_repair` and returns (cells, report): the same cells
+    with some changing owner; its report is kept as source["ownership_repair"]."""
 
     config = config or VoxelizationConfig()
     world_meshes = _world_meshes(assembly)
@@ -267,6 +270,16 @@ def process_assembly(
             cleaned[index] = repaired
             occupied.update(additions)
             repair_report[assembly.fragments[index].name] = additions
+
+    ownership_report = None
+    if ownership_repair is not None:
+        names = [fragment.name for fragment in assembly.fragments]
+        repaired, ownership_report = ownership_repair(names, cleaned)
+        if sorted(c for cells in repaired for c in cells) != sorted(c for cells in cleaned for c in cells):
+            raise ValueError("ownership repair must keep exactly the same cells")
+        if not all(repaired):
+            raise ValueError("ownership repair left a fragment without cells")
+        cleaned = [tuple(sorted(cells)) for cells in repaired]
 
     min_z = min(cell[2] for cells in cleaned for cell in cells)
     cleaned = [tuple((i, j, k - min_z) for i, j, k in cells) for cells in cleaned]
@@ -336,6 +349,7 @@ def process_assembly(
             "path": str(assembly.source_path),
             "fragment_names": tuple(fragment.source_name for fragment in assembly.fragments),
             "repair_added_cells_before_z_shift": repair_report,
+            "ownership_repair": ownership_report,
         },
         config=config,
         source_to_canonical=source_to_canonical,
