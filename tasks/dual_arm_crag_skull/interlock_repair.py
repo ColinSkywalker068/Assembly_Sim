@@ -10,9 +10,17 @@ more pieces and are fewest (straight up first on a tie), and repeats. That rule 
 out (the last one in, often a cover over the rest), so every first exit is tried and finished this way, and the
 cheapest plan in all is kept. Last, a stray cube or piece of a moving
 fragment (not its largest) goes to a neighbour, if one can take it without blocking that order. The union of cells is unchanged; only who owns a cell at a seam changes.
+
+The report's `plan` is the assembly that results, put together: the fragments in the order they go in, each sliding
+in along the reverse of its `exit_direction` with the anchor and the fragments before it in place. By default it is
+the repair's own order reversed; an `insertion_order` given instead keeps the repair's directions and is refused
+unless every fragment goes in straight in it (several orders often do, and only some stand up under gravity). The
+stray-cube handover then keeps the given order clear, so its cells can differ from the default's, and the report's
+`order` records how the seams were cut rather than an order that still goes in straight.
 """
 from __future__ import annotations
 
+import itertools
 from collections import defaultdict
 
 from .voxel_repair import components
@@ -64,14 +72,41 @@ def pieces(owner_of, flips, names):
 FACES = ((1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1))
 
 
-def clear(owner_of, order, anchor):
-    """Whether every fragment of `order` still leaves, in that order and direction, without a change."""
+def blocked(owner_of, order, anchor):
+    """The first fragment of `order` that cannot leave, in that order and direction, without a change; None when all
+    leave and only the anchor stays."""
     present = set(owner_of.values())
     for step in order:
         if exit_flips(owner_of, step['fragment'], present, step['direction']):
-            return False
+            return step['fragment']
         present.discard(step['fragment'])
-    return present <= {anchor}
+    return None if present <= {anchor} else sorted(present - {anchor})[0]
+
+
+def clear(owner_of, order, anchor):
+    """Whether every fragment of `order` still leaves, in that order and direction, without a change."""
+    return blocked(owner_of, order, anchor) is None
+
+
+def insertion_orders(owner_of, directions, anchor):
+    """Every order, sorted, in which the fragments of `directions` {name: exit direction} go in straight, each along
+    the reverse of its direction with the anchor and the ones before it in place."""
+    return sorted(tuple(reversed(removal)) for removal in itertools.permutations(sorted(directions))
+                  if clear(owner_of, [{'fragment': name, 'direction': directions[name]} for name in removal], anchor))
+
+
+def plan(owner_of, order, anchor, insertion_order=None):
+    """[{'fragment', 'exit_direction'}] in the order the fragments go in: `insertion_order` (names, without the anchor)
+    with the directions of the repair's `order`, or by default that order reversed."""
+    directions = {step['fragment']: list(step['direction']) for step in order}
+    names = [step['fragment'] for step in reversed(order)] if insertion_order is None else list(insertion_order)
+    if sorted(names) != sorted(directions):
+        raise ValueError(f'the assembly order must name every fragment but the anchor once: {sorted(directions)}')
+    stuck = blocked(owner_of, [{'fragment': name, 'direction': directions[name]} for name in reversed(names)], anchor)
+    if stuck is not None:
+        raise ValueError(f'{stuck!r} cannot go in straight along {[-v for v in directions[stuck]]} in the order '
+                         f'{names}')
+    return [{'fragment': name, 'exit_direction': directions[name]} for name in names]
 
 
 def merge_islands(owner_of, order, anchor):
@@ -129,8 +164,9 @@ def take_out(owner_of, present, anchor, first):
         step = options[0]
 
 
-def straighten(owned, anchor):
-    """(cells of each fragment after the repair, report) for `owned` {name: cells} with `anchor` fixed in place."""
+def straighten(owned, anchor, insertion_order=None):
+    """(cells of each fragment after the repair, report) for `owned` {name: cells} with `anchor` fixed in place; the
+    report's plan follows `insertion_order` when given (module docstring)."""
     if anchor not in owned:
         raise ValueError(f'the anchor {anchor} is not one of the fragments')
     owner_of = {tuple(int(v) for v in cell): name for name, cells in owned.items() for cell in cells}
@@ -147,7 +183,9 @@ def straighten(owned, anchor):
     owner_of, steps = min(plans, key=lambda plan: tuple(sum(step[k] for step in plan[1]) for k in range(3)))
     order = [{'fragment': name, 'direction': list(direction), 'flipped': count}
              for _, count, _, name, direction, _ in steps]
-    islands = merge_islands(owner_of, order, anchor)
+    steps_in = plan(owner_of, order, anchor, insertion_order)
+    islands = merge_islands(owner_of, [{'fragment': step['fragment'], 'direction': step['exit_direction']}
+                                       for step in reversed(steps_in)], anchor)
     result = {name: [] for name in owned}
     for cell, owner in owner_of.items():
         result[owner].append(cell)
@@ -158,5 +196,5 @@ def straighten(owned, anchor):
         if before != after:
             changed[name] = {'lost': len(before - after), 'gained': len(after - before)}
     report = {'anchor': anchor, 'flipped': sum(step['flipped'] for step in order), 'order': order, 'islands': islands,
-              'changed': changed}
+              'changed': changed, 'plan': steps_in, 'plan_source': 'repair' if insertion_order is None else 'given'}
     return result, report

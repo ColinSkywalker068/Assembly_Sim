@@ -54,32 +54,40 @@ def require_connected(cells):
         raise ValueError("fragment is not six-connected; change pitch or repair source")
 
 
-def straight_assembly(anchor):
-    """process_assembly's ownership_repair: interlock_repair.straighten with `anchor` fixed."""
+def straight_assembly(anchor, insertion_order=None):
+    """process_assembly's ownership_repair: interlock_repair.straighten with `anchor` fixed and its plan in
+    `insertion_order` when given."""
     from .interlock_repair import straighten
 
     def repair(names, cells):
-        owned, report = straighten(dict(zip(names, cells)), anchor)
+        owned, report = straighten(dict(zip(names, cells)), anchor, insertion_order)
         return [owned[name] for name in names], report
     return repair
 
 
-def prepare(source, output, *, pitch, target_length, seed=0, simulation_only=False, bridge_single_cell_gaps=False, allow_disconnected_rigid_proxy=False, straight_assembly_anchor=None):
+def prepare(source, output, *, pitch, target_length, seed=0, simulation_only=False, bridge_single_cell_gaps=False, allow_disconnected_rigid_proxy=False, straight_assembly_anchor=None, assembly_order=None):
     """`straight_assembly_anchor`: hand seam cells between fragments (interlock_repair.straighten) so that, with that
-    fragment fixed, every other one can be put in place by a straight move; no cell is added or removed."""
+    fragment fixed, every other one can be put in place by a straight move; no cell is added or removed. The order
+    they go in is recorded as the repair's plan: `assembly_order` (fragment names without the anchor) if given, which
+    must go in straight with the repair's directions, else the repair's own order."""
     if not all(np.isfinite(v) and v > 0 for v in (pitch, target_length)):
         raise ValueError("pitch and target length must be finite and positive")
     if allow_disconnected_rigid_proxy and not simulation_only:
         raise ValueError("disconnected proxy is only allowed in simulation-only mode")
+    if assembly_order is not None and straight_assembly_anchor is None:
+        raise ValueError("an assembly order needs a straight-assembly anchor")
     assembly = load_skull(source)
     # Preserve all owned cells. Never silently discard geometry for printability.
     config = VoxelizationConfig(pitch=pitch, target_length=target_length, seed=seed,
                                 preserve_all_components=True)
     from .voxel_repair import bridge_one_cell
-    if straight_assembly_anchor is not None and straight_assembly_anchor not in {f.name for f in assembly.fragments}:
+    names = {f.name for f in assembly.fragments}
+    if straight_assembly_anchor is not None and straight_assembly_anchor not in names:
         raise ValueError(f"straight-assembly anchor {straight_assembly_anchor} is not a fragment of {source}")
+    if assembly_order is not None and sorted(assembly_order) != sorted(names - {straight_assembly_anchor}):
+        raise ValueError(f"the assembly order must name every fragment but the anchor once: {sorted(names - {straight_assembly_anchor})}")
     processed = process_assembly(assembly, config, cell_repair=bridge_one_cell if bridge_single_cell_gaps else None,
-                                 ownership_repair=None if straight_assembly_anchor is None else straight_assembly(straight_assembly_anchor))
+                                 ownership_repair=None if straight_assembly_anchor is None else straight_assembly(straight_assembly_anchor, assembly_order))
     meshes = {}
     topology = {}
     disconnected = []

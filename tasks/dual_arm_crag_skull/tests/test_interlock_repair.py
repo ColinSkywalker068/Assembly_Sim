@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from tasks.dual_arm_crag_skull.experiments.assembly_paths import disassemble, free_directions
-from tasks.dual_arm_crag_skull.interlock_repair import straighten
+from tasks.dual_arm_crag_skull.interlock_repair import clear, insertion_orders, straighten
 
 
 def arrays(owned):
@@ -97,3 +97,62 @@ def test_the_cheapest_first_exit_is_not_taken_when_another_start_costs_less_in_a
     owned_after, report = straighten(owned, 'a')
     assert report['flipped'] == 1 and [step['fragment'] for step in report['order']] == ['q', 'p']
     assert disassemble(arrays(owned_after), 'a')[1] == []
+
+
+# a cup (anchor c) holding a part p under a lid l: p has to go in before l
+CUP = layers('ccc/ccc/ccc', 'ccc/cpc/ccc', 'lll/lll/lll')
+
+
+def owner_of(owned):
+    return {cell: name for name, cells in owned.items() for cell in cells}
+
+
+def test_the_plan_is_the_repairs_own_order_put_together_by_default():
+    owned_after, report = straighten(CUP, 'c')
+    assert [step['fragment'] for step in report['order']] == ['l', 'p']  # taken out lid first
+    assert report['plan'] == [{'fragment': 'p', 'exit_direction': [0, 0, 1]},
+                              {'fragment': 'l', 'exit_direction': [0, 0, 1]}]
+    assert report['plan_source'] == 'repair'
+
+
+def test_a_given_order_is_kept_with_the_repairs_directions():
+    # p and q stand side by side on the base and go up in either order; the repair's own order is q first
+    owned = layers('bbb', 'p.q')
+    owned.pop('.')
+    _, report = straighten(owned, 'b')
+    assert [step['fragment'] for step in report['plan']] == ['q', 'p']
+    owned_after, given = straighten(owned, 'b', insertion_order=['p', 'q'])
+    assert given['plan'] == [{'fragment': 'p', 'exit_direction': [0, 0, 1]},
+                             {'fragment': 'q', 'exit_direction': [0, 0, 1]}]
+    assert given['plan_source'] == 'given' and given['order'] == report['order']
+
+
+def test_an_order_that_cannot_go_in_straight_is_refused():
+    with pytest.raises(ValueError, match=r"'p' cannot go in straight along \[0, 0, -1\]"):
+        straighten(CUP, 'c', insertion_order=['l', 'p'])
+
+
+@pytest.mark.parametrize('order', [['p'], ['p', 'l', 'l'], ['p', 'l', 'c'], ['p', 'x']])
+def test_an_order_must_name_every_moving_fragment_once(order):
+    with pytest.raises(ValueError, match='once'):
+        straighten(CUP, 'c', insertion_order=order)
+
+
+def test_insertion_orders_lists_every_order_that_goes_in_straight():
+    assert insertion_orders(owner_of(CUP), {'p': (0, 0, 1), 'l': (0, 0, 1)}, 'c') == [('p', 'l')]
+    owned = layers('bbb', 'p.q')
+    owned.pop('.')
+    assert insertion_orders(owner_of(owned), {'p': (0, 0, 1), 'q': (0, 0, 1)}, 'b') == [('p', 'q'), ('q', 'p')]
+    assert insertion_orders(owner_of(owned), {'p': (0, 0, 1), 'q': (-1, 0, 0)}, 'b') == [('q', 'p')]  # p is in q's way
+
+
+def test_a_stray_cube_goes_where_it_keeps_the_given_order_clear():
+    # p's stray cube sits on y and against x: owned by x it would cover y, which only works if y goes in before x
+    owned = {'a': [(0, 0, 0), (1, 0, 0), (2, 0, 0), (3, 0, 0)], 'y': [(1, 0, 1)], 'x': [(2, 0, 1), (2, 0, 2)],
+             'p': [(6, 0, 1), (6, 0, 2), (1, 0, 2)]}
+    default, report = straighten(owned, 'a')
+    assert [step['fragment'] for step in report['plan']] == ['y', 'x', 'p'] and (1, 0, 2) in default['x']
+    given, report = straighten(owned, 'a', insertion_order=['x', 'y', 'p'])
+    assert report['islands'] == [{'fragment': 'p', 'cells': 1, 'to': 'y'}] and (1, 0, 2) in given['y']
+    removal = [{'fragment': step['fragment'], 'direction': step['exit_direction']} for step in reversed(report['plan'])]
+    assert clear(owner_of(given), removal, 'a')
