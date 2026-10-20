@@ -6,7 +6,9 @@ direction d exactly when, on every line of the grid along d, the cells it owns c
 fragment's cells. `straighten` takes the fragments out one at a time: for each it finds, line by line, the fewest
 cells that change owner to make that so (it takes the other fragments' cells ahead of its last one, or gives its
 cells behind to the nearest other owner on the line), takes out the fragment whose changes split no fragment into
-more pieces and are fewest (straight up first on a tie), and repeats. Last, a stray cube or piece of a moving
+more pieces and are fewest (straight up first on a tie), and repeats. That rule is short-sighted about the first one
+out (the last one in, often a cover over the rest), so every first exit is tried and finished this way, and the
+cheapest plan in all is kept. Last, a stray cube or piece of a moving
 fragment (not its largest) goes to a neighbour, if one can take it without blocking that order. The union of cells is unchanged; only who owns a cell at a seam changes.
 """
 from __future__ import annotations
@@ -95,6 +97,38 @@ def merge_islands(owner_of, order, anchor):
     return moved
 
 
+def exits(owner_of, present, anchor):
+    """Every straight exit of a fragment of `present` that keeps one of its cells, cheapest first:
+    (fragments it cuts into more pieces, cells that change owner, not straight up, name, direction, {cell: owner})."""
+    found = []
+    for name in sorted(present - {anchor}):
+        size = sum(owner == name for owner in owner_of.values())
+        for direction in AXES:
+            flips = exit_flips(owner_of, name, present, direction)
+            if sum(owner_of[c] == name and new != name for c, new in flips.items()) < size:  # keep a cell
+                touched = {owner_of[c] for c in flips} | set(flips.values())
+                before, after = pieces(owner_of, {}, touched), pieces(owner_of, flips, touched)
+                split = sum(max(after[n] - before[n], 0) for n in touched)  # one fragment's cut is not undone
+                found.append((split, len(flips), direction != AXES[0], name, direction, flips))
+    return sorted(found, key=lambda e: e[:4])
+
+
+def take_out(owner_of, present, anchor, first):
+    """(owners after, exits taken) taking out `first` and then, one at a time, the cheapest exit left."""
+    owner_of, present, steps = dict(owner_of), set(present), []
+    step = first
+    while True:
+        owner_of.update(step[5])
+        steps.append(step)
+        present.discard(step[3])
+        if len(present) <= 1:
+            return owner_of, steps
+        options = exits(owner_of, present, anchor)
+        if not options:
+            raise ValueError(f'no straight exit keeps a cell of any of {sorted(present - {anchor})}')
+        step = options[0]
+
+
 def straighten(owned, anchor):
     """(cells of each fragment after the repair, report) for `owned` {name: cells} with `anchor` fixed in place."""
     if anchor not in owned:
@@ -102,24 +136,17 @@ def straighten(owned, anchor):
     owner_of = {tuple(int(v) for v in cell): name for name, cells in owned.items() for cell in cells}
     if len(owner_of) != sum(len(cells) for cells in owned.values()):
         raise ValueError('a cell is owned by two fragments')
-    present, order = set(owned), []
-    while len(present) > 1:
-        candidates = []
-        for name in sorted(present - {anchor}):
-            size = sum(owner == name for owner in owner_of.values())
-            for direction in AXES:
-                flips = exit_flips(owner_of, name, present, direction)
-                if sum(owner_of[c] == name and new != name for c, new in flips.items()) < size:  # keep a cell
-                    touched = {owner_of[c] for c in flips} | set(flips.values())
-                    before, after = pieces(owner_of, {}, touched), pieces(owner_of, flips, touched)
-                    split = sum(max(after[n] - before[n], 0) for n in touched)  # one fragment's cut is not undone
-                    candidates.append((split, len(flips), direction != AXES[0], name, direction, flips))
-        if not candidates:
-            raise ValueError(f'no straight exit keeps a cell of any of {sorted(present - {anchor})}')
-        _, count, _, name, direction, flips = min(candidates, key=lambda c: c[:4])
-        owner_of.update(flips)
-        order.append({'fragment': name, 'direction': list(direction), 'flipped': count})
-        present.remove(name)
+    plans = [] if len(owned) > 1 else [(owner_of, [])]
+    for first in exits(owner_of, set(owned), anchor):
+        try:
+            plans.append(take_out(owner_of, set(owned), anchor, first))
+        except ValueError:
+            continue
+    if not plans:
+        raise ValueError(f'no straight exit keeps a cell of any of {sorted(set(owned) - {anchor})}')
+    owner_of, steps = min(plans, key=lambda plan: tuple(sum(step[k] for step in plan[1]) for k in range(3)))
+    order = [{'fragment': name, 'direction': list(direction), 'flipped': count}
+             for _, count, _, name, direction, _ in steps]
     islands = merge_islands(owner_of, order, anchor)
     result = {name: [] for name in owned}
     for cell, owner in owner_of.items():

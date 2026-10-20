@@ -200,11 +200,16 @@ review's surviving mutations and the new behaviour, 54 mutations are now caught.
   none added or removed, so that with the anchor fixed every other fragment goes in along an axis in some order, then
   gives a moving fragment's stray cubes to a neighbour that keeps that order clear. Two anchors were tried, the only
   two fragments on the table:
-  - **red (the base, 40 cubes on the table):** 92 of 2116 cubes change owner; white (the cranium) and green go in
-    from above, the other five slide in; order green, white, orange, cyan, blue, magenta, yellow. Released one by one
-    in that order under gravity in MuJoCo (2 s each step, every step started from the goals), only the white-on-green
-    step moves anything: green 1.2 mm / 1.6 deg, white 0.85 mm / 0.68 deg. A robot must carry white (1390 cubes,
-    about 0.46 kg). Geometry `runs/skull_straight_red/`, tasks `runs/baseline_tasks_straight_red/`.
+  - **red (the base, 40 cubes on the table):** 62 of 2116 cubes change owner; blue, green, yellow, magenta and white
+    (the cranium, last) go in from above, orange and cyan slide in. The repair's own order is orange, blue, cyan,
+    green, yellow, magenta, white; keeping each fragment's direction, 36 orders are collision-free. Released one by one
+    under gravity in MuJoCo (2 s each step, every step started from the goals), 6 of them move nothing; the others
+    tip cyan 3.9 mm / 6.3 deg when green goes in before yellow (beyond 3 mm / 3 deg) or slide blue 1.9 mm when it goes
+    in before orange. Recommended order: orange, blue, green, yellow, cyan, magenta, white
+    (`runs/assembly_paths/settle_red_orders.json`). A robot must carry white (1414 cubes, about 0.47 kg). Geometry
+    `runs/skull_straight_red/`, tasks `runs/baseline_tasks_straight_red/`. (An earlier version, 92 cubes with white
+    second, came from taking the cheapest fragment out at every step; now every first exit is tried and the cheapest
+    plan in all is kept. It is in the `_v1` paths.)
   - **white (today's anchor):** 106 cubes change owner (108 handovers; two cubes change twice); all 7 slide in
     horizontally (one from above already costs 167 handovers, all from above cuts fragments into pieces), order green,
     orange, red, cyan, blue, magenta, yellow; nothing moves under gravity. Geometry `runs/skull_straight/`, tasks

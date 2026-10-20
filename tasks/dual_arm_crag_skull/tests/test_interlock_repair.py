@@ -78,3 +78,22 @@ def test_a_stray_cube_no_neighbour_can_take_stays():
     owned = {'anchor': [(0, 0, 0)], 'p': [(5, 0, 0), (9, 0, 0)]}
     owned_after, report = straighten(owned, 'anchor')
     assert sorted(owned_after['p']) == [(5, 0, 0), (9, 0, 0)] and report['islands'] == []
+
+
+def layers(*grids):
+    """{name: cells} from z layers bottom up, each rows of y with one letter per x."""
+    owned = {}
+    for z, grid in enumerate(grids):
+        for y, row in enumerate(grid.split('/')):
+            for x, name in enumerate(row):
+                owned.setdefault(name, []).append((x, y, z))
+    return owned
+
+
+def test_the_cheapest_first_exit_is_not_taken_when_another_start_costs_less_in_all():
+    # p is the cube in the middle of the block: it can come straight out first by taking the anchor cube over it, but
+    # q still has to change a cube after it (two in all); q coming out first (one change) opens p's way along +y
+    owned = layers('qqq/qqq/qqq', 'aaq/apa/aqa', 'aaa/aaa/qqa')
+    owned_after, report = straighten(owned, 'a')
+    assert report['flipped'] == 1 and [step['fragment'] for step in report['order']] == ['q', 'p']
+    assert disassemble(arrays(owned_after), 'a')[1] == []

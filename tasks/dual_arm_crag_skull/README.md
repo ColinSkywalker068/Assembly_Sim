@@ -281,7 +281,7 @@ python -m tasks.dual_arm_crag_skull.smoke \
 
 可选 `--straight-assembly-anchor ID`（`interlock_repair.py`）：8 mm 体素的相邻碎片在接缝处互相勾住，锚点固定时红、绿、青、橙沿任何直线都放不进去（`experiments/assembly_paths.py`）。该选项只改接缝处体素的归属，不增删体素，使锚点固定时每片都能按某个顺序沿坐标轴直线插入；改后各片连通，因此不再需要 `--allow-disconnected-rigid-proxy`。最后，活动碎片中游离的立方体会交给相邻碎片，前提是不挡装配顺序。修复结果写在 manifest 与 layout 的 `ownership_repair` 里，包括装配顺序、每片的方向、翻转格数和处理掉的孤立块。本头骨上试了两个候选：
 
-- 以红（底座）为锚点，92 格换了归属，白、绿从上方放入；
+- 以红（底座）为锚点，62 格换了归属，白（头盖）最后从上方盖上，7 片中 5 片从上方放入；顺序要选对才不会在重力下压歪（见 `baselines/README.md`）；
 - 以白为锚点，106 格换了归属，7 片全部水平插入。
 
 候选几何在 `runs/skull_straight_red/` 和 `runs/skull_straight/`，**尚未替换任务**（见 `baselines/README.md`）。输出目录须在仓库外，再移入 `runs/`。原 FANUC 资产还触发部分 link 的质量/惯量警告，动力学可信度须另行校准。
