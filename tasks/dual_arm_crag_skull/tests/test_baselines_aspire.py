@@ -204,6 +204,8 @@ def test_robot_state_observation_and_task_context_contracts(task):
     assert metadata['anchor_fixture'] == 'held at its goal pose by a fixture for the whole trial; it cannot move'
     assert (metadata['anchor_id'], metadata['moving_ids'], metadata['goal_source']) == ('frag_a', ('frag_b',),
                                                                                        'oracle_layout')
+    assert metadata['assembly_plan'] == ({'fragment_id': 'frag_b', 'insertion_direction': (1.0, 0.0, 0.0)},)
+    assert 'metadata assembly_plan' in context.language and 'insertion_direction' in context.language
     seeded = env.task
     assert seeded.seed == 101 and seeded.split == 'practice'
     for fragment in seeded.fragments:

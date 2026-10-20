@@ -300,6 +300,7 @@ class SkullAssemblyAdapter:
             'anchor_fixture': 'held at its goal pose by a fixture for the whole trial; it cannot move',
             'goal_source': task.goal_source,
             'goal_poses': {f.fragment_id: pose_mapping(f.goal_world_T_fragment) for f in task.fragments},
+            'assembly_plan': None if task.assembly_plan is None else [step.to_record() for step in task.assembly_plan],
             'fragment_local_bounds': {f.fragment_id: {'min': f.local_bounds[0], 'max': f.local_bounds[1]}
                                       for f in task.fragments},
             'placement_tolerance': {'position_m': task.position_tolerance_m,
@@ -359,6 +360,10 @@ class SkullAssemblyAdapter:
                     f'{tolerance} relative to the anchor. Current fragment poses are in metadata '
                     f'observed_fragment_poses. To grasp or place close to the table, first declare the contact with '
                     f'fanuc_crx.declare_contact (metadata contact_rule).')
+        if task.assembly_plan is not None:
+            language += (' The fragments go in in the order of metadata assembly_plan: with the anchor and the '
+                         'fragments before it in place, each one goes into its goal by a straight last move along its '
+                         'insertion_direction (frame robot_base) without colliding.')
         return TaskContext(suite=SUITE, task_id=0, task_name=task.task_id, language=language, family=FAMILY,
                            metadata=_frozen(metadata))
 

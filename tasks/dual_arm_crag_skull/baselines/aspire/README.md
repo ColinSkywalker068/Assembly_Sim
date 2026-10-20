@@ -111,7 +111,9 @@ record `test_only`.
 
 Our S2 gets goal poses (GARF candidates or the oracle layout) and the observed fragment poses with their source; so
 does the program, in `get_task_context().metadata`: `fragment_ids`, `anchor_id`, `moving_ids`, `anchor_fixture`,
-`goal_source`, `goal_poses`, `fragment_local_bounds` (fragment frame), `placement_tolerance`, `table_top_z_m`,
+`goal_source`, `goal_poses`, `assembly_plan` (the task's plan, ground truth since 2026-10-20: each moving fragment's
+id and the world direction of its last straight move, in the order they go in; the task language says how to read
+it), `fragment_local_bounds` (fragment frame), `placement_tolerance`, `table_top_z_m`,
 `contact_rule`, `controller` (limits and check semantics), and, refreshed on every call and every observation,
 `observed_fragment_poses`, `observed_pose_sources` and `observed_pose_times_s` from
 `backend.observed_fragment_poses()`. ASPIRE has no object-pose slot in `Observation`, and the patch adds only the
