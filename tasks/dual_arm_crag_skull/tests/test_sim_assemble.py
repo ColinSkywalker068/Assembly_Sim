@@ -366,6 +366,68 @@ def _stop_at(name, count=1):
     return on_step
 
 
+def _moved_in_the_grasp(backend, shift):
+    """The kinematic backend, but once an arm has taken a fragment, the fragment sits `shift` (the TCP frame) further
+    off in the grasp than where it was taken: a slip the plan did not expect."""
+    step, done = backend.step, set()
+
+    def stepped(targets, widths):
+        state = step(targets, widths)
+        for arm, held in backend.held.items():
+            if held is not None and (arm, held[0]) not in done:
+                done.add((arm, held[0]))
+                moved = np.eye(4)
+                moved[:3, 3] = shift
+                backend.held[arm] = (held[0], moved @ held[1])
+        return state
+    backend.step = stepped
+    return backend
+
+
+def test_a_fragment_that_moved_in_the_grasp_goes_in_from_where_it_now_is(cubes):
+    """frag_b sits 4 mm off in the grasp after it is taken (across the closing axis, along the cubes' row): read where
+    it hangs before it goes over, the step puts the fragment, not the gripper, on its goal, and says how far it had
+    moved."""
+    task, layout = cubes
+    backend = _moved_in_the_grasp(_backend(task), (0.0, 0.0, 0.004))
+    result = assemble.run_assembly(backend, MODEL, LIMITS, task, layout)
+    assert result['error'] is None and result['score'].success, result['error']
+    first = result['steps'][0]
+    seen = next(segment for segment in first.segments if segment['name'] == 'observe')
+    assert seen['in_hand_mm_deg'][0] == pytest.approx(4.0, abs=0.01) and seen['in_hand_mm_deg'][1] < 0.01
+    assert first.drift_mm_deg['frag_b'][0] < 0.1  # S0's IK holds the TCP to 0.1 mm; uncorrected it would be 4 mm
+
+
+def test_a_fragment_that_moved_on_the_way_is_lined_up_again_where_its_insertion_begins(cubes):
+    """frag_b slips 3 mm in the grasp while it comes down to where its insertion begins, after the first reading: read
+    again there, the gripper moves to line it up and then goes in straight, and it ends on its goal."""
+    task, layout = cubes
+    backend, slipped = _backend(task), []
+
+    def on_step(name, *_):
+        if name == 'lower' and not slipped:
+            arm = next(arm for arm, held in backend.held.items() if held is not None)
+            moved = np.eye(4)
+            moved[:3, 3] = (0.0, 0.003, 0.0)
+            backend.held[arm] = (backend.held[arm][0], moved @ backend.held[arm][1])
+            slipped.append(arm)
+    result = assemble.run_assembly(backend, MODEL, LIMITS, task, layout, on_step=on_step)
+    assert result['error'] is None and result['score'].success, result['error']
+    first = result['steps'][0]
+    readings = [segment['in_hand_mm_deg'][0] for segment in first.segments if segment['name'] == 'observe']
+    assert readings[0] == pytest.approx(0.0, abs=0.15) and readings[1] == pytest.approx(3.0, abs=0.15)  # IK's 0.1 mm
+    names = [segment['name'] for segment in first.segments]
+    assert names.index('lower') < names.index('align') < names.index('insert')
+    assert first.drift_mm_deg['frag_b'][0] < 0.1
+
+
+def test_a_fragment_that_moved_too_far_in_the_grasp_stops_the_step(cubes):
+    task, layout = cubes
+    backend = _moved_in_the_grasp(_backend(task), (0.0, 0.0, 0.02))
+    result = assemble.run_assembly(backend, MODEL, LIMITS, task, layout)
+    assert result['error'] == 'ValueError: frag_b moved 20.0 mm / 0.0 deg in the grasp (at most 10 mm / 10 deg)'
+
+
 def test_a_run_that_stops_before_the_ending_is_not_settled(cubes):
     """Both fragments are in when the last settle hold breaks off; without the ending the score is not settled, and
     so not a success."""
@@ -430,7 +492,8 @@ def test_the_fragment_glides_high_enough_held_either_way():
 
 def test_a_preflight_tries_the_same_segments_the_run_then_sends(cubes):
     """Tried and then run from the same state, a step's segments are the same ones, ending at the same joints (the
-    kinematic backend reaches every target): a preflight checks what will be sent."""
+    kinematic backend reaches every target) up to the hold where the run reads the fragment in the hand; after it,
+    within what that reading corrects (here the 0.1 mm S0's IK leaves): a preflight checks what will be sent."""
     task, layout = cubes
     backend = _backend(task)
     sent = []
@@ -443,12 +506,17 @@ def test_a_preflight_tries_the_same_segments_the_run_then_sends(cubes):
     trial = assemble.Preflight(runner, poses)
     assemble.run_step(trial, task, placement)
     assemble.run_step(runner, task, placement)
-    ends = {}
-    for name, targets in sent:
-        ends[name] = targets[placement.arm]
-    assert [segment.name for _, segment in trial.segments] == list(dict.fromkeys(name for name, _ in sent))
-    for _, segment in trial.segments:
-        np.testing.assert_allclose(segment.joints[-1], ends[segment.name], atol=1e-6)
+    runs, ends = [], []  # the segments as sent, one per run of periods with the same name
+    for k, (name, targets) in enumerate(sent):
+        if k == 0 or sent[k - 1][0] != name:
+            runs.append(name)
+            ends.append(None)
+        ends[-1] = targets[placement.arm]
+    names = [segment.name for _, segment in trial.segments]
+    assert names == runs
+    for k, (_, segment) in enumerate(trial.segments):
+        read = k > names.index('steady')
+        np.testing.assert_allclose(segment.joints[-1], ends[k], atol=1e-3 if read else 1e-6)
 
 
 def test_a_swept_move_is_checked_wherever_the_gripper_has_moved_a_little():

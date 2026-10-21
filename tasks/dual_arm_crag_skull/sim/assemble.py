@@ -31,9 +31,12 @@ straight insertion itself).
 
 Running a step (`run_step`), pick.py's segments, each checked by S0 (check_joint_path, with the contact window it
 needs) from the measured state before it is stepped: approach above the fragment, descend, close, squeeze, lift, rise
-until the fragment clears everything by SAFE_CLEARANCE_M, glide over the point where the insertion begins (turning to
-the goal orientation), come down to it, go in at INSERT_SPEED_M_S, open to the release width, back out BACK_M, rise
-and go back to where the arm started (out of the other arm's way); the other arm holds still. Near the table
+until the fragment clears everything by SAFE_CLEARANCE_M, hold still for STEADY_S and read where the fragment now is
+in the hand (from the observed pose every method gets: the rest of the step puts the fragment, not the gripper, where
+the plan has it, and stops if it moved more than MAX_IN_HAND_M or MAX_IN_HAND_DEG), glide over the point where the
+insertion begins (turning to the goal orientation), come down to it, read the fragment again there and move to line
+it up, go in at INSERT_SPEED_M_S, open to the release width, back out BACK_M, rise and go back to where the arm started
+(out of the other arm's way); the other arm holds still. Near the table
 (fingertips within LOW_M of it, or wherever the plan found S0 needs it) the segment gets the contact window (grasp:
 centred on the fragment's observed pose; place: on its goal) and S0's contact speed. Then both arms hold for
 STEP_SETTLE_S and the drift of every placed fragment from its goal is read.
@@ -80,6 +83,8 @@ GRIPPER_REACH_M = 0.2  # no point of the gripper is further than this from its T
 TRANSIT_SPEED_M_S = 0.12
 INSERT_SPEED_M_S = 0.02
 STEP_SETTLE_S = 0.5
+STEADY_S = 0.3  # held still in the air before the fragment's pose in the hand is read
+MAX_IN_HAND_M, MAX_IN_HAND_DEG = 0.01, 10.0  # beyond the plan's clearances: the step stops rather than go on
 
 
 def _world(points, pose):
@@ -490,6 +495,8 @@ class Runner:
     """Steps segments through S0 on `backend` with the other arm held; `on_step(name, state, targets, contact)` sees
     each control period (contact: the segment's ContactWindow, or None)."""
 
+    observes = True  # it can read where a fragment is in the hand (a Preflight cannot: it takes the plan's word)
+
     def __init__(self, backend, model, limits, on_step=None):
         self.backend, self.model, self.limits, self.on_step = backend, model, limits, on_step
         self.servo_hz = float(limits.servo_hz)
@@ -528,10 +535,10 @@ class Runner:
                 self.on_step(segment.name, self.state, dict(self.targets), segment.contact)
         return self._record(arm, segment)
 
-    def hold(self, arm, seconds, name='hold'):
+    def hold(self, arm, seconds, name='hold', contact=None):
         count = max(1, int(np.ceil(seconds * self.servo_hz - 1e-9)))
         segment = pick.Segment(name, np.repeat(self.targets[arm][None], count, axis=0),
-                               np.full(count, self.widths[arm]))
+                               np.full(count, self.widths[arm]), contact)
         return self.run(arm, segment)
 
 
@@ -539,6 +546,8 @@ class Preflight(Runner):
     """A Runner that only tries: each segment is checked by S0 as Runner.run would send it, then the arm is taken to
     stand at rest where the segment ends (every segment ends at rest), and nothing is stepped. It starts where `runner`
     is and sees the fragments where `poses` (world_T_fragment) has them; `segments` keeps what it was given."""
+
+    observes = False
 
     def __init__(self, runner, poses):
         observed = {key: SimpleNamespace(world_T_fragment=np.asarray(pose, dtype=float)) for key, pose in poses.items()}
@@ -620,6 +629,35 @@ def _preflight(runner, task, placement, poses, sweeps):
     return None
 
 
+def _held_where_it_is(runner, task, placement, records, contact=None):
+    """After a hold of STEADY_S (with `contact`, near the table), where the fragment is in the hand: the step's
+    remaining TCP poses (over, begin, goal, back, leave) shifted so that they put the fragment, not the gripper, where
+    the plan has it. How far it moved from the plan's grasp goes into `records`; ValueError beyond MAX_IN_HAND_M or
+    MAX_IN_HAND_DEG. A Preflight keeps the plan's poses."""
+    arm, key, poses = placement.arm, placement.fragment_id, dict(placement.poses)
+    records.append(runner.hold(arm, STEADY_S, 'steady', contact))
+    if not runner.observes:
+        return poses
+    goal = np.array(task.fragment(key).goal_world_T_fragment)
+    fragment = np.array(runner.backend.observed_fragment_poses()[key].world_T_fragment)
+    in_hand = np.linalg.inv(np.array(runner.state.tcp[arm])) @ fragment
+    planned = np.linalg.inv(poses['goal']) @ goal
+    moved_m = float(np.linalg.norm(in_hand[:3, 3] - planned[:3, 3]))
+    turned_deg = float(np.degrees(Rotation.from_matrix(in_hand[:3, :3] @ planned[:3, :3].T).magnitude()))
+    records.append({'name': 'observe', 'arm': arm, 'count': 0, 'window': None,
+                    'in_hand_mm_deg': [1000 * moved_m, turned_deg]})
+    if moved_m > MAX_IN_HAND_M or turned_deg > MAX_IN_HAND_DEG:
+        raise ValueError(f'{key} moved {1000 * moved_m:.1f} mm / {turned_deg:.1f} deg in the grasp (at most '
+                         f'{1000 * MAX_IN_HAND_M:.0f} mm / {MAX_IN_HAND_DEG:.0f} deg)')
+    out = -np.asarray(placement.insertion, dtype=float)
+    poses['goal'] = goal @ np.linalg.inv(in_hand)
+    poses['begin'] = _translated(poses['goal'], placement.begin_offset_m * out)
+    poses['over'] = _translated(poses['begin'], (0, 0, max(placement.poses['over'][2, 3] - poses['begin'][2, 3], 0.0)))
+    poses['back'] = _translated(poses['goal'], BACK_M * out)
+    poses['leave'] = _translated(poses['back'], (0, 0, max(placement.poses['leave'][2, 3] - poses['back'][2, 3], 0.0)))
+    return poses
+
+
 def run_step(runner, task, placement, records=None):
     """Carry out a Placement (module docstring), appending each segment's record to `records` as it is done (so a step
     that fails part way keeps those it ran); returns them. Raises Rejected or ValueError."""
@@ -656,9 +694,12 @@ def run_step(runner, task, placement, records=None):
     line('lift', poses['pre'], grasp.close_width_m, pick_window, contact_speed)
     if poses['up'][2, 3] > poses['pre'][2, 3] + 1e-6:
         line('rise', poses['up'], grasp.close_width_m, None, TRANSIT_SPEED_M_S)
+    poses = _held_where_it_is(runner, task, placement, records)
     line('glide', poses['over'], grasp.close_width_m, None, TRANSIT_SPEED_M_S)
     near = place_window if low('begin') or low('goal') or low('back') else None
     line('lower', poses['begin'], grasp.close_width_m, near, contact_speed if near else TRANSIT_SPEED_M_S / 2)
+    poses = _held_where_it_is(runner, task, placement, records, near)  # read again where it goes in, line it up
+    line('align', poses['begin'], grasp.close_width_m, near, min(INSERT_SPEED_M_S, contact_speed))
     line('insert', poses['goal'], grasp.close_width_m, near, min(INSERT_SPEED_M_S, contact_speed))
     # never less than the fingers are open: a fragment turned in the grasp may hold them wider than planned, and
     # 'releasing' to less would squeeze it and carry it off

@@ -33,12 +33,25 @@ def test_the_telemetry_has_every_control_period_and_the_window_it_declared(cube_
     for arm in ARMS:
         assert arrays[f'{arm}_target'].shape == arrays[f'{arm}_joints'].shape == (steps, 6)
     declared = arrays['contact_arm'] != ''
-    assert set(arrays['segment'][declared]) <= {'descend', 'close', 'squeeze', 'lift', 'lower', 'insert', 'release',
-                                                'back', 'leave'}
+    assert set(arrays['segment'][declared]) <= {'descend', 'close', 'squeeze', 'lift', 'lower', 'steady', 'align',
+                                                'insert', 'release', 'back', 'leave'}
     first = result['steps'][0].placement  # its pick is low enough that descending declares the grasp window
     descend = (arrays['segment'] == 'descend') & (np.arange(steps) < list(arrays['segment']).index('settle'))
     assert set(arrays['contact_arm'][descend]) == {first.arm}
     assert np.isnan(arrays['contact_xy'][~declared]).all() and np.isfinite(arrays['contact_xy'][declared]).all()
+
+
+def test_the_telemetry_keeps_where_every_fragment_was(cube_run):
+    task, *_ = cube_run
+    backend = KinematicBackend(MODEL, home_joints=HOME, width_range_m=WIDTHS, control_hz=60)
+    state = backend.reset(task)
+    telemetry, poses = check_assembly.Telemetry(), backend.privileged_fragment_poses()
+    for _ in range(2):
+        telemetry('hold', state, state.joints, None, poses)
+    arrays = telemetry.arrays()
+    assert list(arrays['fragment_ids']) == sorted(poses) and arrays['fragments'].shape == (2, len(poses), 4, 4)
+    for k, key in enumerate(sorted(poses)):
+        np.testing.assert_allclose(arrays['fragments'][1, k], poses[key])
 
 
 def test_the_margins_of_an_accepted_run_are_inside_the_limits_it_ran_under(cube_run):

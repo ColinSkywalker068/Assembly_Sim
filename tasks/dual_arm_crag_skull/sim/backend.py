@@ -168,6 +168,15 @@ def checked_start(start):
     return start
 
 
+def inset_box_scale(scale, inset_m):
+    """A box collider's size with `inset_m` taken off each face, about the same centre: a fragment made that much
+    smaller all round, which opens a gap of twice it to each neighbour. ValueError if a side would be under 1 mm."""
+    size = np.asarray(scale, dtype=float) - 2 * float(inset_m)
+    if (size < 1e-3).any():
+        raise ValueError(f'an inset of {inset_m} m leaves a side under 1 mm ({size.min():.4f} m)')
+    return tuple(float(value) for value in size)
+
+
 def check_fixture(task, tolerance_m=1e-9):
     """The fixture holds the anchor at its goal, so the anchor must start there."""
     anchor = task.fragment(task.anchor_id)
@@ -196,7 +205,10 @@ class IsaacAssemblyBackend:
     """AssemblyBackend on Isaac Sim (see the module docstring). Creates its own SimulationApp: one per process."""
 
     def __init__(self, config, *, headless=True, cameras=True, start_settle_s=1.0, max_settle_s=3.0,
-                 rest=RestTolerance(), drive=FingerDrive(), adapter_thickness_m=YAM_PROVISIONAL_ADAPTER_THICKNESS_M):
+                 rest=RestTolerance(), drive=FingerDrive(), adapter_thickness_m=YAM_PROVISIONAL_ADAPTER_THICKNESS_M,
+                 collider_inset_m=0.0):
+        """collider_inset_m: an experiment, not the task: every fragment's box colliders made that much smaller on each
+        face (inset_box_scale), so that the seams, which the task has closed, open by twice it."""
         from core.workcell.config import load_workcell_preset
         s0 = config['s0']
         self.physics_hz, self.control_hz, self.camera_hz = (float(s0[key]) for key in
@@ -216,6 +228,9 @@ class IsaacAssemblyBackend:
         self.model = yam_model(workcell=self.workcell, thickness_m=adapter_thickness_m)
         self.width_range = {arm: yam_width_range_m(self.gripper) for arm in ARMS}
         self.use_cameras = bool(cameras)
+        self.collider_inset_m = float(collider_inset_m)
+        if not 0 <= self.collider_inset_m:
+            raise ValueError('collider_inset_m must not be negative')
         self.task, self.start, self._fragments, self._layout_key = None, None, None, None
         self._products, self._annotators, self._frames, self._frame_time = [], {}, None, None
         self._steps = 0
@@ -279,6 +294,8 @@ class IsaacAssemblyBackend:
             raise ValueError('the task fragments differ from its layout')
         UsdGeom.Xform.Define(self.stage, '/World/Fragments')
         handles = {key: author_fragment(self.stage, self.workcell, layout, key) for key in task.fragment_ids}
+        if self.collider_inset_m:
+            self._inset_colliders([handle.root_path for handle in handles.values()])
         for key, handle in handles.items():
             body = UsdPhysics.RigidBodyAPI(self.stage.GetPrimAtPath(handle.root_path))
             body.GetStartsAsleepAttr().Set(False)
@@ -288,6 +305,19 @@ class IsaacAssemblyBackend:
         self._fragment_view = self.world.scene.add(RigidPrim(
             prim_paths_expr=[self._fragments[key] for key in self._fragment_ids], name='skull_fragments'))
         self._layout_key = (task.layout_sha256, self._fragment_ids, task.anchor_id)
+
+    def _inset_colliders(self, roots):
+        """Each fragment's box colliders (author_fragment's root/Colliders/Box_*) inset_box_scale'd in place."""
+        from core.workcell.environment import set_transform
+        from pxr import UsdGeom
+        for root in roots:
+            for prim in self.stage.GetPrimAtPath(f'{root}/Colliders').GetChildren():
+                xformable = UsdGeom.Xformable(prim)
+                ops = {op.GetOpType(): op.Get() for op in xformable.GetOrderedXformOps()}
+                orient = ops[UsdGeom.XformOp.TypeOrient]
+                set_transform(xformable, tuple(ops[UsdGeom.XformOp.TypeTranslate]),
+                              (orient.GetReal(), *orient.GetImaginary()),
+                              inset_box_scale(tuple(ops[UsdGeom.XformOp.TypeScale]), self.collider_inset_m))
 
     def _place_fragments(self, task):
         from core.workcell.environment import set_transform

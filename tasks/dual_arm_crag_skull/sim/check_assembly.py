@@ -17,6 +17,9 @@ speeds and the tracking error. They are the margins the S0 values must allow for
 
 --order ID,ID,... runs the plan's steps in another order the layout's straight insertions allow (reordered_plan), for
 an order the robot may manage where the plan's fails; the report records the order and whether it is the plan's.
+--no-video skips the cameras (about three fifths of a run's wall time) for quicker rounds; the telemetry, with every
+fragment's pose each control period, and the report are the same. --collider-inset-mm X is an experiment, not the
+task: every fragment's colliders X mm smaller on each face, opening the task's closed seams by 2X (recorded).
 
 Writes DIR/assembly.json (last, before Kit shuts down), DIR/telemetry.npz, DIR/<camera>.mp4 and DIR/step_<k>.jpg (the
 close-up after each step's settle; fragments painted in the colours they are named by); exits 1 on any failure.
@@ -46,13 +49,14 @@ CRITERIA = {'every_step': True, 'within_tolerance_after_each_step': True, 'final
 
 class Telemetry:
     """Every control period as it went: segment, time, the contact window declared for it (arm and centre, or '' and
-    NaN), and both arms' commanded targets, measured joints, joint speeds and widths. The geometry S0 judges is worked
-    out from these afterwards (s0_margins)."""
+    NaN), both arms' commanded targets, measured joints, joint speeds and widths, and, if given, every fragment's pose
+    (world, the simulator's; `fragment_ids` orders them). The geometry S0 judges is worked out from these afterwards
+    (s0_margins)."""
 
     def __init__(self):
-        self.rows = []
+        self.rows, self.fragment_ids = [], None
 
-    def __call__(self, name, state, targets, contact=None):
+    def __call__(self, name, state, targets, contact=None, fragments=None):
         row = {'segment': name, 'time_s': float(state.time_s), 'contact_arm': '' if contact is None else contact.arm,
                'contact_xy': np.full(2, np.nan) if contact is None else np.asarray(contact.center_xy, dtype=float)}
         for arm in ARMS:
@@ -60,10 +64,16 @@ class Telemetry:
             row[f'{arm}_joints'] = np.asarray(state.joints[arm], dtype=float)
             row[f'{arm}_speed'] = np.asarray(state.joint_velocities[arm], dtype=float)
             row[f'{arm}_width'] = float(state.widths[arm])
+        if fragments is not None:
+            self.fragment_ids = self.fragment_ids or tuple(sorted(fragments))
+            row['fragments'] = np.array([fragments[key] for key in self.fragment_ids], dtype=float)
         self.rows.append(row)
 
     def arrays(self):
-        return {key: np.array([row[key] for row in self.rows]) for key in (self.rows[0] if self.rows else ())}
+        out = {key: np.array([row[key] for row in self.rows]) for key in (self.rows[0] if self.rows else ())}
+        if self.fragment_ids is not None:
+            out['fragment_ids'] = np.array(self.fragment_ids)
+        return out
 
 
 def _number(value):
@@ -202,7 +212,7 @@ def judge(report):
     return failures
 
 
-def run(task_path, output, order=None):
+def run(task_path, output, order=None, video=True, collider_inset_m=0.0):
     from ..__main__ import DEFAULT_CONFIG
     from ..baselines.task import AssemblyTask, verify_task
     from ..experiments.assembly_replay_isaac import Recorder, display_colours, paint
@@ -218,36 +228,39 @@ def run(task_path, output, order=None):
     plan = task.assembly_plan if order is None else reordered_plan(task, layout, order)  # before Kit starts
     backend, recorder, code, telemetry = None, None, 1, Telemetry()
     try:
-        backend = IsaacAssemblyBackend(config, cameras=False)
+        backend = IsaacAssemblyBackend(config, cameras=False, collider_inset_m=collider_inset_m)
         backend.reset(task)
         paint(backend.stage, display_colours(task))
         output.mkdir(parents=True)
-        recorder = Recorder(backend, output, (1280, 960))
+        recorder = Recorder(backend, output, (1280, 960)) if video else None
         limits = s0_test_limits(task, backend)
         state = {'count': 0, 'last': None, 'steps': 0}
 
         def still():  # the close-up after a step's settle
             state['steps'] += 1
-            latest = output / 'close' / f'{recorder.count - 1:05d}.jpg'
-            if latest.exists():
+            latest = None if recorder is None else output / 'close' / f'{recorder.count - 1:05d}.jpg'
+            if latest is not None and latest.exists():
                 shutil.copyfile(latest, output / f"step_{state['steps']}.jpg")
 
         def on_step(name, snapshot, targets, contact=None):
-            telemetry(name, snapshot, targets, contact)
+            telemetry(name, snapshot, targets, contact, backend.privileged_fragment_poses())
             if state['last'] == 'settle' and name != 'settle':
                 still()
             state['last'] = name
             state['count'] += 1
-            if state['count'] % RECORD_EVERY == 0:
+            if recorder is not None and state['count'] % RECORD_EVERY == 0:
                 recorder.frame()
 
-        recorder.frame()
+        if recorder is not None:
+            recorder.frame()
         began = time.time()
         result = run_assembly(backend, backend.model, limits, task, layout, on_step=on_step, plan=plan)
-        recorder.frame()
+        if recorder is not None:
+            recorder.frame()
         if state['last'] == 'settle':  # the last step ended without a later segment
             still()
-        recorder.encode(1000.0 / (RECORD_EVERY * 1000.0 / limits.servo_hz))
+        if recorder is not None:
+            recorder.encode(1000.0 / (RECORD_EVERY * 1000.0 / limits.servo_hz))
         arrays = telemetry.arrays()
         np.savez(output / 'telemetry.npz', **arrays)
         try:  # the report is written whatever happens here
@@ -263,7 +276,9 @@ def run(task_path, output, order=None):
                   'start': backend.start.to_record(), 'steps': [step.to_record() for step in result['steps']],
                   'error': result['error'], 'ending_error': result['ending_error'],
                   'score': result['score'].to_record(), 'sim_s': float(backend.time_s), 'wall_s': time.time() - began,
-                  'frames': recorder.count, 's0_margins': margins, 's0_margins_error': margins_error}
+                  'video': recorder is not None, 'frames': 0 if recorder is None else recorder.count,
+                  'collider_inset_m': collider_inset_m,
+                  's0_margins': margins, 's0_margins_error': margins_error}
         report['failures'] = judge(report)
         report['pass'] = not report['failures']
         (output / REPORT).write_text(json.dumps(_jsonable(report), indent=1, allow_nan=False) + '\n')
@@ -296,8 +311,11 @@ def main(argv=None):
     parser.add_argument('--task', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--order', type=lambda text: text.split(','), help="fragment ids, comma separated")
+    parser.add_argument('--no-video', action='store_true', help='no cameras: quicker, the same telemetry and report')
+    parser.add_argument('--collider-inset-mm', type=float, default=0.0,
+                        help='an experiment: fragment colliders this much smaller on each face (the task has 0)')
     args = parser.parse_args(argv)
-    run(args.task, args.output, args.order)
+    run(args.task, args.output, args.order, video=not args.no_video, collider_inset_m=args.collider_inset_mm / 1000)
     return 0
 
 

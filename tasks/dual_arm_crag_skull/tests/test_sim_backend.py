@@ -5,7 +5,8 @@ import pytest
 from core.robots.kinematics import T
 from core.robots.linear_4310 import load_linear_4310
 from tasks.dual_arm_crag_skull.sim.backend import (RestTolerance, at_rest, camera_due, control_substeps,
-                                                    finger_joint_target, interpolated_targets, measured_width)
+                                                   inset_box_scale, finger_joint_target, interpolated_targets,
+                                                   measured_width)
 
 GRIPPER = load_linear_4310()
 
@@ -59,6 +60,15 @@ def test_rest_is_no_drift_over_the_window_in_both_senses():
         at_rest(before, {'a': before['a']}, tolerance)
     with pytest.raises(ValueError, match='tolerance'):
         RestTolerance(drift_m=0.0)
+
+
+def test_a_collider_inset_takes_the_same_off_every_face():
+    """0.5 mm off each face of a 16 x 8 x 24 mm box leaves 15 x 7 x 23 mm about the same centre: the fragment smaller
+    all round, a 1 mm gap to each neighbour; none is the task as it is; a side under 1 mm is refused."""
+    assert inset_box_scale((0.016, 0.008, 0.024), 0.0005) == pytest.approx((0.015, 0.007, 0.023))
+    assert inset_box_scale((0.016, 0.008, 0.024), 0.0) == pytest.approx((0.016, 0.008, 0.024))
+    with pytest.raises(ValueError, match='under 1 mm'):
+        inset_box_scale((0.016, 0.008, 0.024), 0.0036)
 
 
 def test_cameras_render_at_their_own_rate():
