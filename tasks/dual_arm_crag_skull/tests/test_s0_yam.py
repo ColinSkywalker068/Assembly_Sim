@@ -74,3 +74,102 @@ def test_dual_arm_model_carries_the_yam_tool_on_both_arms():
 def test_a_plate_thinner_than_the_gripper_back_is_refused():
     with pytest.raises(ValueError, match='adapter'):
         yam_flange_T_mount(0.01)
+
+
+# ---------------------------------------------------------------- the finger boxes at an opening
+
+ARM = yam_model().arms['left']
+Q = np.array([0.3, -0.4, 0.5, 0.2, 0.6, 0.1])
+RNG = np.random.default_rng(7)
+
+
+def in_flange(corners, q=Q):
+    flange = ARM.frames(q)[0]['flange']
+    return (np.linalg.inv(flange) @ np.c_[corners, np.ones(len(corners))].T).T[:, :3]
+
+
+def tips_in_flange(q_finger):
+    """Both tips' triangle vertices and random points on their triangles, in the flange frame."""
+    flange_T_mount = yam_flange_T_mount()
+    points = np.concatenate(list(GRIPPER.tips_at(q_finger).values()))
+    triangles = points.reshape(-1, 3, 3)
+    weights = RNG.dirichlet(np.ones(3), size=len(triangles))
+    surface = np.concatenate([points, np.einsum('tk,tkd->td', weights, triangles)])
+    return surface @ flange_T_mount[:3, :3].T + flange_T_mount[:3, 3]
+
+
+def inside_some(points, lows, highs, tolerance=1e-9):
+    return ((points[:, None] >= lows[None] - tolerance) & (points[:, None] <= highs[None] + tolerance)).all(axis=2).any(
+        axis=1)
+
+
+@pytest.mark.parametrize('width', [0.0, 0.012, 0.048, 0.07, GRIPPER.max_width_m])
+def test_the_finger_boxes_at_an_opening_hold_the_tips_at_every_opening_up_to_it(width):
+    lows, highs = ARM.finger_boxes(width)
+    reach = max(GRIPPER.joint_for_width(width), 0.0)
+    for q in np.linspace(0.0, reach, 5):
+        assert inside_some(tips_in_flange(q), lows, highs).all()
+    # and no further than the tips get: inside the box of the tips closed and at the opening
+    ends = np.concatenate([tips_in_flange(0.0), tips_in_flange(reach)])
+    assert (lows.min(axis=0) >= ends.min(axis=0) - 1e-9).all() and (highs.max(axis=0) <= ends.max(axis=0) + 1e-9).all()
+
+
+def test_the_boxes_at_the_full_opening_span_the_whole_stroke_box_and_wider_is_the_same():
+    whole_low, whole_high = (bound[0] for bound in ARM.finger_boxes())
+    lows, highs = ARM.finger_boxes(GRIPPER.max_width_m)
+    np.testing.assert_allclose(lows.min(axis=0), whole_low, atol=1e-12)
+    np.testing.assert_allclose(highs.max(axis=0), whole_high, atol=1e-12)
+    for got, expected in zip(ARM.finger_boxes(0.2), (lows, highs)):
+        np.testing.assert_array_equal(got, expected)
+
+
+def test_the_tip_ends_are_boxed_as_thin_as_they_are():
+    """The whole-stroke box is 70.7 mm a side across the fingers, set by the tips' roots; fully open, the last 15 mm
+    of each tip reach 53.1 mm out, and the slabs there say so. The slabs are FINGER_SLAB_M long along the approach."""
+    from tasks.dual_arm_crag_skull.s0.kinematics import FINGER_SLAB_M
+    lows, highs = ARM.finger_boxes(GRIPPER.max_width_m)
+    ends = lows[:, 0] > highs[:, 0].max() - 3 * FINGER_SLAB_M - 1e-6
+    assert ends.sum() == 6  # three slabs per tip
+    assert np.abs(np.concatenate([lows[ends, 1], highs[ends, 1]])).max() == pytest.approx(0.0531, abs=2e-4)
+    assert ARM.finger_boxes()[1][0, 1] == pytest.approx(0.0707, abs=2e-4)
+    np.testing.assert_allclose(highs[ends, 0] - lows[ends, 0], FINGER_SLAB_M, atol=1e-4)
+
+
+def test_the_tool_box_at_an_opening_is_the_body_box_and_the_finger_boxes():
+    corners = in_flange(ARM.tool_box_corners(Q, 0.03))
+    expected = np.concatenate([in_flange(ARM.body_box_corners(Q)), in_flange(ARM.finger_box_corners(Q, 0.03))])
+    np.testing.assert_allclose(corners, expected, atol=1e-9)
+    assert len(ARM.tool_box_corners(Q)) == 8  # without an opening: the one whole tool box
+    lows, highs = ARM.finger_boxes(0.03)
+    np.testing.assert_allclose(in_flange(ARM.finger_box_corners(Q, 0.03)).reshape(-1, 8, 3).min(axis=1), lows,
+                               atol=1e-9)
+    np.testing.assert_allclose(in_flange(ARM.finger_box_corners(Q, 0.03)).reshape(-1, 8, 3).max(axis=1), highs,
+                               atol=1e-9)
+
+
+@pytest.mark.parametrize('width', [-0.001, np.nan, np.inf])
+def test_an_opening_that_is_not_a_width_is_refused(width):
+    with pytest.raises(ValueError, match='opening'):
+        ARM.finger_box_corners(Q, width)
+
+
+def test_a_gripper_whose_stroke_is_not_known_keeps_the_whole_stroke_boxes():
+    from tasks.dual_arm_crag_skull.s0.kinematics import robotiq_proxy_model
+    proxy = robotiq_proxy_model().arms['left']
+    np.testing.assert_array_equal(proxy.finger_box_corners(Q, 0.01), proxy.finger_box_corners(Q))
+    np.testing.assert_array_equal(proxy.tool_box_corners(Q, 0.01), proxy.tool_box_corners(Q))
+
+
+def test_the_stroke_must_span_the_whole_stroke_box():
+    from tasks.dual_arm_crag_skull.s0.kinematics import ArmModel, load_kinematics
+    flange_T_tcp, capsule, box = yam_tool_geometry()
+    stroke = box['parts']['fingers']['stroke']
+    ArmModel('left', load_kinematics(), np.eye(4), flange_T_tcp, capsule, box)
+    left = stroke['tips']['tip_left']
+    for change in ({'travel_m': stroke['travel_m'] - 0.002}, {'closed_gap_m': np.nan},
+                   {'tips': {**stroke['tips'], 'tip_left': {**left, 'slide_axis': [0, 0, 2]}}},
+                   {'tips': {**stroke['tips'], 'tip_left': {**left, 'slide_axis': [0, 0, 1]}}}):
+        broken = {**box, 'parts': {**box['parts'], 'fingers': {**box['parts']['fingers'],
+                                                               'stroke': {**stroke, **change}}}}
+        with pytest.raises(ValueError, match='stroke'):
+            ArmModel('left', load_kinematics(), np.eye(4), flange_T_tcp, capsule, broken)

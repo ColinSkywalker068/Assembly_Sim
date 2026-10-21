@@ -15,10 +15,11 @@ observed; carrying, setting it down, letting go of it or settling after it opens
 within S0's contact radius of its goal (setting it down there), else on the fragment (setting it down where it is,
 which S0 treats as a grasp contact); any other phase (a retreat, a return home) keeps the arm's last fragment. The
 fixture-held anchor is never a contact. The commands run through S0 as ASPIRE's do, in chunks each checked as one path
-from the measured state (s0.adapter.check_joint_path, with the backend's velocity window, and the width range) before
-any of it is stepped. A chunk starts where the commanded velocity changes least (on DexAgent's 30 fps ramp, halfway
-between frames, where nothing changes; S0 read a chunk's first step as twice the velocity change until it took the
-backends' velocities as each period's average, and the cut is kept): one starts at, or one command before, each command
+from the measured state (s0.adapter.check_joint_path, with the backend's velocity window, each gripper's widest
+opening over the chunk, and the width range) before any of it is stepped. A chunk starts where the commanded
+velocity changes least (on DexAgent's 30 fps ramp, halfway between frames, where nothing changes; S0 read a chunk's
+first step as twice the velocity change until it took the backends' velocities as each period's average, and the cut
+is kept): one starts at, or one command before, each command
 where an arm enters the band, whichever changes less, and its window is declared then, from the label of the arm's
 first command in the band, on what is observed;
 the others are at most CHUNK_S long and end in their second half. A chunk S0 rejects changes nothing: S0
@@ -35,7 +36,7 @@ from typing import Mapping
 import numpy as np
 
 from ...contracts.actions import ARMS, ContactWindow
-from ...s0.adapter import Rejected, check_joint_path
+from ...s0.adapter import Rejected, check_joint_path, widest_opening
 from ..backend import ProtectiveStop
 from ..scoring import score_assembly
 
@@ -243,6 +244,7 @@ def execute(backend, task, model, limits, commands, chunk_s=CHUNK_S):
             return Execution('refused', 0, f'the delivery does not start where the {arm} arm stands ({gap:.2e} rad)')
     windows, declared, steps, rejection = [], {}, 0, None
     targets = {arm: np.asarray(state.joints[arm], dtype=float).copy() for arm in ARMS}
+    sent = {arm: float(state.spans[arm]) for arm in ARMS}  # the last width commanded (before the first: where it is)
     samples = band_samples(model, limits, commands)
     try:
         for start, stop in _chunks(commands, chunk_s, band_entries(model, limits, commands, samples)):
@@ -263,9 +265,10 @@ def execute(backend, task, model, limits, commands, chunk_s=CHUNK_S):
             widths = {arm: commands.widths[arm][start:stop] for arm in ARMS}
             try:
                 _check_widths(limits, widths)
+                openings = {arm: widest_opening(state.spans[arm], sent[arm], widths[arm]) for arm in ARMS}
                 check_joint_path(model, limits, now=state.time_s, q_now=state.joints, qd_now=state.joint_velocities,
                                  qd_window_s=state.velocity_window_s, times=times, joints=path,
-                                 contacts=tuple(pending.values()))
+                                 contacts=tuple(pending.values()), openings=openings)
             except Rejected as exc:
                 rejection = f'S0 rejected the delivery at t={state.time_s:.3f} s: {exc}'
                 break
@@ -273,7 +276,8 @@ def execute(backend, task, model, limits, commands, chunk_s=CHUNK_S):
             windows.extend(new)
             for k in range(stop - start):
                 targets = {arm: path[arm][k] for arm in ARMS}
-                backend.step(targets, {arm: float(widths[arm][k]) for arm in ARMS})
+                sent = {arm: float(widths[arm][k]) for arm in ARMS}
+                backend.step(targets, sent)
                 steps += 1
         settled, settle_error = release_and_settle(backend, task, model, limits, targets, declared)
     except ProtectiveStop as halt:  # the robot stopped (configs/jing.json s0.protective_stop): the trial ends
@@ -295,7 +299,8 @@ def release_and_settle(backend, task, model, limits, targets, contacts=None):
     try:
         check_joint_path(model, limits, now=state.time_s, q_now=state.joints, qd_now=state.joint_velocities,
                          qd_window_s=state.velocity_window_s, times=times, joints=hold,
-                         contacts=tuple((contacts or {}).values()))
+                         contacts=tuple((contacts or {}).values()),
+                         openings={arm: widest_opening(state.spans[arm], widths[arm]) for arm in ARMS})
     except Rejected as exc:
         return False, f'S0 rejected the release-and-settle hold: {exc}'
     for k in range(periods):

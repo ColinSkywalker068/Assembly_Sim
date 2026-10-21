@@ -66,7 +66,9 @@ instead of the verified sources; always use `-B`).
 
 `step`, `execute_trajectory` and `go_home` build the joint and width targets of every control period (held arms keep
 their last commanded targets) and pass the whole sequence to `s0.adapter.check_joint_path` from the measured state:
-joint position, velocity and acceleration limits, arm-arm clearance, link and tool-box clearance above the table,
+joint position, velocity and acceleration limits, arm-arm clearance, link and tool-box clearance above the table
+(since 2026-10-21 the gripper's boxes at its widest opening over the command, from the measured opening, the last
+commanded width and the command's widths: S0's `finger_opening_margin_m`, 4 mm in the TEST limits),
 TCP height, plus the width range; the geometry is also checked between periods at S0's `servo_hz` (joints
 interpolated linearly). `set_gripper` checks each of its hold periods the same way, `set_grippers` its one period.
 Any violation rejects the command before the backend steps: nothing moves, the program gets a typed failure with

@@ -158,6 +158,18 @@ def test_robot_snapshots_are_validated_and_normalized():
             snapshot(**changes)
 
 
+def test_a_snapshots_spans_are_its_widths_unless_the_fingers_reach_further():
+    """S0 boxes the fingers by how far they reach (RobotSnapshot.spans): fingers that move together reach as far as
+    the gap says; given spans, they must cover both arms and be no narrower than the gap."""
+    plain = snapshot()
+    assert dict(plain.spans) == dict(plain.widths)
+    state = snapshot(spans={'left': 0.07, 'right': 0.05})
+    assert dict(state.spans) == {'left': 0.07, 'right': 0.05} and type(state.spans['left']) is float
+    for spans in ({'left': 0.07}, {'left': 0.04, 'right': 0.05}, {'left': float('nan'), 'right': 0.05}):
+        with pytest.raises(ValueError, match='spans'):
+            snapshot(spans=spans)
+
+
 def test_the_kinematic_double_reports_each_period_s_velocity_and_says_so(task):
     """Its velocity is the last control period's (target - previous) * control_hz: a period's average, declared as
     such so S0 reads a path's first step as it reads every later one."""

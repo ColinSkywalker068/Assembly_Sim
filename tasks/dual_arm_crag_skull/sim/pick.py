@@ -11,9 +11,10 @@ range. The narrowest chord wins. The pads then close to SQUEEZE_M below the chor
 with its stiffness times SQUEEZE_M / 2.
 
 Motion: every segment is planned from the measured state when it starts, checked by S0 (check_joint_path, with the
-contact window it needs) and only then stepped at the servo rate. Joint moves and Cartesian lines follow a
-raised-cosine profile within SPEED_FRACTION of S0's joint velocity and acceleration limits, and Cartesian lines that
-touch the contact band stay under CONTACT_SPEED_FRACTION of S0's contact speed. The windows follow the S1 contract:
+contact window it needs and each gripper's widest opening over it) and only then stepped at the servo rate. Joint
+moves and Cartesian lines follow a raised-cosine profile within SPEED_FRACTION of S0's joint velocity and acceleration
+limits, and Cartesian lines that touch the contact band stay under CONTACT_SPEED_FRACTION of S0's contact speed. The
+windows follow the S1 contract:
 the pick window is centred on the fragment's observed pose for the descent, closing and lift; the place window on
 its target for the lowering, release and retreat; the other arm holds still.
 """
@@ -27,7 +28,7 @@ import numpy as np
 from scipy.spatial.transform import Rotation, Slerp
 
 from ..contracts.actions import ARMS, ContactWindow
-from ..s0.adapter import Rejected, check_joint_path
+from ..s0.adapter import Rejected, check_joint_path, widest_opening
 from ..s0.ik import IKOptions, solve_ik
 
 FINGERTIP_HEIGHT_M = 0.003
@@ -311,6 +312,8 @@ def run_pick_and_place(backend, model, limits, *, arm, fragment_id, points, carr
     at['lower'][2, 3] = grasp_z
     at['retreat'] = at['carry'].copy()
     log = []
+    sent = {name: float(state.spans[name]) for name in ARMS}  # the widths last commanded (before any: where they are)
+    wide = limits.gripper_width_range_m[other][1]  # the other gripper stays fully open
 
     def run(segment):
         nonlocal state
@@ -318,10 +321,12 @@ def run_pick_and_place(backend, model, limits, *, arm, fragment_id, points, carr
         joints = {arm: segment.joints, other: np.repeat(hold[None], len(segment.joints), axis=0)}
         check_joint_path(model, limits, now=state.time_s, q_now=state.joints, qd_now=state.joint_velocities,
                          qd_window_s=state.velocity_window_s, times=times, joints=joints,
-                         contacts=() if segment.contact is None else (segment.contact,))
+                         contacts=() if segment.contact is None else (segment.contact,),
+                         openings={arm: widest_opening(state.spans[arm], sent[arm], segment.widths),
+                                   other: widest_opening(state.spans[other], sent[other], [wide])})
         for k in range(len(segment.joints)):
-            state = backend.step({arm: segment.joints[k], other: hold},
-                                 {arm: float(segment.widths[k]), other: limits.gripper_width_range_m[other][1]})
+            sent.update({arm: float(segment.widths[k]), other: wide})
+            state = backend.step({arm: segment.joints[k], other: hold}, dict(sent))
             if on_step is not None:
                 on_step(segment.name, state)
         log.append(SegmentRecord(segment.name, len(segment.joints), segment.contact, float(segment.widths[0]),

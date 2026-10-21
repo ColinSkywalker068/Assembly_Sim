@@ -25,7 +25,7 @@ LIMITS = S0Limits(max_joint_velocity_rad_s=np.asarray(load_kinematics()['max_joi
                   arm_arm_clearance_m=0.02, table_top_z_m=TABLE, table_clearance_m=0.01, tcp_min_height_m=0.02,
                   servo_hz=60, max_observation_age_s=0.5, anchor_position_tolerance_m=0.002,
                   anchor_rotation_tolerance_rad=0.005, contact_table_clearance_m=0.002, contact_region_radius_m=0.12,
-                  contact_max_speed_m_s=0.05)
+                  contact_max_speed_m_s=0.05, finger_opening_margin_m=0.004)  # the TEST values every method runs under
 REACH = yam_tool_geometry()[2]['parts']['fingers']['max'][0] - MODEL.arms['left'].flange_T_tcp[0, 3]
 
 
@@ -131,7 +131,8 @@ def test_joint_moves_are_timed_inside_s0s_limits():
     for window in (0.0, 1 / 60):  # timed for the stricter reading (an instantaneous velocity), so it passes both
         check_joint_path(MODEL, LIMITS, now=1.0, q_now=HOME, qd_now={arm: np.zeros(6) for arm in ARMS},
                          qd_window_s=window, times=times,
-                         joints={'left': segment.joints, 'right': np.repeat(HOME['right'][None], len(times), axis=0)})
+                         joints={'left': segment.joints, 'right': np.repeat(HOME['right'][None], len(times), axis=0)},
+                         openings={'left': 0.05, 'right': WIDTHS['right'][1]})
 
 
 def test_cartesian_lines_stay_straight_and_slow():

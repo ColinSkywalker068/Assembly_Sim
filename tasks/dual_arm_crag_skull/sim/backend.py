@@ -80,10 +80,20 @@ def finger_joint_target(gripper, width):
 
 def measured_width(gripper, q_left, q_right):
     """Pad gap from measured finger joints; values a hair outside the joint range (solver overshoot) are clipped."""
+    return gripper.width_between(*_finger_joints(gripper, q_left, q_right))
+
+
+def measured_span(gripper, q_left, q_right):
+    """The pad gap with both fingers as far out as the farther one (RobotSnapshot.spans): nothing couples the fingers
+    here (yam_usd), so a held fragment pushed sideways moves one out as the other goes in, at the same gap."""
+    return gripper.width(max(_finger_joints(gripper, q_left, q_right)))
+
+
+def _finger_joints(gripper, q_left, q_right):
     values = np.array([q_left, q_right], dtype=float)
     if not np.isfinite(values).all():
         raise ValueError('measured finger joints must be finite')
-    return gripper.width_between(*np.clip(values, 0.0, gripper.travel_m))
+    return tuple(float(value) for value in np.clip(values, 0.0, gripper.travel_m))
 
 
 @dataclass(frozen=True)
@@ -469,15 +479,16 @@ class IsaacAssemblyBackend:
 
     def robot_state(self):
         self._require_reset()
-        joints, velocities, widths, tcp = {}, {}, {}, {}
+        joints, velocities, widths, spans, tcp = {}, {}, {}, {}, {}
         for arm, handle in self.robots.items():
             q = np.asarray(handle.robot.get_joint_positions(joint_indices=handle.arm_indices), dtype=float)
             qd = np.asarray(handle.robot.get_joint_velocities(joint_indices=handle.arm_indices), dtype=float)
             fingers = np.asarray(handle.robot.get_joint_positions(joint_indices=handle.finger_indices), dtype=float)
             joints[arm], velocities[arm] = q, qd
             widths[arm] = measured_width(self.gripper, *fingers)
+            spans[arm] = measured_span(self.gripper, *fingers)
             tcp[arm] = self.model.arms[arm].tcp(q)
-        return RobotSnapshot(self.time_s, joints, velocities, widths, tcp, self.velocity_window_s)
+        return RobotSnapshot(self.time_s, joints, velocities, widths, tcp, self.velocity_window_s, spans)
 
     def privileged_fragment_poses(self):
         self._require_reset()

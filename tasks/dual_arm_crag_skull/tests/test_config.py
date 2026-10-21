@@ -33,7 +33,8 @@ class ConfigTests(unittest.TestCase):
 
     def test_contact_phase_parameters_are_explicit_and_reported_missing(self):
         missing = readiness(self.config)['missing_configuration']
-        for key in ('contact_table_clearance_m', 'contact_region_radius_m', 'contact_max_speed_m_s'):
+        for key in ('contact_table_clearance_m', 'contact_region_radius_m', 'contact_max_speed_m_s',
+                    'finger_opening_margin_m'):
             with self.subTest(key=key):
                 self.assertIn(key, self.config['s0'])
                 self.assertIsNone(self.config['s0'][key])

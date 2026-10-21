@@ -51,14 +51,14 @@ CRITERIA = {'every_step': True, 'within_tolerance_after_each_step': True, 'final
 
 class Telemetry:
     """Every control period as it went: segment, time, the contact window declared for it (arm and centre, or '' and
-    NaN), both arms' commanded targets, measured joints, joint speeds and widths, and, if given, every fragment's pose
-    (world, the simulator's; `fragment_ids` orders them). The geometry S0 judges is worked out from these afterwards
-    (s0_margins)."""
+    NaN), both arms' commanded targets, measured joints, joint speeds and widths, the widest opening S0 took each
+    gripper's boxes at for the segment (NaN: not given), and, if given, every fragment's pose (world, the simulator's;
+    `fragment_ids` orders them). The geometry S0 judges is worked out from these afterwards (s0_margins)."""
 
     def __init__(self):
         self.rows, self.fragment_ids = [], None
 
-    def __call__(self, name, state, targets, contact=None, fragments=None):
+    def __call__(self, name, state, targets, contact=None, openings=None, fragments=None):
         row = {'segment': name, 'time_s': float(state.time_s), 'contact_arm': '' if contact is None else contact.arm,
                'contact_xy': np.full(2, np.nan) if contact is None else np.asarray(contact.center_xy, dtype=float)}
         for arm in ARMS:
@@ -66,6 +66,7 @@ class Telemetry:
             row[f'{arm}_joints'] = np.asarray(state.joints[arm], dtype=float)
             row[f'{arm}_speed'] = np.asarray(state.joint_velocities[arm], dtype=float)
             row[f'{arm}_width'] = float(state.widths[arm])
+            row[f'{arm}_opening'] = np.nan if openings is None else float(openings[arm])
         if fragments is not None:
             self.fragment_ids = self.fragment_ids or tuple(sorted(fragments))
             row['fragments'] = np.array([fragments[key] for key in self.fragment_ids], dtype=float)
@@ -101,11 +102,21 @@ def _jsonable(value):
     return value
 
 
+def _box_width(limits, arrays, arm, k):
+    """The opening S0 took arm's boxes at for sample k: the segment's widest opening plus S0's margin; None (the
+    whole stroke) when S0 takes no openings or the telemetry has none."""
+    margin = limits.finger_opening_margin_m
+    opening = float(arrays[f'{arm}_opening'][k]) if f'{arm}_opening' in arrays else np.nan
+    return None if margin is None or not np.isfinite(opening) else opening + margin
+
+
 def _geometry(model, limits, arrays, key):
     """Per sample, with S0's own rules, on the joints arrays[f'{arm}_{key}']: the arm-arm clearance and, for each
     arm, the heights over the table of its lowest checked link, tool box, TCP, finger box and body box, its finger-box
     corners, whether S0's normal tool-box or TCP-height rule fails there (so the sample needs its contact window) and
-    then how far the TCP and the finger box below the floor reach from the declared window's centre."""
+    then how far the TCP and the finger box below the floor reach from the declared window's centre, and the speed of
+    the fastest finger-box corner over each interval (k: from sample k to k + 1). The boxes are at the opening S0 took
+    them at (_box_width), over an interval the one of the sample it ends at, as S0 takes a segment's first interval."""
     from ..s0.adapter import TABLE_CHECKED_LINKS, _below, _table_problem
     from ..s0.collision import capsule_clearance, lowest_point_z
     table, count = limits.table_top_z_m, len(arrays['segment'])
@@ -114,7 +125,8 @@ def _geometry(model, limits, arrays, key):
     per = {arm: {name: np.full(count, np.nan) for name in ('link', 'tool', 'tcp', 'finger', 'body', 'reach')}
            for arm in ARMS}
     for arm in ARMS:
-        per[arm]['corners'], per[arm]['contact'] = np.empty((count, 8, 3)), np.zeros(count, dtype=bool)
+        per[arm]['corners'], per[arm]['contact'] = [None] * count, np.zeros(count, dtype=bool)
+        per[arm]['width'], per[arm]['speed'] = [None] * count, np.full(max(count - 1, 0), np.nan)
     for k in range(count):
         joints = {arm: np.asarray(arrays[f'{arm}_{key}'][k], dtype=float) for arm in ARMS}
         capsules = {arm: model.arms[arm].capsules(joints[arm]) for arm in ARMS}
@@ -124,11 +136,17 @@ def _geometry(model, limits, arrays, key):
             lowest = lowest_point_z(capsules[arm].arrays())
             row['link'][k] = min(z for name, z in zip(capsules[arm].names, lowest)
                                  if name.split(':')[1] in TABLE_CHECKED_LINKS) - table
-            row['tool'][k] = arm_model.tool_box_corners(q)[:, 2].min() - table
-            row['corners'][k] = arm_model.finger_box_corners(q)
+            width = row['width'][k] = _box_width(limits, arrays, arm, k)
+            row['tool'][k] = arm_model.tool_box_corners(q, width)[:, 2].min() - table
+            row['corners'][k] = arm_model.finger_box_corners(q, width)
+            if k:
+                before = (row['corners'][k - 1] if row['width'][k - 1] == width else
+                          arm_model.finger_box_corners(np.asarray(arrays[f'{arm}_{key}'][k - 1], dtype=float), width))
+                row['speed'][k - 1] = np.linalg.norm(row['corners'][k] - before, axis=1).max() / (
+                    float(arrays['time_s'][k]) - float(arrays['time_s'][k - 1]))
             row['finger'][k] = row['corners'][k][:, 2].min() - table
             row['body'][k] = arm_model.body_box_corners(q)[:, 2].min() - table
-            problem, tcp = _table_problem(arm_model, limits, q, float(arrays['time_s'][k]))
+            problem, tcp = _table_problem(arm_model, limits, q, float(arrays['time_s'][k]), width)
             row['tcp'][k] = tcp[2, 3] - table
             if problem is not None:
                 row['contact'][k] = True
@@ -154,7 +172,7 @@ def s0_margins(model, limits, arrays):
     from, so the commanded numbers there can differ from S0's a little) and on the measured joints (what the arms
     did, with their speeds and tracking). Heights are over the table. A sample uses its contact window where S0's
     normal rule fails; the finger speed there is over the servo intervals next to such samples, as S0 takes it."""
-    segments, times = arrays['segment'], np.asarray(arrays['time_s'], dtype=float)
+    segments = arrays['segment']
     out = {'limits': {'arm_arm_clearance_m': limits.arm_arm_clearance_m, 'table_clearance_m': limits.table_clearance_m,
                       'tcp_min_height_m': limits.tcp_min_height_m,
                       'contact_table_clearance_m': limits.contact_table_clearance_m,
@@ -169,7 +187,7 @@ def s0_margins(model, limits, arrays):
         summary = {'clearance_min_m': least, 'clearance_min_segment': where}
         for arm in ARMS:
             row, used = per[arm], per[arm]['contact']
-            speeds = np.linalg.norm(np.diff(row['corners'], axis=0), axis=2).max(axis=1) / np.diff(times)
+            speeds = row['speed']
             near = used[1:] | used[:-1]  # interval k runs from sample k to k + 1
             entry = {'contact_samples': int(used.sum())}
             for name, mask in (('link', None), ('tool', ~used), ('tcp', ~used)):
@@ -249,8 +267,8 @@ def run(task_path, output, order=None, video=True, collider_inset_m=None, from_s
             if latest is not None and latest.exists():
                 shutil.copyfile(latest, output / f"step_{state['steps']}.jpg")
 
-        def on_step(name, snapshot, targets, contact=None):
-            telemetry(name, snapshot, targets, contact, backend.privileged_fragment_poses())
+        def on_step(name, snapshot, targets, contact=None, openings=None):
+            telemetry(name, snapshot, targets, contact, openings, backend.privileged_fragment_poses())
             if state['last'] == 'settle' and name != 'settle':
                 still()
             state['last'] = name

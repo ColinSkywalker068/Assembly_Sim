@@ -6,7 +6,7 @@ from core.robots.kinematics import T
 from core.robots.linear_4310 import load_linear_4310
 from tasks.dual_arm_crag_skull.sim.backend import (RestTolerance, at_rest, camera_due, control_substeps,
                                                    inset_box_scale, finger_joint_target, interpolated_targets,
-                                                   measured_width)
+                                                   measured_span, measured_width)
 
 GRIPPER = load_linear_4310()
 
@@ -38,6 +38,15 @@ def test_measured_width_clips_solver_overshoot():
     assert measured_width(GRIPPER, GRIPPER.travel_m + 1e-6, GRIPPER.travel_m) == pytest.approx(GRIPPER.max_width_m)
     assert measured_width(GRIPPER, -1e-6, 0.0) == 0.0
     assert measured_width(GRIPPER, 0.01, 0.02) == pytest.approx(GRIPPER.width_between(0.01, 0.02))
+
+
+def test_the_span_is_the_gap_with_both_fingers_as_far_out_as_the_farther():
+    """Nothing couples Isaac's fingers: pushed sideways, one goes out as the other comes in at the same gap, and S0
+    boxes each finger by the one further out."""
+    assert measured_span(GRIPPER, 0.02, 0.02) == pytest.approx(measured_width(GRIPPER, 0.02, 0.02))
+    assert measured_span(GRIPPER, 0.023, 0.017) == pytest.approx(GRIPPER.width(0.023))
+    assert measured_span(GRIPPER, 0.023, 0.017) > measured_width(GRIPPER, 0.023, 0.017) + 0.005
+    assert measured_span(GRIPPER, GRIPPER.travel_m + 1e-6, 0.0) == pytest.approx(GRIPPER.max_width_m)
     with pytest.raises(ValueError, match='finite'):
         measured_width(GRIPPER, float('nan'), 0.01)
 

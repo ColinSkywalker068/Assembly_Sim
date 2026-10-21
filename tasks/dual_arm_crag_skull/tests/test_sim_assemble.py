@@ -29,7 +29,7 @@ LIMITS = S0Limits(max_joint_velocity_rad_s=np.asarray(load_kinematics()['max_joi
                   arm_arm_clearance_m=0.02, table_top_z_m=0.75, table_clearance_m=0.01, tcp_min_height_m=0.02,
                   servo_hz=60, max_observation_age_s=0.5, anchor_position_tolerance_m=0.002,
                   anchor_rotation_tolerance_rad=0.005, contact_table_clearance_m=0.002, contact_region_radius_m=0.12,
-                  contact_max_speed_m_s=0.05)
+                  contact_max_speed_m_s=0.05, finger_opening_margin_m=0.004)  # the TEST values every method runs under
 
 
 @pytest.fixture
@@ -119,7 +119,7 @@ def test_the_planned_poses_keep_s0s_table_rules_with_a_margin(tcp_m, centre_dx, 
     arm_model = MODEL.arms['right']
     pose = pick.down_pose((0.35, 0.0), LIMITS.table_top_z_m + tcp_m, 0.0)
     q, _ = pick.solve_reachable(arm_model, pose, HOME['right'])
-    assert assemble.s0_table_use(arm_model, LIMITS, q, (0.35 + centre_dx, 0.0)) == expected
+    assert assemble.s0_table_use(arm_model, LIMITS, q, (0.35 + centre_dx, 0.0), 0.05) == expected
 
 
 class _Boxes:
@@ -139,10 +139,10 @@ class _Boxes:
         offsets = itertools.product((-0.01, 0.01), (-0.01, 0.01), (0.0, 0.02))
         return np.array([[0.35 + dx, dy, low + dz] for dx, dy, dz in offsets])
 
-    def tool_box_corners(self, q):
+    def tool_box_corners(self, q, width=None):
         return self._box('tool')
 
-    def finger_box_corners(self, q):
+    def finger_box_corners(self, q, width=None):
         return self._box('finger')
 
     def body_box_corners(self, q):
@@ -157,7 +157,7 @@ class _Boxes:
 def test_s0_table_use_tells_each_of_s0s_table_rules_apart(heights, contact, expected):
     limits = LIMITS if contact else dataclasses.replace(LIMITS, contact_table_clearance_m=None,
                                                         contact_region_radius_m=None, contact_max_speed_m_s=None)
-    assert assemble.s0_table_use(_Boxes(*heights), limits, None, (0.35, 0.0)) == expected
+    assert assemble.s0_table_use(_Boxes(*heights), limits, None, (0.35, 0.0), 0.05) == expected
 
 
 def _tilted(task, axis, degrees=30.0):
@@ -172,18 +172,26 @@ def _tilted(task, axis, degrees=30.0):
     return dataclasses.replace(task, fragments=fragments)
 
 
-def test_tilted_about_x_the_box_s0_puts_round_the_whole_stroke_refuses_the_pick(cubes, monkeypatch):
-    """Turned about x, the fingers (closing along y out of the seam) tilt across their closing axis, and the box S0
-    puts round their whole 141 mm stroke dips a corner below its contact clearance: S0's geometry, not the fingers',
-    rules the grasp out. (Lines through the middle only: lines beside it change nothing here, but take long.)"""
+def test_tilted_about_x_the_fingers_boxed_at_their_opening_go_where_the_whole_stroke_box_could_not(cubes,
+                                                                                                    monkeypatch):
+    """Turned about x, the fingers (closing along y out of the seam) tilt across their closing axis: one box S0 puts
+    round their whole 141 mm stroke dips a corner below its contact clearance and rules every grasp out, while S0's
+    boxes at the opening the fingers have (since 2026-10-21) keep off the table, and the fragment goes in through S0.
+    (Lines through the middle only: lines beside it change nothing here, but take long.)"""
     monkeypatch.setattr(assemble, 'LATERAL_OFFSETS_M', (0.0,))
     task, layout = cubes
     task = _tilted(task, 'x')
     poses = {key: np.array(f.initial_world_T_fragment) for key, f in zip(task.fragment_ids, task.fragments)}
     step = task.assembly_plan[0]
+    whole = dataclasses.replace(LIMITS, finger_opening_margin_m=None)
     with pytest.raises(ValueError, match='s0_pick_contact_clearance'):
-        assemble.plan_step(task, layout, MODEL, LIMITS, key=step.fragment_id, insertion=step.insertion_direction,
+        assemble.plan_step(task, layout, MODEL, whole, key=step.fragment_id, insertion=step.insertion_direction,
                            poses=poses, placed=['frag_a'], seeds=HOME)
+    backend = KinematicBackend(MODEL, home_joints=HOME, width_range_m=WIDTHS, control_hz=60)
+    backend.reset(task)
+    result = assemble.run_assembly(backend, MODEL, LIMITS, task, layout)
+    assert result['error'] is None and result['ending_error'] is None, result['error']
+    assert result['steps'][0].placement.family == 'goal_aligned' and result['score'].success
 
 
 def test_a_tilted_fragment_goes_in_through_s0_on_the_kinematic_backend(cubes):
@@ -323,10 +331,11 @@ def test_the_fingers_never_release_to_less_than_they_are_open(cubes):
 
     def pried(targets, widths):  # the measured opening is 20 mm more than commanded
         state = step(targets, widths)
-        return dataclasses.replace(state, widths={arm: width + 0.02 for arm, width in state.widths.items()})
+        wider = {arm: width + 0.02 for arm, width in state.widths.items()}
+        return dataclasses.replace(state, widths=wider, spans=wider)
     backend.step = pried
     seen, commanded = [], []
-    runner = assemble.Runner(backend, MODEL, LIMITS, on_step=lambda name, state, targets, contact: seen.append(name))
+    runner = assemble.Runner(backend, MODEL, LIMITS, on_step=lambda name, *_: seen.append(name))
     poses = {key: pose.world_T_fragment for key, pose in backend.observed_fragment_poses().items()}
     first = task.assembly_plan[0]
     placement = assemble.plan_step(task, layout, MODEL, LIMITS, key=first.fragment_id,
@@ -550,7 +559,7 @@ def test_a_preflight_tries_the_same_segments_the_run_then_sends(cubes):
     task, layout = cubes
     backend = _backend(task)
     sent = []
-    runner = assemble.Runner(backend, MODEL, LIMITS, on_step=lambda name, state, targets, contact: sent.append(
+    runner = assemble.Runner(backend, MODEL, LIMITS, on_step=lambda name, state, targets, *_: sent.append(
         (name, targets)))
     poses = {key: pose.world_T_fragment for key, pose in backend.observed_fragment_poses().items()}
     step = task.assembly_plan[0]
@@ -664,3 +673,46 @@ def test_the_cube_assembly_goes_together_on_the_kinematic_backend(cubes):
         {first.release_width_m}
     for step in result['steps']:
         assert max(max(drift) for drift in step.drift_mm_deg.values()) < 0.5
+
+
+def test_the_planner_checks_s0s_table_rules_at_the_opening_the_fingers_have_there():
+    """At the tilted pose of tests/test_s0_opening.py (the TCP 25 mm over the table), the fingers at 28 mm need no
+    contact window and fully open they would need one that cannot hold them; with S0's boxes at the openings the
+    opening is required."""
+    from tasks.dual_arm_crag_skull.tests.test_s0_opening import Q_TILT
+    arm_model = MODEL.arms['left']
+    assert assemble.s0_table_use(arm_model, LIMITS, Q_TILT, (-0.42, 0.0), 0.028) == (False, None)
+    assert assemble.s0_table_use(arm_model, LIMITS, Q_TILT, (-0.42, 0.0), WIDTHS['left'][1]) == (True,
+                                                                                                'contact_clearance')
+    with pytest.raises(ValueError, match='opening'):
+        assemble.s0_table_use(arm_model, LIMITS, Q_TILT, (-0.42, 0.0))
+
+
+def test_a_preflight_takes_fingers_closed_on_a_fragment_to_stop_at_its_chord(cubes):
+    """Closing on a fragment the fingers stop at its chord, so S0 then boxes them there, not at the squeeze the run
+    commands: a preflight takes the measured opening of the gripping arm to be at least the chord."""
+    task, _ = cubes
+    runner = assemble.Runner(_backend(task), MODEL, LIMITS)
+    trial = assemble.Preflight(runner, {}, grip=('left', 0.04))
+    q = runner.targets['left']
+    trial.run('left', pick.width_segment('close', q, 0.06, 0.03, 0.2, 60))
+    assert trial.state.widths == {'left': 0.04, 'right': runner.widths['right']}
+    trial.run('left', pick.width_segment('squeeze', q, 0.03, 0.03, 0.1, 60))
+    assert trial.openings['left'] == 0.04
+
+
+def test_the_runner_gives_s0_how_far_the_fingers_reach(cubes, monkeypatch):
+    """S0 boxes the fingers by how far they reach (RobotSnapshot.spans), which Isaac's uncoupled fingers make wider
+    than the gap when one is pushed out: the widest opening the runner gives S0 starts from the span."""
+    task, _ = cubes
+    backend = _backend(task)
+    backend.step({arm: HOME[arm] for arm in ARMS}, {arm: 0.02 for arm in ARMS})
+    measured = backend.robot_state
+    backend.robot_state = lambda: (lambda state: dataclasses.replace(
+        state, spans={'left': 0.05, 'right': max(state.widths['right'], 0.03)}))(measured())
+    seen = []
+    monkeypatch.setattr(assemble, 'check_joint_path', lambda *args, **kwargs: seen.append(kwargs['openings']))
+    runner = assemble.Runner(backend, MODEL, LIMITS)
+    runner.widths = {arm: 0.02 for arm in ARMS}
+    runner._check('left', pick.width_segment('hold', HOME['left'], 0.02, 0.02, 0.1, 60))
+    assert seen == [{'left': 0.05, 'right': 0.03}]

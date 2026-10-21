@@ -21,7 +21,7 @@ GRIPPER = load_linear_4310()
 MODEL = yam_model()
 WIDTHS = {arm: yam_width_range_m(GRIPPER) for arm in ARMS}
 CONTACT = dict(contact_table_clearance_m=0.002, contact_region_radius_m=0.12, contact_max_speed_m_s=0.05)
-LIMITS = limits(gripper_width_range_m=WIDTHS, **CONTACT)
+LIMITS = limits(gripper_width_range_m=WIDTHS, **CONTACT, finger_opening_margin_m=0.004)  # ASPIRE's TEST values
 OBJECTS = {'frag_a_frag_a': 'frag_a', 'frag_b_frag_b': 'frag_b'}
 HEIGHT = 0.12
 GOALS = {'frag_a': [0.03, 0.0, 0.0], 'frag_b': [-0.03, 0.0, 0.0]}
@@ -498,3 +498,43 @@ def test_a_window_takes_the_label_of_the_arms_first_command_in_the_band(task):
     assert result.status == 'completed', result.reason
     (time, arm, kind, fragment, centre), = result.windows
     assert (arm, kind, fragment) == ('left', 'grasp', 'frag_b')
+
+
+def test_s0_boxes_the_fingers_at_the_jaws_opening(task):
+    """With S0's boxes at the openings (the TEST limits since 2026-10-21), a delivery that closes the jaws high up may
+    then tilt the gripper low over the table where one box over the whole stroke would not pass; with the jaws open
+    the same descent is S0's rejection (the pose of tests/test_s0_opening.py, the TCP 25 mm over the table)."""
+    from tasks.dual_arm_crag_skull.tests.test_s0_opening import Q_TILT, TILTED, tcp_joints
+    q_up = tcp_joints([-0.42, 0.0, 0.75 + 0.085], TILTED, seed=Q_TILT)
+    path = np.vstack([np.repeat(q_up[None], 31, axis=0), ramp(q_up, Q_TILT, 2.0)[1:]])
+    narrow = GRIPPER.travel_m - (0.028 - GRIPPER.closed_gap_m) / 2  # the jaw target for a 28 mm gap
+    closing = np.minimum(np.linspace(OPEN, 2 * narrow, 31), narrow)
+    results = {}
+    for name, jaw in (('closed', np.concatenate([closing, np.full(len(path) - 31, narrow)])),
+                      ('open', np.full(len(path), OPEN))):
+        sim = KinematicBackend(MODEL, home_joints={'left': q_up, 'right': HOME}, width_range_m=WIDTHS, control_hz=60)
+        sim.reset(task)
+        deliv = delivery(path, [''] * len(path), jaws=np.column_stack([jaw, jaw]))
+        commands = executor.servo_commands(deliv, GRIPPER, LIMITS.servo_hz, OBJECTS)
+        results[name] = executor.execute(sim, task, MODEL, LIMITS, commands)
+    assert results['closed'].status == 'completed', results['closed'].reason
+    assert results['open'].status == 'rejected' and 'tool box' in results['open'].reason
+
+
+def test_the_executor_gives_s0_how_far_the_fingers_reach(task, monkeypatch):
+    """S0 boxes the fingers by how far they reach (RobotSnapshot.spans): the widest opening the executor gives S0
+    for a chunk starts from the measured span, not the gap."""
+    sim = backend()
+    sim.reset(task)
+    sim.step({arm: HOME for arm in ARMS}, {arm: 0.02 for arm in ARMS})
+    measured = sim.robot_state
+    sim.robot_state = lambda: (lambda state: replace(state, spans={'left': max(state.widths['left'], 0.05),
+                                                                   'right': state.widths['right']}))(measured())
+    seen = []
+    monkeypatch.setattr(executor, 'check_joint_path', lambda *args, **kwargs: seen.append(kwargs['openings']))
+    narrow = GRIPPER.travel_m - (0.02 - GRIPPER.closed_gap_m) / 2  # the jaw target for a 20 mm gap
+    deliv = delivery(np.repeat(HOME[None], 75, axis=0), [''] * 75, jaws=np.full((75, 2), narrow))  # 2.5 s
+    executor.execute(sim, task, MODEL, LIMITS, executor.servo_commands(deliv, GRIPPER, LIMITS.servo_hz, OBJECTS))
+    chunks = seen[:-1]  # the last is the ending, fully open
+    assert len(chunks) >= 2  # after the first, the last command is the 20 mm one: only the span says 50 mm
+    assert all(opening['left'] == pytest.approx(0.05) for opening in chunks)  # the right jaws are fully open

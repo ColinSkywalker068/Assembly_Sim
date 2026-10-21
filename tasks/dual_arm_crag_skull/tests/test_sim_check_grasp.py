@@ -254,3 +254,20 @@ def test_s0_limits_need_a_whole_servo_rate():
     assert _whole_hz(60.0) == 60
     with pytest.raises(ValueError, match='whole servo rate'):
         _whole_hz(59.5)
+
+
+def test_the_scripted_reference_runs_under_the_baselines_s0_test_limits():
+    """One S0 for every method: the scripted runs' TEST limits are the baselines' at the same servo rate and widths."""
+    from dataclasses import fields
+    from types import SimpleNamespace
+    from tasks.dual_arm_crag_skull.baselines.aspire.__main__ import test_limits
+    from tasks.dual_arm_crag_skull.contracts.actions import ARMS
+    from tasks.dual_arm_crag_skull.s0.kinematics import yam_width_range_m
+    from tasks.dual_arm_crag_skull.sim.check_grasp import s0_test_limits
+    widths = {arm: yam_width_range_m() for arm in ARMS}
+    task = SimpleNamespace(table_top_z_m=0.75)
+    ours, theirs = s0_test_limits(task, SimpleNamespace(width_range=widths, control_hz=60.0)), test_limits(task, widths)
+    for field in fields(ours):
+        assert np.array_equal(np.asarray(getattr(ours, field.name), dtype=object),
+                              np.asarray(getattr(theirs, field.name), dtype=object)), field.name
+    assert ours.finger_opening_margin_m is not None

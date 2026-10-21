@@ -211,7 +211,10 @@ python -m tasks.dual_arm_crag_skull.baselines.dexagent run --task task.json --tr
   `inputs/s0_spec.json`; until `configs/jing.json` has real S0 values every shared-hardware record is `test_only`.
 - In Stage 3 the gate suite's `s0_delivery_check` (in the patch) runs `s0_check.check_trajectory` on a delivery: the
   executor's own commands and contact windows on a replay that follows them exactly, with the fragments where
-  DexAgent's recording has them. DexAgent accepts nothing that S0 would refuse on a perfect tracker.
+  DexAgent's recording has them. DexAgent accepts nothing that S0 would refuse on a perfect tracker. Since S0 takes
+  the grippers' boxes at their widest opening (2026-10-21, `finger_opening_margin_m`), the replay's grippers are as wide
+  as commanded or, where the recording has the jaws wider (a fragment between them), as recorded; the executor passes
+  each chunk's widest opening from the measured and commanded widths.
 - A delivered trial ends awaiting execution (`result.json`, no record; DexAgent's own MuJoCo outcome is only a note).
   `execute` runs it once (`execution.started` is created before anything moves; an execution that fails is recorded
   as `error`; a held-out seed needs `--records`). The backend resets to the task (Isaac settles the fragments first;

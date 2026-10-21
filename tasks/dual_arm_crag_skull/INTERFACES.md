@@ -114,7 +114,8 @@ S0 执行器（`s0/adapter.py`）在契约之外还要求：
   `contact_windows` 只给活动手生成声明，所以"一只手在桌面上扶持、另一只手放置"这类动作目前会被拒绝。
 
   工具盒拆成本体（base_link，x 最远 89.8 mm、厚 75 mm）和手指（x 44.6–162.8 mm、厚 35 mm）两部分，两者合起来正好是工具盒（`crx10ial_kinematics.json` 中的 `parts`）。碎片仍不是 S0 的碰撞对象。检验脚本是 `experiments/s0_contact_check.py`，结果见 `reports/s0_contact_2026-10-18.json`。
-- YAM `linear_4310` 的几何来自官方模型（`core/robots/linear_4310.py`）：`s0.kinematics.yam_model` 把它装在暂定的 15 mm 转接板上，TCP 沿用代理的约定（TCP 坐标系 = 法兰坐标系平移到抓取点，+x 接近，手指沿 y 开合），工具盒拆成本体加转接板与两指全行程两部分；开口范围 `yam_width_range_m()` = (0, 93.96 mm)。
+- YAM `linear_4310` 的几何来自官方模型（`core/robots/linear_4310.py`）：`s0.kinematics.yam_model` 把它装在暂定的 15 mm 转接板上，TCP 沿用代理的约定（TCP 坐标系 = 法兰坐标系平移到抓取点，+x 接近，手指沿 y 开合），工具盒拆成本体加转接板与两指全行程两部分；开口范围 `yam_width_range_m()` = (0, 93.96 mm)。手指还带有按开口取盒用的数据（`parts.fingers.stroke`：每根手指的滑动轴，以及闭合时沿接近方向每 5 mm 一段的盒子）。
+- **按开口取盒（10-21）**：`S0Limits.finger_opening_margin_m` 不为 null 时，上面的工具盒和手指盒都改为：本体盒，加上每根手指各段从闭合扫到「本段运动里的最大开口 + 余量」的盒子（`ArmModel.finger_boxes(width)`）；最大开口取实测开口、上次指令与本段所有新指令中的最大值（`s0.adapter.widest_opening`）。`check_geometry` / `check_joint_path` 这时必须给出两只夹爪的 `openings`，缺了就拒绝；`S0Adapter` 自己从实测与指令宽度算。余量为 null 时一切照旧（一个全行程盒子）。三种方法用的 TEST 限值都是 4 mm。
 - 关节加速度上限、实测 YAM 开口与 `flange_T_tcp`（要等转接板）、各类间隙、接触阶段的三个参数在 `jing.json` 中仍为 null，必须显式提供；测试里的 20 rad/s² 只是测试值。
 
 ## Episode

@@ -185,7 +185,8 @@ def screen(task, model, limits, home, *, tip_reach_m, fragment_ids=None, exclude
 
 
 def s0_test_limits(task, backend):
-    """S0 limits with TEST values (configs/jing.json has none), the YAM width range and the asset's velocities."""
+    """S0 limits with TEST values (configs/jing.json has none; the baselines' TEST values), the YAM width range and the
+    asset's velocities, at the backend's servo rate."""
     from ..s0.adapter import S0Limits
     from ..s0.kinematics import load_kinematics
     return S0Limits(max_joint_velocity_rad_s=np.asarray(load_kinematics()['max_joint_velocity_rad_s'], dtype=float),
@@ -193,7 +194,8 @@ def s0_test_limits(task, backend):
                     arm_arm_clearance_m=0.02, table_top_z_m=task.table_top_z_m, table_clearance_m=0.01,
                     tcp_min_height_m=0.02, servo_hz=_whole_hz(backend.control_hz), max_observation_age_s=0.5,
                     anchor_position_tolerance_m=0.002, anchor_rotation_tolerance_rad=0.005,
-                    contact_table_clearance_m=0.002, contact_region_radius_m=0.12, contact_max_speed_m_s=0.05)
+                    contact_table_clearance_m=0.002, contact_region_radius_m=0.12, contact_max_speed_m_s=0.05,
+                    finger_opening_margin_m=0.004)
 
 
 def _whole_hz(rate):

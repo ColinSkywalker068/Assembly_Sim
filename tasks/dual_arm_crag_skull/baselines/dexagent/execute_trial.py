@@ -30,7 +30,7 @@ from ..scoring import RunRecord, append_records, refuse_repeats
 from ..task import AssemblyTask, verify_task
 from .executor import Execution, execute, read_delivery, servo_commands
 from .export import VARIANTS, load_manifest, pose_matrix
-from .s0_check import contact_objects, limits_from_record
+from .s0_check import SPEC_SCHEMA, contact_objects, limits_from_record
 
 VARIANT = VARIANTS['crx_yam']
 STATUS = {'completed': 'completed', 'rejected': 'rejected', 'refused': 'error', 'protective_stop': 'protective_stop'}
@@ -69,8 +69,12 @@ def start_gap(manifest, poses):
 
 
 def trial_limits(trial_dir):
-    """The S0 limits a trial was prepared for (inputs/s0_spec.json)."""
-    return limits_from_record(json.loads((Path(trial_dir) / 'inputs' / 's0_spec.json').read_text())['limits'])
+    """The S0 limits a trial was prepared for (inputs/s0_spec.json), refused if the spec is for another S0."""
+    spec = json.loads((Path(trial_dir) / 'inputs' / 's0_spec.json').read_text())
+    if spec.get('schema') != SPEC_SCHEMA:
+        raise ValueError(f'{trial_dir} was prepared for another S0 ({spec.get("schema")}, now {SPEC_SCHEMA}): '
+                         'prepare it again')
+    return limits_from_record(spec['limits'])
 
 
 def execute_trial(trial_dir, backend, model, *, test_only, records=None):

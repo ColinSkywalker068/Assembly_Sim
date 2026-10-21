@@ -23,10 +23,11 @@ has the two the same. It must be such that
   fragment (a pocket has no room for more), and while they back out and rise, they stay as clear of those cells and
   of the fragment's own;
 - the arm reaches the poses on the way (S0's IK), and where the gripper is lowest (picking, where the insertion
-  begins, at the goal, backed out) S0's table rules hold with S0_MARGIN_M to spare: the normal ones, or those of the
-  contact window the step declares there (s0_table_use; a fragment turned on its way tilts the gripper, and the
-  box S0 puts round the fingers' whole stroke then dips a corner). That box holds the fingers at every opening, so
-  this keeps them off the table too, coming in along their own axis to the pick included.
+  begins, at the goal, backed out) S0's table rules hold with S0_MARGIN_M to spare, with S0's boxes at the opening
+  the fingers have there (open at the pick, gripping the fragment where it begins, released at the goal and backed
+  out): the normal ones, or those of the contact window the step declares there (s0_table_use; a fragment turned on
+  its way tilts the gripper, and S0's boxes then dip a corner). Those boxes hold the fingers at every opening up to
+  that one, so this keeps them off the table too, coming in along their own axis to the pick included.
 Where the insertion begins: backing out of the goal against the insertion direction, BEGIN_CLEARANCE_M beyond the
 furthest the placed cells reach that way, so the fragment comes down to it outside them (the plan guarantees the
 straight insertion itself).
@@ -60,7 +61,7 @@ from scipy.spatial.transform import Rotation
 
 from ..baselines.backend import RobotSnapshot
 from ..contracts.actions import ARMS, ContactWindow
-from ..s0.adapter import Rejected, check_joint_path
+from ..s0.adapter import Rejected, check_joint_path, widest_opening
 from ..s0.ik import IKOptions, solve_ik
 from . import pick
 
@@ -226,20 +227,26 @@ def _line(start, end, step_m=PATH_STEP_M):
     return np.asarray(start) + np.outer(np.linspace(0.0, 1.0, count + 1), np.asarray(end) - np.asarray(start))
 
 
-def s0_table_use(arm_model, limits, q, centre_xy):
+def s0_table_use(arm_model, limits, q, centre_xy, opening=None):
     """How the arm at joints q stands to S0's table rules (s0/adapter.py), each with S0_MARGIN_M to spare: (whether
     it needs a contact window, already within the margin of the normal floor; None, or which of that window's rules,
-    centred at `centre_xy`, fails: no_contact_phase, contact_clearance, body_clearance or contact_region)."""
+    centred at `centre_xy`, fails: no_contact_phase, contact_clearance, body_clearance or contact_region). `opening`:
+    the widest the gripper is open there, which S0 takes its boxes at when its limits say so (else the whole
+    stroke)."""
     from ..s0.adapter import _below
+    margin = limits.finger_opening_margin_m
+    if margin is not None and opening is None:
+        raise ValueError('S0 takes its boxes at the opening: s0_table_use needs it')
+    width = None if margin is None else opening + margin
     table = limits.table_top_z_m
     tcp = arm_model.tcp(q)
     height = tcp[2, 3] - table
-    if (arm_model.tool_box_corners(q)[:, 2].min() - table >= limits.table_clearance_m + S0_MARGIN_M
+    if (arm_model.tool_box_corners(q, width)[:, 2].min() - table >= limits.table_clearance_m + S0_MARGIN_M
             and height >= limits.tcp_min_height_m + S0_MARGIN_M):
         return False, None
     if not limits.contact_enabled:
         return True, 'no_contact_phase'
-    fingers = arm_model.finger_box_corners(q)
+    fingers = arm_model.finger_box_corners(q, width)
     if min(fingers[:, 2].min() - table, height) < limits.contact_table_clearance_m + S0_MARGIN_M:
         return True, 'contact_clearance'
     if arm_model.body_box_corners(q)[:, 2].min() - table < limits.table_clearance_m + S0_MARGIN_M:
@@ -493,6 +500,10 @@ def _try_grasp(task, model, limits, arm, arm_model, key, grasp, tip_z, carry, st
         leave = _translated(back, (0, 0, max(safe_z - back[2, 3], 0.0)))
     options = IKOptions(max_seed_jump_rad=3.5)
     windows = {}
+    # how wide the fingers are at each: open at the pick, gripping the fragment's chord where it begins and goes in,
+    # released at the goal and backed out (run_step opens to RELEASE_GAP_M a side past the measured opening at least)
+    loose = max(release_width, grasp.chord_m + 2 * RELEASE_GAP_M)
+    openings = {'pick': grasp.open_width_m, 'goal': loose, 'begin': grasp.chord_m, 'back': loose}
     for name, pose, centre in (('pick', pick_pose, start[:2, 3]), ('goal', tcp_goal, goal[:2, 3]),
                                ('begin', tcp_begin, goal[:2, 3]), ('back', back, goal[:2, 3]), ('over', over, None),
                                ('leave', leave, None)):  # the low ones first, each with S0's table rules
@@ -501,7 +512,7 @@ def _try_grasp(task, model, limits, arm, arm_model, key, grasp, tip_z, carry, st
             reject(f'ik_{name}')
             return None
         if centre is not None:
-            windows[name], problem = s0_table_use(arm_model, limits, solution.q, centre)
+            windows[name], problem = s0_table_use(arm_model, limits, solution.q, centre, openings[name])
             if problem is not None:
                 reject(f's0_{name}_{problem}')
                 return None
@@ -535,8 +546,9 @@ def _drift(task, poses, keys):
 
 
 class Runner:
-    """Steps segments through S0 on `backend` with the other arm held; `on_step(name, state, targets, contact)` sees
-    each control period (contact: the segment's ContactWindow, or None)."""
+    """Steps segments through S0 on `backend` with the other arm held; `on_step(name, state, targets, contact,
+    openings)` sees each control period (contact: the segment's ContactWindow, or None; openings: each gripper's widest
+    opening over the segment, as S0 checked it)."""
 
     observes = True  # it can read where a fragment is in the hand (a Preflight cannot: it takes the plan's word)
 
@@ -547,6 +559,7 @@ class Runner:
         self.targets = {arm: np.asarray(self.state.joints[arm], dtype=float) for arm in ARMS}
         self.park = {arm: target.copy() for arm, target in self.targets.items()}  # where each arm waits its turn
         self.widths = {arm: limits.gripper_width_range_m[arm][1] for arm in ARMS}
+        self.openings = None
 
     def _check(self, arm, segment):
         """S0's check of `segment` from the state now, the other arm held where it is; the sample times. A refusal
@@ -555,12 +568,16 @@ class Runner:
         count = len(segment.joints)
         times = self.state.time_s + np.arange(1, count + 1) / self.servo_hz
         joints = {arm: segment.joints, other: np.repeat(self.targets[other][None], count, axis=0)}
+        openings = {arm: widest_opening(self.state.spans[arm], self.widths[arm], segment.widths),
+                    other: widest_opening(self.state.spans[other], self.widths[other])}
         try:
             check_joint_path(self.model, self.limits, now=self.state.time_s, q_now=self.state.joints,
                              qd_now=self.state.joint_velocities, qd_window_s=self.state.velocity_window_s,
-                             times=times, joints=joints, contacts=() if segment.contact is None else (segment.contact,))
+                             times=times, joints=joints, contacts=() if segment.contact is None else (segment.contact,),
+                             openings=openings)
         except Rejected as exc:
             raise Rejected(f'{segment.name}: {exc}') from exc
+        self.openings = openings
         return times
 
     @staticmethod
@@ -575,7 +592,7 @@ class Runner:
             self.widths[arm] = float(segment.widths[k])
             self.state = self.backend.step(dict(self.targets), dict(self.widths))
             if self.on_step is not None:
-                self.on_step(segment.name, self.state, dict(self.targets), segment.contact)
+                self.on_step(segment.name, self.state, dict(self.targets), segment.contact, dict(self.openings))
         return self._record(arm, segment)
 
     def hold(self, arm, seconds, name='hold', contact=None):
@@ -588,17 +605,20 @@ class Runner:
 class Preflight(Runner):
     """A Runner that only tries: each segment is checked by S0 as Runner.run would send it, then the arm is taken to
     stand at rest where the segment ends (every segment ends at rest), and nothing is stepped. It starts where `runner`
-    is and sees the fragments where `poses` (world_T_fragment) has them; `segments` keeps what it was given."""
+    is and sees the fragments where `poses` (world_T_fragment) has them; `segments` keeps what it was given. Its
+    grippers are where they were sent, except that `grip` (arm, width), the fragment the step grips, holds that arm's
+    fingers at least that wide (the fragment's chord: closing on it, they stop there)."""
 
     observes = False
 
-    def __init__(self, runner, poses):
+    def __init__(self, runner, poses, grip=None):
         observed = {key: SimpleNamespace(world_T_fragment=np.asarray(pose, dtype=float)) for key, pose in poses.items()}
         self.backend = SimpleNamespace(observed_fragment_poses=lambda: observed)
         self.model, self.limits, self.on_step, self.servo_hz = runner.model, runner.limits, None, runner.servo_hz
         self.state, self.park = runner.state, runner.park
         self.targets = {arm: np.array(q, dtype=float) for arm, q in runner.targets.items()}
         self.widths = dict(runner.widths)
+        self.openings, self.grip = None, grip
         self.segments = []
 
     def run(self, arm, segment):
@@ -607,8 +627,11 @@ class Preflight(Runner):
         self.widths[arm] = float(segment.widths[-1])
         joints = {name: self.targets[name].copy() for name in ARMS}
         tcps = {name: self.model.arms[name].tcp(q) for name, q in joints.items()}
+        measured = dict(self.widths)
+        if self.grip is not None:
+            measured[self.grip[0]] = max(measured[self.grip[0]], float(self.grip[1]))
         self.state = RobotSnapshot(float(times[-1]), joints, {name: np.zeros_like(q) for name, q in joints.items()},
-                                   dict(self.widths), tcps, self.state.velocity_window_s)
+                                   measured, tcps, self.state.velocity_window_s)
         self.segments.append((arm, segment))
         return self._record(arm, segment)
 
@@ -657,7 +680,7 @@ def _preflight(runner, task, placement, poses, sweeps):
     """None if the step would go: its segments, made as run_step makes them from where the robot is now and checked
     by S0 (Preflight), and the moves the plan's own checks leave out keep off the fragments: `sweeps` {segment name:
     check(arm_model, segment) -> True if it hits}. Else why not, naming the segment."""
-    trial = Preflight(runner, poses)
+    trial = Preflight(runner, poses, grip=(placement.arm, placement.grasp.chord_m))
     try:
         run_step(trial, task, placement)
     except Rejected as exc:
@@ -821,17 +844,18 @@ def _ending(runner, task):
     state = runner.state
     hold = {arm: np.repeat(runner.targets[arm][None], periods, axis=0) for arm in ARMS}
     widths = {arm: limits.gripper_width_range_m[arm][1] for arm in ARMS}
+    openings = {arm: widest_opening(state.spans[arm], runner.widths[arm], [widths[arm]]) for arm in ARMS}
     try:
         check_joint_path(runner.model, limits, now=state.time_s, q_now=state.joints, qd_now=state.joint_velocities,
                          qd_window_s=state.velocity_window_s, times=state.time_s + period * np.arange(1, periods + 1),
-                         joints=hold)
+                         joints=hold, openings=openings)
     except Rejected as exc:
         return f'S0 refused the ending: {exc}'
     try:
         for k in range(periods):
             runner.state = runner.backend.step({arm: hold[arm][k] for arm in ARMS}, widths)
             if runner.on_step is not None:
-                runner.on_step('ending', runner.state, {arm: hold[arm][k] for arm in ARMS}, None)
+                runner.on_step('ending', runner.state, {arm: hold[arm][k] for arm in ARMS}, None, dict(openings))
     except Exception as exc:  # the backend (a protective stop, say) or whoever watches the steps
         return f'the ending stopped: {type(exc).__name__}: {exc}'
     return None

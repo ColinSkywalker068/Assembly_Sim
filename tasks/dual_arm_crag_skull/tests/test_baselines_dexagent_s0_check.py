@@ -146,3 +146,29 @@ def test_the_check_starts_the_robot_at_home_as_the_backends_do(task, tmp_path):
     verdict = s0_check.check_trajectory(recording(tmp_path / 't.npz', left, ['left: wait'] * len(left),
                                                   manifest(task)['objects']), spec)
     assert not verdict['ok'] and verdict['status'] == 'refused'
+
+
+def test_the_replay_reaches_the_fingers_as_far_as_the_recording_has_them_where_that_is_further():
+    """S0 boxes the fingers as far as they reach, and a fragment between the pads holds them further out than
+    commanded: the replay's spans are the recorded ones where those are wider, its widths the commands."""
+    recording = (np.array([0.0, 0.5]), np.zeros((2, 1)), ['unused'])
+    recorded = {0: {'left': 0.04, 'right': 0.01}, 1: {'left': 0.0, 'right': 0.0}}
+    replay = s0_check.ReplayBackend({arm: HOME for arm in ARMS}, 60, {arm: 0.05 for arm in ARMS}, recording,
+                                    np.eye(4), [], recorded_spans=lambda frame: recorded[frame])
+    replay.step({arm: HOME for arm in ARMS}, {'left': 0.02, 'right': 0.03})
+    state = replay.robot_state()
+    assert state.spans == {'left': 0.04, 'right': 0.03} and state.widths == {'left': 0.02, 'right': 0.03}
+    for _ in range(30):  # past the second frame, recorded closed: the commands again
+        replay.step({arm: HOME for arm in ARMS}, {'left': 0.02, 'right': 0.03})
+    assert replay.robot_state().spans == {'left': 0.02, 'right': 0.03}
+
+
+def test_recorded_jaws_reach_as_far_as_the_jaw_closed_least():
+    from core.robots.linear_4310 import load_linear_4310
+    gripper = load_linear_4310()
+    names = [f'robot_{arm}_{arm}_{finger}_FE' for arm in ARMS for finger in ('thumb', 'index')]
+    closing = gripper.travel_m - gripper.contact_joint_m
+    half = closing / 2
+    spans = s0_check.recorded_spans(gripper, names, np.array([0.0, half, closing, closing + 0.001]))
+    assert spans['left'] == pytest.approx(gripper.max_width_m)  # one jaw fully open: as if both were
+    assert spans['right'] == pytest.approx(0.0, abs=1e-12)

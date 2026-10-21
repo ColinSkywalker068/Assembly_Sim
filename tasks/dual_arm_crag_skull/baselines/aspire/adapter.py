@@ -50,7 +50,7 @@ from cap_harness.contracts import (ArmCommand, CameraObservation, ExecutionResul
 from cap_harness.errors import ApiError, ErrorCode
 
 from ...contracts.actions import ARMS, ContactWindow
-from ...s0.adapter import Rejected, check_geometry, check_joint_path
+from ...s0.adapter import Rejected, check_geometry, check_joint_path, needs_contact, widest_opening
 from ..backend import ProtectiveStop
 from ..scoring import score_assembly
 from ..task import (AssemblyTask, canonical_split, configured_initial_condition, pose_to_wxyz, require_canonical,
@@ -204,11 +204,12 @@ class SkullAssemblyAdapter:
         return lever
 
     def _in_contact_band(self, arm):
-        """Whether the arm's measured pose already needs a contact window (S0's normal table rules fail for it)."""
-        q = np.asarray(self.backend.robot_state().joints[arm], dtype=float)
-        arm_model, table = self.model.arms[arm], self.limits.table_top_z_m
-        return bool(arm_model.tool_box_corners(q)[:, 2].min() < table + self.limits.table_clearance_m
-                    or arm_model.tcp(q)[2, 3] < table + self.limits.tcp_min_height_m)
+        """Whether the arm's measured pose already needs a contact window (S0's normal table rules fail for it, with
+        S0's boxes at the gripper's opening when its limits take openings)."""
+        snapshot = self.backend.robot_state()
+        q = np.asarray(snapshot.joints[arm], dtype=float)
+        opening = widest_opening(snapshot.spans[arm], self._widths[arm])
+        return needs_contact(self.model.arms[arm], self.limits, q, opening)
 
     def declare_contact(self, kind, fragment_id, *, arm='primary'):
         """Declare where `arm` may work close to the table: 'grasp' a fragment (the window is centred on its observed
@@ -407,16 +408,19 @@ class SkullAssemblyAdapter:
 
     def _check(self, snapshot, times, path, samples):
         """Raise Rejected unless the path passes check_joint_path and, between control periods, the geometry checks
-        at S0's servo rate (joints interpolated linearly from one target to the next)."""
+        at S0's servo rate (joints interpolated linearly from one target to the next), with each gripper's widest
+        opening over the path (S0's boxes at the openings, when its limits take them)."""
         for _, widths in samples:
             for arm in ARMS:
                 low, high = self.limits.gripper_width_range_m[arm]
                 if not low <= widths[arm] <= high:
                     raise Rejected(f'{arm} width {widths[arm]:.4f} m outside [{low}, {high}] m')
         contacts = tuple(self._contacts.values())
+        openings = {arm: widest_opening(snapshot.spans[arm], self._widths[arm], [w[arm] for _, w in samples])
+                    for arm in ARMS}
         check_joint_path(self.model, self.limits, now=snapshot.time_s, q_now=snapshot.joints,
                          qd_now=snapshot.joint_velocities, qd_window_s=snapshot.velocity_window_s, times=times,
-                         joints=path, contacts=contacts)
+                         joints=path, contacts=contacts, openings=openings)
         factor = int(np.ceil(self.limits.servo_hz * self.control_period_s - 1e-9))
         if factor > 1:
             fractions = np.arange(1, factor) / factor
@@ -428,7 +432,7 @@ class SkullAssemblyAdapter:
                 between[arm] = (points[:-1, None] + fractions[None, :, None] * steps[:, None]).reshape(
                     -1, points.shape[1])
             check_geometry(self.model, self.limits, (starts[:, None] + fractions * self.control_period_s).ravel(),
-                           between, contacts=contacts,
+                           between, contacts=contacts, openings=openings,
                            start=(snapshot.time_s, {arm: np.asarray(snapshot.joints[arm], dtype=float) for arm in ARMS}))
 
     def _run(self, samples):

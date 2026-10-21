@@ -1,6 +1,7 @@
 """What S0 makes of a DexAgent delivery before it runs on the shared hardware: the executor's own commands and contact
-windows (executor.py), executed on a replay that tracks the commands exactly and whose fragments are where DexAgent's
-recording has them, through S0 and the release-and-settle hold.
+windows (executor.py), executed on a replay that tracks the commands exactly, whose fingers reach as far as commanded
+or as far as DexAgent's recording has them where that is further (a fragment between the pads), and whose fragments
+are where the recording has them, through S0 and the release-and-settle hold.
 
 The port's DexAgent runs this as a blocking verifier (its patch's verifiers/s0_delivery_check.py, which imports this
 module from the path in its spec), so its agent sees S0's verdict on a delivery before handing it over, as an S1 chunk
@@ -29,7 +30,7 @@ from . import executor
 from .export import pose_matrix
 from .trajectory import _pose_from_qpos, free_joint_columns
 
-SPEC_SCHEMA = 'assembly_sim.dexagent_s0_spec.v2'
+SPEC_SCHEMA = 'assembly_sim.dexagent_s0_spec.v3'  # v3 (2026-10-21): S0's limits name finger_opening_margin_m
 
 
 def limits_record(limits):
@@ -46,6 +47,11 @@ def limits_record(limits):
 
 
 def limits_from_record(record):
+    """S0Limits from limits_record: every field must be there (a value left out would take its default, a different
+    S0 from the one the record was written for)."""
+    missing = sorted({field.name for field in fields(S0Limits)} - set(record))
+    if missing:
+        raise ValueError(f'S0 limits record without {missing}: written for another S0')
     values = dict(record)
     for name in ('max_joint_velocity_rad_s', 'max_joint_acceleration_rad_s2'):
         values[name] = np.asarray(values[name], dtype=float)
@@ -79,23 +85,28 @@ def write_spec(path, *, task, limits, manifest, repo):
 class ReplayBackend:
     """An AssemblyBackend that follows its commands exactly (velocity: the last step's difference) and observes
     the fragments where a DexAgent recording has them at the replay's time (frame by frame, the latest at or before
-    it)."""
+    it). Its fingers reach as far as commanded or, where the recording has them further out (held open by a fragment
+    between them, say), as far as recorded, given `recorded_spans` (frame -> {arm: RobotSnapshot span})."""
 
-    def __init__(self, start, servo_hz, widths, recording, world_T_rig, objects):
+    def __init__(self, start, servo_hz, widths, recording, world_T_rig, objects, recorded_spans=None):
         self.joints = {arm: np.asarray(start[arm], dtype=float).copy() for arm in ARMS}
         self.velocities = {arm: np.zeros(6) for arm in ARMS}
-        self.widths = dict(widths)
+        self.widths, self.spans = dict(widths), dict(widths)
         self.period, self.time_s = 1.0 / float(servo_hz), 0.0
         self.velocity_window_s = self.period  # each step's difference over the period
         self.recording, self.world_T_rig, self.objects = recording, world_T_rig, objects
+        self.recorded_spans = recorded_spans
 
     def robot_state(self):
         return RobotSnapshot(self.time_s, self.joints, self.velocities, self.widths, {arm: np.eye(4) for arm in ARMS},
-                             self.velocity_window_s)
+                             self.velocity_window_s, self.spans)
+
+    def _frame(self):
+        return max(0, int(np.searchsorted(self.recording[0], self.time_s + 1e-9, side='right')) - 1)
 
     def privileged_fragment_poses(self):
-        time_s, qpos, names = self.recording
-        frame = max(0, int(np.searchsorted(time_s, self.time_s + 1e-9, side='right')) - 1)
+        _, qpos, names = self.recording
+        frame = self._frame()
         out = {}
         for obj in self.objects:
             if obj['free_joint'] is None:
@@ -113,8 +124,22 @@ class ReplayBackend:
             target = np.asarray(joints[arm], dtype=float)
             self.velocities[arm] = (target - self.joints[arm]) / self.period
             self.joints[arm] = target.copy()
-        self.widths = dict(widths)
         self.time_s += self.period
+        self.widths = {arm: float(widths[arm]) for arm in ARMS}
+        recorded = {} if self.recorded_spans is None else self.recorded_spans(self._frame())
+        self.spans = {arm: max(self.widths[arm], recorded.get(arm, 0.0)) for arm in ARMS}
+
+
+def recorded_spans(gripper, names, row):
+    """{arm: the pad gap with both jaws as far out as the farther one} of one recorded qpos row: DexAgent's jaw
+    joints where MuJoCo had them, clipped to their range (a jaw pressed past its stop reads as at it)."""
+    closing = gripper.travel_m - gripper.contact_joint_m
+    out = {}
+    for arm in ARMS:
+        jaws = row[[names.index(f'robot_{arm}_{arm}_thumb_FE'), names.index(f'robot_{arm}_{arm}_index_FE')]]
+        farther = float(np.clip(jaws, 0.0, closing).min())  # the jaw closed least
+        out[arm] = float(executor.jaw_width(gripper, [farther, farther]))
+    return out
 
 
 def check_trajectory(trajectory, spec):
@@ -132,9 +157,9 @@ def check_trajectory(trajectory, spec):
     world_T_rig = np.linalg.inv(np.asarray(spec['rig_T_world'], dtype=float))
     names = [str(name) for name in loaded['joint_names']]
     widths = {arm: float(executor.jaw_width(gripper, delivery.jaws[arm][0])) for arm in ARMS}
-    replay = ReplayBackend(spec['home'], limits.servo_hz, widths,
-                           (delivery.time_s, np.asarray(loaded['qpos'], dtype=float), names), world_T_rig,
-                           spec['objects'])
+    qpos = np.asarray(loaded['qpos'], dtype=float)
+    replay = ReplayBackend(spec['home'], limits.servo_hz, widths, (delivery.time_s, qpos, names), world_T_rig,
+                           spec['objects'], recorded_spans=lambda frame: recorded_spans(gripper, names, qpos[frame]))
     result = executor.execute(replay, task, yam_model(), limits, commands)
     return {'ok': result.status == 'completed' and result.settled, 'status': result.status, 'reason':
             result.reason or result.settle_error, 'steps': result.steps,

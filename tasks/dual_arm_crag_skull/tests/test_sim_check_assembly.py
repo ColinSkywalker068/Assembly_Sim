@@ -47,7 +47,7 @@ def test_the_telemetry_keeps_where_every_fragment_was(cube_run):
     state = backend.reset(task)
     telemetry, poses = check_assembly.Telemetry(), backend.privileged_fragment_poses()
     for _ in range(2):
-        telemetry('hold', state, state.joints, None, poses)
+        telemetry('hold', state, state.joints, None, fragments=poses)
     arrays = telemetry.arrays()
     assert list(arrays['fragment_ids']) == sorted(poses) and arrays['fragments'].shape == (2, len(poses), 4, 4)
     for k, key in enumerate(sorted(poses)):
@@ -72,7 +72,8 @@ def test_the_margins_of_an_accepted_run_are_inside_the_limits_it_ran_under(cube_
 def test_a_sample_below_the_normal_floor_counts_as_using_its_contact_window(low_first):
     """Two commanded samples of the right arm, the TCP 0.3 m and 5 mm over the table, 40 mm from the window centre,
     in either order: only the low one needs the window (S0 refuses it without one), and the margins say how it was
-    used; the interval between them is next to it either way, so its finger speed counts."""
+    used, with S0's boxes at the opening it took them at; the interval between them is next to it either way, so its
+    finger speed counts."""
     arm_model = MODEL.arms['right']
     centre = np.array([0.35, 0.0])
     low = pick.down_pose(centre + [0.04, 0.0], LIMITS.table_top_z_m + 0.005, 0.0)
@@ -83,18 +84,18 @@ def test_a_sample_below_the_normal_floor_counts_as_using_its_contact_window(low_
     order = (q_low, q_high) if low_first else (q_high, q_low)
     joints = {'left': np.repeat(HOME['left'][None], 2, axis=0), 'right': np.array(order)}
     with pytest.raises(Rejected, match='no contact declared'):
-        check_geometry(MODEL, LIMITS, times, joints)
+        check_geometry(MODEL, LIMITS, times, joints, openings={side: 0.05 for side in ARMS})
     arrays = {'segment': np.array(['descend', 'descend']), 'time_s': times,
               'contact_arm': np.array(['right', 'right']), 'contact_xy': np.array([centre, centre])}
     for side in ARMS:
         for key in ('target', 'joints'):
             arrays[f'{side}_{key}'] = joints[side]
         arrays[f'{side}_speed'] = np.zeros((2, 6))
-        arrays[f'{side}_width'] = np.full(2, 0.05)
+        arrays[f'{side}_width'] = arrays[f'{side}_opening'] = np.full(2, 0.05)
     used = check_assembly.s0_margins(MODEL, LIMITS, arrays)['commanded']['right']
     assert used['contact_samples'] == 1
     assert used['contact_tcp_min_m'] == pytest.approx(0.005, abs=1e-4)
-    corners = [arm_model.finger_box_corners(q) for q in (q_high, q_low)]
+    corners = [arm_model.finger_box_corners(q, 0.05 + LIMITS.finger_opening_margin_m) for q in (q_high, q_low)]
     spread = np.hypot(*(corners[1][:, :2] - arm_model.tcp(q_low)[:2, 3]).T).max()  # corners[1] is the low sample's
     assert 0.04 - 1e-4 <= used['contact_reach_max_m'] <= 0.04 + spread + 1e-4  # the TCP, the finger box below the floor
     assert used['contact_finger_speed_max_m_s'] == pytest.approx(

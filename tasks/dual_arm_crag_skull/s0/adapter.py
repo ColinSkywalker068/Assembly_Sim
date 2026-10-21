@@ -6,11 +6,16 @@ acceleration limits so that they stop together, and the gripper widths stay at t
 COMMANDED values, so stopping never releases a fragment the robot is holding or supporting. For a
 position-controlled gripper the command, not the measured opening, sets the squeeze: a gripper
 commanded to 0.020 m that a fragment blocks at 0.030 m loses its grip if it is "held" at 0.030 m.
-Measured widths are only reported. An accepted chunk must also end in a state from which that
-same braking stop stays inside the joint limits.
+Measured widths set no command; they bound how far the fingers reach (below). An accepted chunk
+must also end in a state from which that same braking stop stays inside the joint limits.
 
-The collision checks are coarse: bounding capsules for the links (s0/collision.py) and a
-flange-frame box around the whole gripper stroke, evaluated at the servo samples only. They catch
+The collision checks are coarse: bounding capsules for the links (s0/collision.py) and
+flange-frame boxes round the gripper, evaluated at the servo samples only: one round the body and
+the fingers over their whole stroke or, with `finger_opening_margin_m` set, the body's box and the
+fingers' boxes (slabs of each tip, s0/kinematics.py) at every opening up to the widest the gripper
+can have in the motion checked (widest_opening: the measured opening, the last command and every
+new one) plus that margin. That bound is read once, at the chunk's start: fingers pushed wider while it
+runs (a fragment turning in the grip) are the margin's to cover. They catch
 gross arm-arm, arm-table and tool-table interference; they are not continuous collision checking
 against meshes, they do not check self-collision within one arm, braking paths are not
 collision-checked, and fragments are not collision objects at all.
@@ -63,7 +68,10 @@ class S0Limits:
     """Every physical limit is explicit; nothing about the YAM gripper or CRX dynamics is assumed.
 
     The three contact_* values configure the contact phase (all three or none): without them a declared
-    contact never relaxes anything, and a chunk that needs one is rejected.
+    contact never relaxes anything, and a chunk that needs one is rejected. finger_opening_margin_m: None, S0's boxes
+    hold the fingers over their whole stroke; a length, at every opening up to the widest the gripper can have in the
+    motion checked plus this much (the gripper's overshoot past its command and its width calibration), and then every
+    check needs each gripper's widest opening (check_geometry).
     """
 
     max_joint_velocity_rad_s: np.ndarray
@@ -81,6 +89,7 @@ class S0Limits:
     contact_table_clearance_m: float | None = None
     contact_region_radius_m: float | None = None
     contact_max_speed_m_s: float | None = None
+    finger_opening_margin_m: float | None = None
 
     @property
     def contact_enabled(self):
@@ -115,6 +124,10 @@ class S0Limits:
             if not 0 < clearance <= self.table_clearance_m or not radius > 0 or not speed > 0:
                 raise ValueError('contact clearance must be in (0, table_clearance_m]; region radius and speed '
                                  'limit must be positive')
+        margin = self.finger_opening_margin_m
+        if margin is not None and (isinstance(margin, bool) or not isinstance(margin, numbers.Real)
+                                   or not np.isfinite(margin) or margin < 0):
+            raise ValueError('finger_opening_margin_m must be None or a finite length >= 0')
 
 
 @dataclass(frozen=True)
@@ -171,7 +184,8 @@ class S0Adapter:
     def plan(self, chunk, *, now, joints, joint_velocities, widths, commanded_widths, tcp_at_observation):
         """Return (S0Status, JointTrajectory).
 
-        `widths` are the measured openings (reported only). `commanded_widths[arm]` is the last width
+        `widths` are the measured openings as far as the fingers reach (RobotSnapshot.spans): they set no
+        command, and bound the boxes with limits.finger_opening_margin_m. `commanded_widths[arm]` is the last width
         S0 commanded/accepted for that gripper (from S0's own command history): holds and brakes keep
         it, the inactive-arm rule compares the chunk against it and active-arm width motion starts from
         it. `tcp_at_observation[arm]` is the TCP the caller measured at `chunk.observation_time` (from
@@ -193,7 +207,7 @@ class S0Adapter:
             self._check_order(chunk)
             self._check_contacts_fixed(chunk)
             self._check_anchors(chunk, tcp_at_observation)
-            trajectory = self._trajectory(chunk, now, q_now, qd_now, w_command)
+            trajectory = self._trajectory(chunk, now, q_now, qd_now, w_command, w_measured)
         except (Rejected, ValueError) as exc:  # ValueError covers ActionRejected from the contracts
             brake = self._brake(chunk, now, q_now, qd_now, w_command)
             reason = str(exc) if brake.note is None else f'{exc}; {brake.note}'
@@ -285,7 +299,7 @@ class S0Adapter:
         return JointTrajectory(chunk.request_id, chunk.chunk_id, _frozen(times), joints, widths, hold=True,
                                note='; '.join(notes) or None)
 
-    def _trajectory(self, chunk, now, q_now, qd_now, w_command):
+    def _trajectory(self, chunk, now, q_now, qd_now, w_command, w_measured):
         decoded = decode_chunk(chunk)
         keep = chunk.waypoint_times > now
         knots = np.concatenate([[now], chunk.waypoint_times[keep]])
@@ -324,7 +338,9 @@ class S0Adapter:
                                f'(stop at {stop[joint]:.3f} rad)')
             joints[arm] = spline(samples)
             widths[arm] = np.interp(samples, knots, np.concatenate([[w_command[arm]], chunk_widths]))
-        check_geometry(self.model, self.limits, samples, joints, contacts=chunk.contacts, start=(now, q_now))
+        openings = {arm: widest_opening(w_measured[arm], w_command[arm], widths[arm]) for arm in ARMS}
+        check_geometry(self.model, self.limits, samples, joints, contacts=chunk.contacts, start=(now, q_now),
+                       openings=openings)
         return JointTrajectory(chunk.request_id, chunk.chunk_id, _frozen(samples),
                                {arm: _frozen(value) for arm, value in joints.items()},
                                {arm: _frozen(value) for arm, value in widths.items()}, hold=False)
@@ -347,17 +363,21 @@ class S0Adapter:
                                f'(value {values[sample, joint]:.3f})')
 
 
-def check_geometry(model, limits, samples, joints, *, contacts=(), start=None):
+def check_geometry(model, limits, samples, joints, *, contacts=(), start=None, openings=None):
     """Raise Rejected unless at every sample the arms keep apart, the links and the tool box keep off the
     table and each TCP stays above `tcp_min_height_m`. `joints[arm]` is (len(samples), dof).
 
     Where an arm breaks the tool box or TCP rule, its ContactWindow among `contacts` may still let the sample
     through (module docstring). The per-sample parts of that rule are checked with each sample; the spacing and
     speed parts afterwards, from `start` = (time, {arm: joints}), the measured state the samples continue from,
-    which is required whenever `contacts` is not empty.
+    which is required whenever `contacts` is not empty. `openings` {arm: m}: the widest each gripper can be open
+    at these samples (widest_opening), required when limits.finger_opening_margin_m is set: the tool and finger
+    boxes are then taken at that opening plus the margin, the same at every sample. Without the margin the boxes
+    hold the fingers over their whole stroke and `openings` is not used.
     """
     table = limits.table_top_z_m
     floor = table + limits.table_clearance_m
+    widths = _box_widths(limits, openings)
     declared = _declared_contacts(contacts)
     start = _measured_start(model, start, samples) if declared else None
     used = {arm: [] for arm in ARMS}
@@ -375,16 +395,48 @@ def check_geometry(model, limits, samples, joints, *, contacts=(), start=None):
             for k, name in enumerate(names):
                 if name.split(':')[1] in TABLE_CHECKED_LINKS and lowest[k] < floor:
                     raise Rejected(f'{name} is {lowest[k] - table:.3f} m from the table at t={time:.3f} s')
-            problem, tcp = _table_problem(arm_model, limits, q, time)
+            problem, tcp = _table_problem(arm_model, limits, q, time, widths[arm])
             if problem is None:
                 continue
-            refusal = _contact_refusal(arm_model, limits, declared.get(arm), q, tcp)
+            refusal = _contact_refusal(arm_model, limits, declared.get(arm), q, tcp, widths[arm])
             if refusal:
                 raise Rejected(f'{problem}; {refusal})')
-            _check_contact_clearances(arm_model, limits, declared[arm], q, tcp, time)
+            _check_contact_clearances(arm_model, limits, declared[arm], q, tcp, time, widths[arm])
             used[arm].append(index)
     for arm in declared:
-        _check_contact_motion(model.arms[arm], limits, samples, joints[arm], start, used[arm])
+        _check_contact_motion(model.arms[arm], limits, samples, joints[arm], start, used[arm], widths[arm])
+
+
+def widest_opening(measured, commanded, targets=()):
+    """The widest a position-controlled gripper can be open while it is sent width `targets` (m): it moves between
+    where it is (`measured`, which what it grips may hold wider than its command), where it was last sent
+    (`commanded`: it may still be on its way there) and the new targets. Its overshoot past them is
+    finger_opening_margin_m's to cover."""
+    try:
+        values = np.concatenate([[float(measured), float(commanded)], np.ravel(np.asarray(targets, dtype=float))])
+    except (TypeError, ValueError) as exc:
+        raise Rejected(f'gripper widths must be numbers: {exc}') from exc
+    if not np.isfinite(values).all():
+        raise Rejected('gripper widths must be finite')
+    return float(values.max())
+
+
+def _box_widths(limits, openings):
+    """{arm: the opening S0 takes the tool and finger boxes at, or None for the whole stroke}."""
+    margin = limits.finger_opening_margin_m
+    if margin is None:
+        return {arm: None for arm in ARMS}
+    widths = {}
+    for arm in ARMS:
+        try:
+            value = float(openings[arm])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise Rejected(f'S0 takes the fingers at each gripper\'s widest opening in the motion, and {arm}\'s is '
+                           f'missing or not a number: {exc!r}') from exc
+        if not (np.isfinite(value) and value >= 0):
+            raise Rejected(f'{arm}: the widest opening must be a finite width >= 0, got {value}')
+        widths[arm] = value + margin
+    return widths
 
 
 def _declared_contacts(contacts):
@@ -422,11 +474,22 @@ def _measured_start(model, start, samples):
     return time, joints
 
 
-def _table_problem(arm_model, limits, q, time):
-    """(Why q breaks the tool box or TCP-height rule, or None; the TCP pose.)"""
+def needs_contact(arm_model, limits, q, opening=None):
+    """Whether the arm at joints q breaks S0's normal tool-box or TCP-height rule, so that it needs a contact window
+    there: the boxes at `opening` (the widest the gripper is open, widest_opening) plus the margin when the limits
+    take openings, else over the whole stroke."""
+    margin = limits.finger_opening_margin_m
+    if margin is not None and opening is None:
+        raise ValueError('S0 takes its boxes at the opening: give the widest the gripper is open')
+    return _table_problem(arm_model, limits, q, 0.0, None if margin is None else float(opening) + margin)[0] is not None
+
+
+def _table_problem(arm_model, limits, q, time, width=None):
+    """(Why q breaks the tool box or TCP-height rule, or None; the TCP pose.) `width`: the opening the boxes are
+    taken at (None: the whole stroke)."""
     table, arm = limits.table_top_z_m, arm_model.name
     tcp = arm_model.tcp(q)
-    tool_low = float(arm_model.tool_box_corners(q)[:, 2].min())
+    tool_low = float(arm_model.tool_box_corners(q, width)[:, 2].min())
     if not tool_low >= table + limits.table_clearance_m:
         return (f'{arm}:tool box is {tool_low - table:.3f} m from the table at t={time:.3f} s '
                 f'(needs {limits.table_clearance_m} m'), tcp
@@ -437,16 +500,20 @@ def _table_problem(arm_model, limits, q, time):
 
 
 def _below(corners, floor):
-    """The vertices of the part of a box below the plane z = floor: its corners below it and the points where its
-    edges cross it (the part is convex, so the farthest of these from any centre is its farthest point)."""
-    low = corners[:, 2] < floor
-    crossings = [corners[i] + (floor - corners[i, 2]) / (corners[j, 2] - corners[i, 2]) * (corners[j] - corners[i])
-                 for i, j in BOX_EDGES if low[i] != low[j]]
-    return np.vstack([corners[low], *crossings]) if crossings else corners[low]
+    """The vertices of the parts of boxes below the plane z = floor, from their corners (8 a box, box after box, as
+    ArmModel lists them): each box's corners below it and the points where its edges cross it (each part is convex,
+    so the farthest of these from any centre is the farthest point of them all)."""
+    parts = []
+    for box in np.asarray(corners, dtype=float).reshape(-1, 8, 3):
+        low = box[:, 2] < floor
+        parts.append(box[low])
+        parts.extend(box[i] + (floor - box[i, 2]) / (box[j, 2] - box[i, 2]) * (box[j] - box[i])
+                     for i, j in BOX_EDGES if low[i] != low[j])
+    return np.vstack(parts)
 
 
-def _contact_refusal(arm_model, limits, contact, q, tcp):
-    """None when `contact` may let this sample through, otherwise why it cannot. The TCP and all of the finger box
+def _contact_refusal(arm_model, limits, contact, q, tcp, width=None):
+    """None when `contact` may let this sample through, otherwise why it cannot. The TCP and all of the finger boxes
     below the normal floor must lie within the contact radius of the centre (x, y)."""
     arm = arm_model.name
     if contact is None:
@@ -455,7 +522,7 @@ def _contact_refusal(arm_model, limits, contact, q, tcp):
         return f'a {contact.kind} contact is declared but the contact phase is not configured'
     if not arm_model.has_tool_parts:
         return f'a {contact.kind} contact needs the finger geometry of the {arm} gripper'
-    below = _below(arm_model.finger_box_corners(q), limits.table_top_z_m + limits.table_clearance_m)
+    below = _below(arm_model.finger_box_corners(q, width), limits.table_top_z_m + limits.table_clearance_m)
     points = np.vstack([tcp[:3, 3], below])
     reach = float(np.hypot(points[:, 0] - contact.center_xy[0], points[:, 1] - contact.center_xy[1]).max())
     if not reach <= limits.contact_region_radius_m:
@@ -464,14 +531,14 @@ def _contact_refusal(arm_model, limits, contact, q, tcp):
     return None
 
 
-def _check_contact_clearances(arm_model, limits, contact, q, tcp, time):
+def _check_contact_clearances(arm_model, limits, contact, q, tcp, time, width=None):
     """In a contact the gripper body keeps the normal clearance; the fingers and the TCP the contact clearance."""
     table, arm = limits.table_top_z_m, arm_model.name
     body_low = float(arm_model.body_box_corners(q)[:, 2].min())
     if not body_low >= table + limits.table_clearance_m:
         raise Rejected(f'{arm}:gripper body is {body_low - table:.3f} m from the table at t={time:.3f} s (needs '
                        f'{limits.table_clearance_m} m, also in a {contact.kind} contact)')
-    finger_low = float(arm_model.finger_box_corners(q)[:, 2].min())
+    finger_low = float(arm_model.finger_box_corners(q, width)[:, 2].min())
     if not finger_low >= table + limits.contact_table_clearance_m:
         raise Rejected(f'{arm}:fingers are {finger_low - table:.4f} m from the table at t={time:.3f} s (needs '
                        f'{limits.contact_table_clearance_m} m in a {contact.kind} contact)')
@@ -481,7 +548,7 @@ def _check_contact_clearances(arm_model, limits, contact, q, tcp, time):
                        f'{limits.contact_table_clearance_m} m in a {contact.kind} contact)')
 
 
-def _check_contact_motion(arm_model, limits, samples, path, start, used):
+def _check_contact_motion(arm_model, limits, samples, path, start, used, width=None):
     """The rules over time for one arm's contact.
 
     Every servo interval next to a sample that used the contact (`used`), and the first interval when the
@@ -494,12 +561,12 @@ def _check_contact_motion(arm_model, limits, samples, path, start, used):
     arm = arm_model.name
     start_time, start_joints = start
     start_q = start_joints[arm]
-    starts_in_contact = _table_problem(arm_model, limits, start_q, start_time)[0] is not None
+    starts_in_contact = _table_problem(arm_model, limits, start_q, start_time, width)[0] is not None
     near = {*used, *(i + 1 for i in used if i + 1 < len(samples)), *([0] if starts_in_contact else [])}
     if not near:
         return
     times = np.concatenate([[start_time], np.asarray(samples, dtype=float)])
-    corners = np.array([arm_model.finger_box_corners(q) for q in (start_q, *path)])
+    corners = np.array([arm_model.finger_box_corners(q, width) for q in (start_q, *path)])
     steps = np.diff(times)
     speeds = np.linalg.norm(np.diff(corners, axis=0), axis=2).max(axis=1) / steps
     period = 1.0 / limits.servo_hz
@@ -512,7 +579,7 @@ def _check_contact_motion(arm_model, limits, samples, path, start, used):
                            f'(limit {limits.contact_max_speed_m_s} m/s in a contact)')
 
 
-def check_joint_path(model, limits, *, now, q_now, qd_now, qd_window_s, times, joints, contacts=()):
+def check_joint_path(model, limits, *, now, q_now, qd_now, qd_window_s, times, joints, contacts=(), openings=None):
     """Raise Rejected unless joint targets sampled at `times` keep both arms inside the joint position,
     velocity and acceleration limits, can brake to a stop inside the joint limits after the last
     target, and pass check_geometry.
@@ -530,7 +597,9 @@ def check_joint_path(model, limits, *, now, q_now, qd_now, qd_window_s, times, j
     because nothing between targets is checked. Away from a contact, long intervals are not checked in
     between either: a caller whose targets are further apart than a servo period must check the path
     between them itself, as the ASPIRE adapter does. Unlike S0Adapter, this function keeps no memory, so
-    a caller that issues several paths for one request must keep its contacts fixed itself.
+    a caller that issues several paths for one request must keep its contacts fixed itself. `openings` {arm: m}:
+    each gripper's widest opening over the path (widest_opening), which check_geometry needs when
+    limits.finger_opening_margin_m is set.
     """
     try:
         now = float('nan') if isinstance(now, bool) else float(now)
@@ -580,4 +649,4 @@ def check_joint_path(model, limits, *, now, q_now, qd_now, qd_window_s, times, j
                            f'(stop at {stop[joint]:.3f} rad)')
         samples[arm] = path
     check_geometry(model, limits, times, samples, contacts=contacts,
-                   start=(now, {arm: np.asarray(q_now[arm], dtype=float) for arm in ARMS}))
+                   start=(now, {arm: np.asarray(q_now[arm], dtype=float) for arm in ARMS}), openings=openings)

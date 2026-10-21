@@ -124,7 +124,7 @@ def readiness(config):
         "s0": ("max_joint_acceleration_rad_s2", "gripper_width_range_m", "flange_T_tcp", "arm_arm_clearance_m",
                "table_clearance_m", "tcp_min_height_m", "max_observation_age_s", "anchor_position_tolerance_m",
                "anchor_rotation_tolerance_rad", "contact_table_clearance_m", "contact_region_radius_m",
-               "contact_max_speed_m_s"),
+               "contact_max_speed_m_s", "finger_opening_margin_m"),
     }.items():
         missing.extend(f"{section}.{key}" for key in keys if config[section].get(key) is None)
     pending = ["real CRAG sample and manufacturing validation", "YAM model and calibration",

@@ -59,7 +59,10 @@ def _joint_vector(value, name):
 class RobotSnapshot:
     """Measured robot state: joints (rad), joint velocities (rad/s), gripper openings (m) and TCPs (world).
     `velocity_window_s` says what the velocities are: their average over that time up to `time_s` (0 for an
-    instantaneous velocity). S0 reads a path's first step with it (s0.adapter.check_joint_path)."""
+    instantaneous velocity). S0 reads a path's first step with it (s0.adapter.check_joint_path). `spans` are the
+    openings as far as the fingers reach: the gap the pads would have with both fingers as far out as the farther
+    one, which S0 boxes the fingers by (s0.adapter.widest_opening); the same as `widths` (the default) for fingers
+    that move together, wider when they do not."""
 
     time_s: float
     joints: Mapping[str, np.ndarray]
@@ -67,6 +70,7 @@ class RobotSnapshot:
     widths: Mapping[str, float]
     tcp: Mapping[str, np.ndarray]
     velocity_window_s: float
+    spans: Mapping[str, float] | None = None
 
     def __post_init__(self):
         object.__setattr__(self, 'time_s', _finite_time(self.time_s, 'time_s'))
@@ -85,7 +89,13 @@ class RobotSnapshot:
         widths = {arm: float(self.widths[arm]) for arm in ARMS}
         if not all(np.isfinite(width) and width >= 0 for width in widths.values()):
             raise ValueError('widths must be finite and non-negative')
-        for name, value in (('joints', joints), ('joint_velocities', velocities), ('tcp', tcp), ('widths', widths)):
+        if self.spans is not None and set(self.spans) != set(ARMS):
+            raise ValueError(f'spans must cover {ARMS}')
+        spans = dict(widths) if self.spans is None else {arm: float(self.spans[arm]) for arm in ARMS}
+        if not all(np.isfinite(spans[arm]) and spans[arm] >= widths[arm] - 1e-6 for arm in ARMS):  # float32 widths
+            raise ValueError('spans must be finite and no narrower than the widths')
+        for name, value in (('joints', joints), ('joint_velocities', velocities), ('tcp', tcp), ('widths', widths),
+                            ('spans', spans)):
             object.__setattr__(self, name, MappingProxyType(value))
 
 

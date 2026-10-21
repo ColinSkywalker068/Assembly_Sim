@@ -1040,3 +1040,53 @@ def test_an_isaac_backend_that_fails_to_start_ends_the_process_non_zero(task, tm
               '--output-root', str(tmp_path / 'runs'), '--backend', 'isaac'])
     code, err = exited.value.args
     assert code == 1 and 'RuntimeError: stage broke' in err
+
+
+def test_s0_boxes_the_yam_fingers_at_the_opening_the_program_commands(task):
+    """With S0's boxes at the openings (the TEST limits since 2026-10-21), a program that has closed the YAM may tilt it
+    low over the table where one box over the whole stroke would not pass; fully open, the same descent is refused
+    (the pose of tests/test_s0_opening.py, the TCP 25 mm over the table)."""
+    from tasks.dual_arm_crag_skull.s0.kinematics import yam_model, yam_width_range_m
+    from tasks.dual_arm_crag_skull.tests.test_s0_opening import Q_TILT, TILTED, tcp_joints
+    yam, widths = yam_model(), {arm: yam_width_range_m() for arm in ARMS}
+    q_up = tcp_joints([-0.42, 0.0, 0.75 + 0.085], TILTED, seed=Q_TILT)
+    descent = [q_up + (Q_TILT - q_up) * f for f in np.linspace(0.0, 1.0, 41)[1:]]  # 2 s at 20 Hz
+    outcomes = {}
+    for opening in (0.3, 1.0):  # 28 mm; fully open
+        sim = KinematicBackend(yam, home_joints={'left': q_up, 'right': HOME}, width_range_m=widths, control_hz=20)
+        env = SkullAssemblyAdapter(sim, yam, limits(gripper_width_range_m=widths, finger_opening_margin_m=0.004),
+                                   config=CONFIG, mode='practice')
+        env.reset(task, 101)
+        env.set_gripper(opening, arm='left')
+        state = env.get_robot_state()
+        outcomes[opening] = env.execute_trajectory(Trajectory(
+            joint_positions=descent, dt_s=0.05, joint_names=state.joint_names['left'], planner='test',
+            collision_aware=False, expected_start=state, arm='left', embodiment=EMBODIMENT))
+    assert outcomes[0.3].ok, outcomes[0.3].error
+    assert not outcomes[1.0].ok and 'tool box' in outcomes[1.0].error.message
+
+
+def test_the_adapter_gives_s0_how_far_the_fingers_reach_and_bands_by_it(task, monkeypatch):
+    """S0 boxes the fingers by how far they reach (RobotSnapshot.spans): the widest opening the adapter gives S0
+    starts from the measured span, and whether the arm is in the contact band (for declaring and clearing a window)
+    is S0's own rule at that opening."""
+    from tasks.dual_arm_crag_skull.baselines.aspire import adapter as adapter_module
+    from tasks.dual_arm_crag_skull.s0.kinematics import yam_model, yam_width_range_m
+    from tasks.dual_arm_crag_skull.tests.test_s0_opening import Q_TILT
+    yam, widths = yam_model(), {arm: yam_width_range_m() for arm in ARMS}
+    sim = KinematicBackend(yam, home_joints={'left': Q_TILT, 'right': HOME}, width_range_m=widths, control_hz=20)
+    env = SkullAssemblyAdapter(sim, yam, limits(gripper_width_range_m=widths, finger_opening_margin_m=0.004),
+                               config=CONFIG, mode='practice')
+    env.reset(task, 101)
+    sim.widths = {arm: 0.028 for arm in ARMS}  # closed to 28 mm without moving (the test pose of test_s0_opening)
+    env._widths = dict(sim.widths)
+    assert not env._in_contact_band('left')  # S0 needs no window there at 28 mm
+    measured = sim.robot_state
+    sim.robot_state = lambda: (lambda state: replace(state, spans={'left': 0.09, 'right': state.widths['right']}))(
+        measured())
+    assert env._in_contact_band('left')  # one finger pushed far out: the boxes dip into the table
+    seen = []
+    monkeypatch.setattr(adapter_module, 'check_joint_path', lambda *args, **kwargs: seen.append(kwargs['openings']))
+    monkeypatch.setattr(adapter_module, 'check_geometry', lambda *args, **kwargs: None)
+    env.set_gripper(0.3, arm='right')
+    assert seen and seen[0]['left'] == pytest.approx(0.09)

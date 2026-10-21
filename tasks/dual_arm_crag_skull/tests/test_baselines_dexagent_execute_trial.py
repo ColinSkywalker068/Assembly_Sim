@@ -144,6 +144,20 @@ def test_a_trial_whose_s0_limits_are_for_another_table_is_not_executed(task, tmp
         execute_trial.execute_trial(folder, backend(), MODEL, test_only=True)
 
 
+def test_a_trial_prepared_for_another_s0_is_not_executed(task, tmp_path):
+    """A spec written before S0 took the grippers' openings (v2) would load as the old S0: it is refused, and so is
+    a limits record that leaves a field out."""
+    folder = trial(tmp_path, task, np.repeat(HOME[None], 3, axis=0), ['left: wait'] * 3)
+    path = folder / 'inputs' / 's0_spec.json'
+    spec = json.loads(path.read_text())
+    path.write_text(json.dumps({**spec, 'schema': 'assembly_sim.dexagent_s0_spec.v2'}))
+    with pytest.raises(ValueError, match='another S0'):
+        execute_trial.execute_trial(folder, backend(), MODEL, test_only=True)
+    limits = {key: value for key, value in spec['limits'].items() if key != 'finger_opening_margin_m'}
+    with pytest.raises(ValueError, match='finger_opening_margin_m'):
+        s0_check.limits_from_record(limits)
+
+
 def test_rescore_keeps_the_s0_limits_a_shared_hardware_trial_was_prepared_for(task, tmp_path, monkeypatch):
     folder = trial(tmp_path, task, np.repeat(HOME[None], 3, axis=0), ['left: wait'] * 3)
     path = folder / 'inputs' / 'export_manifest.json'

@@ -42,6 +42,9 @@ ROBOTIQ_PROXY_MAX_WIDTH_M = 0.085
 # behind its mount plane, so the plate must be thicker than that or recessed.
 YAM_PROVISIONAL_ADAPTER_THICKNESS_M = 0.015
 YAM_MOUNT_ROTATION = np.array([[0.0, 0.0, 1.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
+# At a given opening S0 boxes each tip slab by slab along the approach axis: a tip is thin at its end and wide at its
+# root (its slide), and one box round all of it puts the root's width at the end too, 17 mm wider a side.
+FINGER_SLAB_M = 0.005
 
 
 def load_kinematics(path=KINEMATICS_PATH):
@@ -90,6 +93,71 @@ def _tool_parts_tuple(record, box):
     return body, fingers
 
 
+def _stroke_arrays(record, fingers):
+    """(lows, highs, slide axes, closed gap, travel) of the fingers part's `stroke`: the boxes of each tip closed
+    (joint value 0), (K, 3) each, every box with its tip's slide axis; None if it has none. A tip slides rigidly, so
+    its boxes at joint value q are those moved by q times its axis; closed and at the full travel they must together
+    span exactly the whole-stroke box."""
+    if record.get('stroke') is None:
+        return None
+    stroke = record['stroke']
+    try:
+        closed_gap, travel = float(stroke['closed_gap_m']), float(stroke['travel_m'])
+        lows, highs, axes = [], [], []
+        for tip in stroke['tips'].values():
+            axis = np.asarray(tip['slide_axis'], dtype=float)
+            for box in tip['slabs']:
+                low, high = _tool_box_tuple(box)
+                lows.append(low)
+                highs.append(high)
+                axes.append(axis)
+    except (KeyError, TypeError, AttributeError) as exc:
+        raise ValueError(f'the finger stroke needs closed_gap_m, travel_m and each tip\'s slide axis and boxes: '
+                         f'{exc!r}')
+    lows, highs, axes = np.array(lows), np.array(highs), np.array(axes)
+    if not np.isfinite([closed_gap, travel]).all() or not travel > 0 or len(stroke['tips']) != 2:
+        raise ValueError('the finger stroke needs a finite closed gap, a positive travel and two tips')
+    if axes.shape[1:] != (3,) or not np.isfinite(axes).all() or (np.abs(np.linalg.norm(axes, axis=1) - 1) > 1e-6).any():
+        raise ValueError('each tip of the finger stroke needs a unit slide axis')
+    whole = _swept(lows, highs, axes, travel)
+    if (np.abs(whole[0].min(axis=0) - fingers[0]).max() > 1e-9
+            or np.abs(whole[1].max(axis=0) - fingers[1]).max() > 1e-9):
+        raise ValueError('the finger stroke must span exactly the fingers\' whole-stroke box')
+    return lows, highs, axes, closed_gap, travel
+
+
+def _swept(lows, highs, axes, q):
+    """The boxes (lows, highs) swept from joint value 0 (closed) to q."""
+    return np.minimum(lows, lows + q * axes), np.maximum(highs, highs + q * axes)
+
+
+def _slab_boxes(points, cuts):
+    """[{'min', 'max'}] of the triangle soup `points` (3N, 3) between consecutive x `cuts` and before the first and
+    after the last: each slab's vertices and the points where triangle edges cross its planes, so that every box holds
+    all of the surface between its planes."""
+    start = np.asarray(points, dtype=float)
+    if start.ndim != 2 or start.shape[1] != 3 or len(start) % 3:
+        raise ValueError('expected triangle vertices (3N, 3)')
+    end = np.roll(start.reshape(-1, 3, 3), -1, axis=1).reshape(-1, 3)  # each vertex starts one edge
+    bounds = [-np.inf, *cuts, np.inf]
+    boxes = []
+    for low, high in zip(bounds[:-1], bounds[1:]):
+        found = [start[(start[:, 0] >= low) & (start[:, 0] <= high)]]
+        for plane in (low, high):
+            if np.isfinite(plane):
+                cross = (start[:, 0] - plane) * (end[:, 0] - plane) < 0
+                t = (plane - start[cross, 0]) / (end[cross, 0] - start[cross, 0])
+                found.append(start[cross] + t[:, None] * (end[cross] - start[cross]))
+        found = np.concatenate(found)
+        if len(found):
+            boxes.append({'min': found.min(axis=0).tolist(), 'max': found.max(axis=0).tolist()})
+    return boxes
+
+
+# x-major corner order of a box (ArmModel._box_corners): bit 2 x, bit 1 y, bit 0 z
+_CORNER_BITS = np.array([[i, j, k] for i in (0, 1) for j in (0, 1) for k in (0, 1)])
+
+
 class ArmModel:
     """One arm: world_T_base, the probed joint chain, flange_T_tcp, per-link capsules and tool box."""
 
@@ -106,6 +174,8 @@ class ArmModel:
         self._tool_capsule = None if tool_capsule is None else _capsule_tuple(tool_capsule)
         self._tool_box = None if tool_box is None else _tool_box_tuple(tool_box)
         self._tool_parts = None if tool_box is None else _tool_parts_tuple(tool_box, self._tool_box)
+        self._stroke = None if self._tool_parts is None else _stroke_arrays(tool_box['parts']['fingers'],
+                                                                              self._tool_parts[1])
 
     @property
     def has_tool_box(self):
@@ -127,19 +197,47 @@ class ArmModel:
             raise ValueError(f'{self.name}: no finger geometry (tool box parts); the contact phase needs it')
         return self._tool_parts[index]
 
-    def tool_box_corners(self, q):
-        """World positions (8, 3) of the tool's flange-frame bounding box corners at joints q."""
+    def tool_box_corners(self, q, width=None):
+        """World positions of the tool's box corners at joints q: (8, 3), the flange-frame bounding box of the body
+        and of the fingers over their whole stroke; given `width`, the body's box and the fingers' boxes at every
+        opening up to it (finger_boxes), 8 corners each, box after box."""
         if self._tool_box is None:
             raise ValueError(f'{self.name}: no tool box; tool-table checks need the tool geometry')
-        return self._box_corners(self._tool_box, q)
+        if width is None or self._stroke is None:
+            return self._box_corners(self._tool_box, q)
+        lows, highs = self.finger_boxes(width)
+        body = self._part(0)
+        return self._boxes_corners(np.vstack([body[0], lows]), np.vstack([body[1], highs]), q)
 
     def body_box_corners(self, q):
         """World corners (8, 3) of the box around the gripper body, the part that does not move with the fingers."""
         return self._box_corners(self._part(0), q)
 
-    def finger_box_corners(self, q):
-        """World corners (8, 3) of the box around the fingers over their whole stroke."""
-        return self._box_corners(self._part(1), q)
+    def finger_boxes(self, width=None):
+        """Flange-frame (lows, highs), (K, 3) each, of the boxes round the fingers: one box over their whole stroke
+        or, given `width` (the gap between the pads, m), the stroke's boxes (slabs of each tip along the approach axis)
+        at every opening from closed up to it; wider than the stroke is the whole stroke. A gripper whose stroke the
+        model does not have keeps the one whole-stroke box."""
+        low, high = self._part(1)
+        if width is None or self._stroke is None:
+            return low[None], high[None]
+        width = float(width)
+        if not (np.isfinite(width) and width >= 0):
+            raise ValueError(f'{self.name}: a finger opening must be a finite width >= 0, got {width}')
+        lows, highs, axes, closed_gap, travel = self._stroke
+        return _swept(lows, highs, axes, min(max((width - closed_gap) / 2, 0.0), travel))
+
+    def finger_box_corners(self, q, width=None):
+        """World corners of the boxes round the fingers (finger_boxes): (8, 3) over the whole stroke, or given `width`
+        8 corners of each of its boxes, box after box."""
+        lows, highs = self.finger_boxes(width)
+        return self._boxes_corners(lows, highs, q)
+
+    def _boxes_corners(self, lows, highs, q):
+        bounds = np.stack([lows, highs], axis=1)  # (K, 2, 3)
+        corners = np.stack([bounds[:, _CORNER_BITS[:, axis], axis] for axis in range(3)], axis=-1).reshape(-1, 3)
+        flange = self.frames(q)[0]['flange']
+        return corners @ flange[:3, :3].T + flange[:3, 3]
 
     def _check(self, q):
         q = np.asarray(q, dtype=float)
@@ -239,7 +337,9 @@ def yam_tool_geometry(thickness_m=YAM_PROVISIONAL_ADAPTER_THICKNESS_M, gripper=N
 
     The TCP is the grasp site with the flange's orientation (the proxy's convention). Box parts: `body` is the gripper
     body plus the plate (a block over the body's cross-section), `fingers` both tips over the whole stroke; the tips
-    move linearly, so the two ends of the stroke bound them."""
+    move linearly, so the two ends of the stroke bound them. `fingers.stroke` has each tip's slide axis and, closed, its
+    boxes: a slab every FINGER_SLAB_M along the approach axis from the tips' ends back to the body's front, and one for
+    the rest of the tip (ArmModel.finger_boxes)."""
     gripper = _yam() if gripper is None else gripper
     flange_T_mount = yam_flange_T_mount(thickness_m, gripper)
 
@@ -252,10 +352,17 @@ def yam_tool_geometry(thickness_m=YAM_PROVISIONAL_ADAPTER_THICKNESS_M, gripper=N
     body = np.concatenate([body, plate])
     fingers = to_flange(np.concatenate([points for q in (0.0, gripper.travel_m)
                                         for points in gripper.tips_at(q).values()]))
+    closed = {tip: to_flange(points) for tip, points in gripper.tips_at(0.0).items()}
+    tips_end, body_front = max(points[:, 0].max() for points in closed.values()), body[:, 0].max()
+    cuts = tips_end - FINGER_SLAB_M * np.arange(int(np.floor((tips_end - body_front) / FINGER_SLAB_M)), 0, -1)
+    stroke = {'closed_gap_m': float(gripper.closed_gap_m), 'travel_m': float(gripper.travel_m),
+              'slab_m': FINGER_SLAB_M,
+              'tips': {tip: {'slide_axis': (flange_T_mount[:3, :3] @ gripper.slide_axes[tip]).tolist(),
+                             'slabs': _slab_boxes(points, cuts)} for tip, points in closed.items()}}
     parts = {'body': {'min': body.min(axis=0).tolist(), 'max': body.max(axis=0).tolist(),
                       'links': ['adapter_plate', 'gripper']},
              'fingers': {'min': fingers.min(axis=0).tolist(), 'max': fingers.max(axis=0).tolist(),
-                         'links': ['tip_left', 'tip_right']}}
+                         'links': ['tip_left', 'tip_right'], 'stroke': stroke}}
     box = {'min': np.minimum(body.min(axis=0), fingers.min(axis=0)).tolist(),
            'max': np.maximum(body.max(axis=0), fingers.max(axis=0)).tolist(), 'parts': parts, 'frame': 'CRX flange',
            'source': 'I2RT linear_4310 meshes (core/assets/robots/i2rt_linear_4310) over the whole stroke, on a '
