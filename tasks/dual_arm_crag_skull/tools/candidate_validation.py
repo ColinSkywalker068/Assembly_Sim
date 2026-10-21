@@ -4,10 +4,34 @@ import trimesh
 from ..perception import rigid_transform
 
 
+class SolidContainment:
+    """Unit-stable ray containment, explicitly avoiding Embree metre-scale offsets.
+
+    trimesh's Embree multi-hit offset is 1e-4 * (100 / mesh.scale)
+    in the input coordinate frame. Small metric meshes can thus skip entire
+    thin walls. Query a fixed-size mesh with internal scaling disabled instead.
+    Winding-number and float64 triangle-ray controls independently validate this.
+    """
+    def __init__(self,mesh):
+        self.origin=mesh.bounds.mean(axis=0)
+        self.factor=100. / mesh.scale
+        normalized=mesh.copy()
+        normalized.vertices=(mesh.vertices-self.origin)*self.factor
+        if trimesh.ray.has_embree:
+            from trimesh.ray.ray_pyembree import RayMeshIntersector
+            self.query=RayMeshIntersector(normalized,scale_to_box=False)
+        else:
+            from trimesh.ray.ray_triangle import RayMeshIntersector
+            self.query=RayMeshIntersector(normalized)
+
+    def contains(self,points):
+        return self.query.contains_points((np.asarray(points)-self.origin)*self.factor)
+
+
 def score_candidate(meshes, poses, *, samples=256, tolerance_m=.001, contact_m=.003):
     if set(meshes)!=set(poses) or samples<32 or not 0 < tolerance_m < contact_m:
         raise ValueError('invalid geometry screening inputs')
-    world, clouds, transforms, probes = {}, {}, {}, {}
+    world, clouds, transforms, probes, normals, solids = {}, {}, {}, {}, {}, {}
     for index,(key,mesh) in enumerate(meshes.items()):
         if not mesh.is_watertight or not mesh.is_winding_consistent:
             raise ValueError('solid penetration requires closed consistently oriented meshes')
@@ -15,6 +39,8 @@ def score_candidate(meshes, poses, *, samples=256, tolerance_m=.001, contact_m=.
         m=mesh.copy(); m.apply_transform(t); world[key]=m
         points,faces=trimesh.sample.sample_surface(m,samples,seed=index)
         clouds[key]=points
+        normals[key]=m.face_normals[faces]
+        solids[key]=SolidContainment(mesh)
         probes[key]=points-2*tolerance_m*m.face_normals[faces]
     pairs=[]; ids=list(meshes); adjacency={key:set() for key in ids}
     for i,left in enumerate(ids):
@@ -30,10 +56,12 @@ def score_candidate(meshes, poses, *, samples=256, tolerance_m=.001, contact_m=.
                     # across noise candidates; rigid transforms preserve distance.
                     t=transforms[b]
                     local=(points[near]-t[:3,3]) @ t[:3,:3]
-                    _,distance,_=trimesh.proximity.closest_point(meshes[b],local)
-                    contained=meshes[b].contains(local)
+                    _,distance,face=trimesh.proximity.closest_point(meshes[b],local)
+                    contained=solids[b].contains(local)
                     inside[near]=contained & (distance>tolerance_m)
-                    touching[near]=distance<contact_m
+                    other_normal=meshes[b].face_normals[face]@t[:3,:3].T
+                    opposed=np.einsum('ij,ij->i',normals[a][near],other_normal)<-.5
+                    touching[near]=(distance<contact_m)&opposed
                 # Surface-only tests miss coincident solids. Inward probes catch
                 # this; require containment in both solids to handle thin shells.
                 probe=probes[a]
@@ -42,16 +70,20 @@ def score_candidate(meshes, poses, *, samples=256, tolerance_m=.001, contact_m=.
                 if near_probe.any():
                     t=transforms[b]; local_b=(probe[near_probe]-t[:3,3])@t[:3,:3]
                     _,distance,_=trimesh.proximity.closest_point(meshes[b],local_b)
-                    deep=meshes[b].contains(local_b)&(distance>tolerance_m)
+                    deep=solids[b].contains(local_b)&(distance>tolerance_m)
                     if deep.any():
                         t=transforms[a]; local_a=(probe[near_probe][deep]-t[:3,3])@t[:3,:3]
                         indices=np.flatnonzero(near_probe)[deep]
-                        overlap[indices]=meshes[a].contains(local_a)
+                        overlap[indices]=solids[a].contains(local_a)
                 penetrations.append(float((inside|overlap).mean())); contacts.append(float(touching.mean()))
-            contact=min(contacts)
+            # A small fragment can have substantial contact with a large shell
+            # while representing <1% of the shell's area. Use either direction,
+            # requiring opposing normals; preserve both fractions for auditing.
+            contact=max(contacts)
             if contact>.01:
                 adjacency[left].add(right); adjacency[right].add(left)
-            pairs.append({'pair':[left,right],'penetration_fraction':max(penetrations),'contact_fraction':contact})
+            pairs.append({'pair':[left,right],'penetration_fraction':max(penetrations),'contact_fraction':contact,
+                          'directional_contact_fractions':contacts})
     seen=set(); components=0
     for node in ids:
         if node in seen: continue
@@ -63,6 +95,8 @@ def score_candidate(meshes, poses, *, samples=256, tolerance_m=.001, contact_m=.
     return {'max_penetration_fraction':penetration,'contact_components':components,'pairs':pairs,
             'rejected':penetration>.02 or components>1,
             'sample_count_per_part':samples,'tolerance_m':tolerance_m,'contact_m':contact_m,
+            'containment':'fixed_100_unit_mesh_no_internal_scaling',
+            'contact_rule':'either direction >1% sampled contact, normal dot < -0.5',
             'motion_feasibility_checked':False,'sampling_can_miss_collisions':True}
 
 

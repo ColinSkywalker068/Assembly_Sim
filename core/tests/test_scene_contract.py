@@ -57,3 +57,10 @@ def test_streaming_launch_uses_one_gpu_and_visible_ui():
     assert launch["hide_ui"] is False
     assert launch["multi_gpu"] is False
     assert launch["max_gpu_count"] == 1
+
+
+def test_explicit_gpu_selection_disables_multi_gpu(monkeypatch):
+    monkeypatch.setenv('JING_SIM_GPU','4')
+    launch=simulation_launch_config(load_workcell_preset('dual_arm'),headless=True)
+    assert launch['active_gpu']==launch['physics_gpu']==4
+    assert not launch['multi_gpu']

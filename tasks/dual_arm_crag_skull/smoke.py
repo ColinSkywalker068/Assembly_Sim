@@ -60,8 +60,12 @@ def _camera_report(name, data, camera, world_T_usd, resolution, simulation_time)
         'renderer_aperture_mm': [float(v) for v in np.ravel(params.get('cameraAperture', []))]}
 
 
-def run(assembly, output, frames=120, *, gripper="yam"):
+def run(assembly, output, frames=120, *, gripper="yam", stability=False, solver_position_iterations=None,
+        solver_velocity_iterations=None):
     require_scene_gripper(gripper)
+    for value in (solver_position_iterations, solver_velocity_iterations):
+        if value is not None and not 1 <= value <= 255:
+            raise ValueError('solver iterations must be in [1,255]')
     from tasks.dual_arm_breakingbad.scene.builder import build_assembly_scene
     from tasks.dual_arm_breakingbad.scene.validation import validate_assembly_stage
     output = Path(output); output.mkdir(parents=True, exist_ok=True)
@@ -72,12 +76,30 @@ def run(assembly, output, frames=120, *, gripper="yam"):
     try:
         import omni.replicator.core as rep
         import omni.timeline
-        from pxr import UsdGeom
+        from pxr import UsdGeom,UsdPhysics,PhysxSchema
         from PIL import Image
         if not validate_assembly_stage(handles).ok:
             raise RuntimeError('invalid scene')
-        for _ in range(frames):
+        trace=[]
+        if stability:
+            from isaacsim.core.prims import RigidPrim
+            for fragment in handles.fragments:
+                prim=handles.stage.GetPrimAtPath(fragment.root_path)
+                UsdPhysics.RigidBodyAPI(prim).CreateStartsAsleepAttr(False)
+                body=PhysxSchema.PhysxRigidBodyAPI(prim)
+                if solver_position_iterations is not None:body.CreateSolverPositionIterationCountAttr(solver_position_iterations)
+                if solver_velocity_iterations is not None:body.CreateSolverVelocityIterationCountAttr(solver_velocity_iterations)
+            handles.world.reset()
+            for robot in handles.workcell.robots.values():robot.initialize_dofs()
+            handles.controller.reset()
+            bodies=RigidPrim(prim_paths_expr=[f.root_path for f in handles.fragments],name='settling_trace')
+            bodies.initialize()
+        initial_simulation_time=handles.world.current_time
+        for step in range(frames):
             handles.world.step(render=True)
+            if stability:
+                p,q=bodies.get_world_poses();v=bodies.get_velocities()
+                trace.append((handles.world.current_time,np.asarray(p).copy(),np.asarray(q).copy(),np.asarray(v).copy()))
         simulation_time = handles.world.current_time
         # Freeze physics while all three render products are sampled together.
         omni.timeline.get_timeline_interface().pause()
@@ -99,9 +121,23 @@ def run(assembly, output, frames=120, *, gripper="yam"):
                                                             simulation_time)
             Image.fromarray(color[:, :, :3]).save(output/f'{name}.png')
             np.save(output/f'{name}_depth_m.npy', distance)
-        report = {'physics_frames': frames, 'fragment_count': len(handles.fragments),
+        elapsed_simulation_time = simulation_time - initial_simulation_time
+        report = {'physics_frames': frames, 'world_step_calls': frames, 'fragment_count': len(handles.fragments),
+                  'elapsed_simulation_s': elapsed_simulation_time,
+                  'solver_override': {'position_iterations': solver_position_iterations,
+                                      'velocity_iterations': solver_velocity_iterations},
+                  'physics_steps_from_elapsed_time': int(round(elapsed_simulation_time
+                                                               / handles.workcell.config.physics_dt)),
                   'gripper': 'robotiq_proxy', 'assembly_success_evaluated': False,
                   'cameras': reports, 'physics_dt': handles.workcell.config.physics_dt}
+        if stability:
+            from .stability import summarize_stability
+            times = np.array([x[0] for x in trace]); positions = np.stack([x[1] for x in trace])
+            quaternions = np.stack([x[2] for x in trace]); velocities = np.stack([x[3] for x in trace])
+            names = [f.name for f in handles.fragments]
+            np.savez_compressed(output/'rigid_body_trace.npz', times=times, positions=positions,
+                                quaternions=quaternions, velocities=velocities, names=names)
+            report['settling'] = summarize_stability(times, positions, quaternions, velocities, names)
         handles.stage.GetRootLayer().Export(str(output/'scene.usda'))
         (output/'smoke.json').write_text(json.dumps(report, indent=2)+'\n')  # last: its presence means success
         succeeded = True
@@ -130,6 +166,9 @@ if __name__ == '__main__':
     parser.add_argument('--assembly', required=True)
     parser.add_argument('--output', required=True)
     parser.add_argument('--frames', type=int, default=120)
+    parser.add_argument('--stability', action='store_true')
+    parser.add_argument('--solver-position-iterations', type=int)
+    parser.add_argument('--solver-velocity-iterations', type=int)
     from .__main__ import DEFAULT_CONFIG
     parser.add_argument('--config', type=Path, default=DEFAULT_CONFIG)
     add_gripper_arguments(parser)
@@ -139,4 +178,6 @@ if __name__ == '__main__':
         require_scene_gripper(gripper)
     except ValueError as exc:
         parser.error(str(exc))
-    run(args.assembly, args.output, frames=args.frames, gripper=gripper)
+    run(args.assembly, args.output, frames=args.frames, gripper=gripper, stability=args.stability,
+        solver_position_iterations=args.solver_position_iterations,
+        solver_velocity_iterations=args.solver_velocity_iterations)

@@ -1,0 +1,340 @@
+{
+  "items": [
+    {
+      "id": "skull__AMNH_103655_Cranium",
+      "name": "AMNH_103655_Cranium",
+      "specimen": "AMNH_103655",
+      "source": "/local_data/public/CRAG/release/final_data/skull.hdf5",
+      "root": "skull",
+      "split": "train",
+      "reference_qa": "skull__AMNH_103655_Cranium-reference.json",
+      "parts": 8,
+      "data_sha256": {
+        "20": "8fe734e73595c3769d1e51ec07fb35eb2935040d2f8ee3ba5572e3e59631c53d",
+        "200": "f5bd6f8c3e972ac222f2999aac3858c627d0280fa24b7ac3e81d288fdf5dd7a9"
+      }
+    },
+    {
+      "id": "skull__AMNH_200847_Cranium",
+      "name": "AMNH_200847_Cranium",
+      "specimen": "AMNH_200847",
+      "source": "/local_data/public/CRAG/release/final_data/skull.hdf5",
+      "root": "skull",
+      "split": "val",
+      "reference_qa": "skull__AMNH_200847_Cranium-reference.json",
+      "parts": 6,
+      "data_sha256": {
+        "20": "f1e46737d562ba844a0a7d20af75ed94334683084d2b8f9a516d25812563a238",
+        "200": "5e635d9aec5f02de442ae17fe58a7dc1aec4c942dc29749862eccfa6df883c35"
+      }
+    },
+    {
+      "id": "skull__AMNH_26943_Skull",
+      "name": "AMNH_26943_Skull",
+      "specimen": "AMNH_26943",
+      "source": "/local_data/public/CRAG/release/final_data/skull.hdf5",
+      "root": "skull",
+      "split": "val",
+      "reference_qa": "skull__AMNH_26943_Skull-reference.json",
+      "parts": 6,
+      "data_sha256": {
+        "20": "8bc980b6ad709d9a4d1d7dd20131d84e3c51facb203aa177eb27dcb446b47ec1",
+        "200": "1a70473044992f975330755be61ea482c232145f1d343f2c91a6c952e4ed7894"
+      }
+    },
+    {
+      "id": "skull__AMNH_74427_Cranium",
+      "name": "AMNH_74427_Cranium",
+      "specimen": "AMNH_74427",
+      "source": "/local_data/public/CRAG/release/final_data/skull.hdf5",
+      "root": "skull",
+      "split": "train",
+      "reference_qa": "skull__AMNH_74427_Cranium-reference.json",
+      "parts": 6,
+      "data_sha256": {
+        "20": "2be21c57538848379654117ee464ab640a655cc4c0b4117911fe1d06fb74eca8",
+        "200": "040e888adbbbe94dee2453d5cd29d99d515243740c0b25076e2d80e0a4cfb117"
+      }
+    },
+    {
+      "id": "skull__AMNH_76373_Cranium",
+      "name": "AMNH_76373_Cranium",
+      "specimen": "AMNH_76373",
+      "source": "/local_data/public/CRAG/release/final_data/skull.hdf5",
+      "root": "skull",
+      "split": "train",
+      "reference_qa": "skull__AMNH_76373_Cranium-reference.json",
+      "parts": 8,
+      "data_sha256": {
+        "20": "381118609636fcb2740fd011ee0533802faf6776e40058857943dadbf9e5b152",
+        "200": "cb3273d9f6d3f18438b919e9073df31822c8ae7a9f79334f9fa082f1775881bd"
+      }
+    },
+    {
+      "id": "skull__AMNH_76373_Skull",
+      "name": "AMNH_76373_Skull",
+      "specimen": "AMNH_76373",
+      "source": "/local_data/public/CRAG/release/final_data/skull.hdf5",
+      "root": "skull",
+      "split": "train",
+      "reference_qa": "skull__AMNH_76373_Skull-reference.json",
+      "parts": 9,
+      "data_sha256": {
+        "20": "89b1b664a246d7c164da1955057180b4c3bad4c8e4ffd3bacce92c3dca02111f",
+        "200": "9698a2871fe833f03c919e4237497b630474a5cd069ef5305defc8da134623fe"
+      }
+    },
+    {
+      "id": "skull__AMNH_80081_Cranium",
+      "name": "AMNH_80081_Cranium",
+      "specimen": "AMNH_80081",
+      "source": "/local_data/public/CRAG/release/final_data/skull.hdf5",
+      "root": "skull",
+      "split": "train",
+      "reference_qa": "skull__AMNH_80081_Cranium-reference.json",
+      "parts": 6,
+      "data_sha256": {
+        "20": "88f4053ef1567f114b9eae6401d7de2d61c5ae16f98f49dc2a631c04d1eed207",
+        "200": "a6f44e35aeba07cc523c6731184d633df92ee98e6d83e5ca573e0b49fb36a527"
+      }
+    },
+    {
+      "id": "skull__AMNH_81070_Cranium",
+      "name": "AMNH_81070_Cranium",
+      "specimen": "AMNH_81070",
+      "source": "/local_data/public/CRAG/release/final_data/skull.hdf5",
+      "root": "skull",
+      "split": "train",
+      "reference_qa": "skull__AMNH_81070_Cranium-reference.json",
+      "parts": 6,
+      "data_sha256": {
+        "20": "2ca26e9f8f185e2c856ccd11cfd130401dce1b7566aaeb1f1976938824ba9a35",
+        "200": "5cd1dc13dfc0bc17007abbcdb5eb402b238b9985db84b26e7c1d2767047af31a"
+      }
+    },
+    {
+      "id": "skull__AMNH_83595_Cranium",
+      "name": "AMNH_83595_Cranium",
+      "specimen": "AMNH_83595",
+      "source": "/local_data/public/CRAG/release/final_data/skull.hdf5",
+      "root": "skull",
+      "split": "train",
+      "reference_qa": "skull__AMNH_83595_Cranium-reference.json",
+      "parts": 6,
+      "data_sha256": {
+        "20": "95ed79354dba2c4c2f235ae639a81564e9cd4ba7fcef2aace0ac99b43725096e",
+        "200": "3b60abaa38014be0a43229d8460c0e9f5cf3f7dffd7ff33235fdbf5d822de2ca"
+      }
+    },
+    {
+      "id": "morphosource_v1__Pan-paniscus-f-RMCA-RG-29045-cranium",
+      "name": "Pan-paniscus-f-RMCA-RG-29045-cranium",
+      "specimen": "RMCA_29045",
+      "source": "/local_data/public/CRAG/release/final_data/morphosource_v1.hdf5",
+      "root": "morphosource_v1",
+      "split": "val",
+      "reference_qa": "morphosource_v1__Pan-paniscus-f-RMCA-RG-29045-cranium-reference.json",
+      "parts": 10,
+      "data_sha256": {
+        "20": "9fffda045610987e72d8f9493967649a9335bffd956daa93b300a254810d0493",
+        "200": "8f41882f774d08f8630531a74ba450b6ca35432623b4bd95f47da39afbb29d44"
+      }
+    },
+    {
+      "id": "morphosource_v1__USNM17994_Smilodectes_cranium_smooth",
+      "name": "USNM17994_Smilodectes_cranium_smooth",
+      "specimen": "USNM_17994",
+      "source": "/local_data/public/CRAG/release/final_data/morphosource_v1.hdf5",
+      "root": "morphosource_v1",
+      "split": "val",
+      "reference_qa": "morphosource_v1__USNM17994_Smilodectes_cranium_smooth-reference.json",
+      "parts": 7,
+      "data_sha256": {
+        "20": "cf02d974bb3092c25b9dfcc533791fd1306ef194c809b18b6a56c63edc82735f",
+        "200": "359529c607f3f47bdb1f83919fd9ed0436dab96e7cb6dc36f0f4f8a35654a513"
+      }
+    },
+    {
+      "id": "morphosource_v2__Alouatta-palliata-aequatorialis-m-NMNH-338107-cranium",
+      "name": "Alouatta-palliata-aequatorialis-m-NMNH-338107-cranium",
+      "specimen": "USNM_338107",
+      "source": "/local_data/public/CRAG/release/final_data/morphosource_v2.hdf5",
+      "root": "morphosource_v2",
+      "split": "val",
+      "reference_qa": "morphosource_v2__Alouatta-palliata-aequatorialis-m-NMNH-338107-cranium-reference.json",
+      "parts": 6,
+      "data_sha256": {
+        "20": "54970cebfc25c00bfb60fbd02e34cbc4e447e8d14ae3f62907018f3f23f7911f",
+        "200": "4819cdbcd9064eb5c3dfa128e2e56f2d2424ea3b2b2be368cdd2bbe5d8773521"
+      }
+    },
+    {
+      "id": "morphosource_v2__Alouatta-seniculus-f-AMNH-42316-cranium",
+      "name": "Alouatta-seniculus-f-AMNH-42316-cranium",
+      "specimen": "AMNH_42316",
+      "source": "/local_data/public/CRAG/release/final_data/morphosource_v2.hdf5",
+      "root": "morphosource_v2",
+      "split": "val",
+      "reference_qa": "morphosource_v2__Alouatta-seniculus-f-AMNH-42316-cranium-reference.json",
+      "parts": 6,
+      "data_sha256": {
+        "20": "9d5fbd73c997bed2c287ccd113cd752004a6ba5663cbddc7abc03145be41d6d8",
+        "200": "41417f505488b2253dbe5bc21fdaa4e5e18a7fdfbdae559ba03b13ddf50036a4"
+      }
+    },
+    {
+      "id": "morphosource_v2__Aotus-griseimembra-f-MCZ-19801-cranium",
+      "name": "Aotus-griseimembra-f-MCZ-19801-cranium",
+      "specimen": "MCZ_19801",
+      "source": "/local_data/public/CRAG/release/final_data/morphosource_v2.hdf5",
+      "root": "morphosource_v2",
+      "split": "val",
+      "reference_qa": "morphosource_v2__Aotus-griseimembra-f-MCZ-19801-cranium-reference.json",
+      "parts": 6,
+      "data_sha256": {
+        "20": "3ca835dccf9b3b1a66edd6cb80e8809ec44201f780a6034a3c8d29552fab8538",
+        "200": "9550e17b6ada704fea51faf7fb4c1fb11c62ffb887d5055d70788da78a9c589a"
+      }
+    },
+    {
+      "id": "morphosource_v2__Hylobates-lar-vestitus-f-NMNH-271047-cranium",
+      "name": "Hylobates-lar-vestitus-f-NMNH-271047-cranium",
+      "specimen": "USNM_271047",
+      "source": "/local_data/public/CRAG/release/final_data/morphosource_v2.hdf5",
+      "root": "morphosource_v2",
+      "split": "val",
+      "reference_qa": "morphosource_v2__Hylobates-lar-vestitus-f-NMNH-271047-cranium-reference.json",
+      "parts": 7,
+      "data_sha256": {
+        "20": "ec86173fed656289ea10769819357997fa88556a793dec53ade3780d4d31070b",
+        "200": "35ee138a79ebcf3d5684b4998ba753389161aef4be0c561d6f94bc5b959b4a09"
+      }
+    },
+    {
+      "id": "morphosource_v2__Nomascus-gabriellae-f-AMNH-87253-cranium",
+      "name": "Nomascus-gabriellae-f-AMNH-87253-cranium",
+      "specimen": "AMNH_87253",
+      "source": "/local_data/public/CRAG/release/final_data/morphosource_v2.hdf5",
+      "root": "morphosource_v2",
+      "split": "val",
+      "reference_qa": "morphosource_v2__Nomascus-gabriellae-f-AMNH-87253-cranium-reference.json",
+      "parts": 7,
+      "data_sha256": {
+        "20": "ac06ade18132f066084c1d7b1d6913efb34022d94789edd1bea6c9970cdea0a2",
+        "200": "aae637635e31c3651726a0092ae5346d442d493b5b9b37f9def9b29d9c1acedd"
+      }
+    }
+  ],
+  "excluded": [
+    {
+      "id": "skull__AMNH_100824_Cranium",
+      "reason": "mesh/label QA failed in one sampling arm"
+    },
+    {
+      "id": "skull__AMNH_102018_Cranium",
+      "reason": "mesh/label QA failed in one sampling arm"
+    },
+    {
+      "id": "skull__AMNH_103402_Skull",
+      "reason": "previous reference disconnected; dense diagnostics show real gap"
+    },
+    {
+      "id": "skull__AMNH_106033_Cranium",
+      "reason": "mesh/label QA failed in one sampling arm"
+    },
+    {
+      "id": "skull__AMNH_106034_Cranium",
+      "reason": "mesh/label QA failed in one sampling arm"
+    },
+    {
+      "id": "skull__AMNH_106034_Skull",
+      "reason": "mesh/label QA failed in one sampling arm"
+    },
+    {
+      "id": "skull__AMNH_133825_Cranium",
+      "reason": "mesh/label QA failed in one sampling arm"
+    },
+    {
+      "id": "skull__AMNH_16721_Cranium",
+      "reason": "mesh/label QA failed in one sampling arm"
+    },
+    {
+      "id": "skull__AMNH_170740_Skull",
+      "reason": "mesh/label QA failed in one sampling arm"
+    },
+    {
+      "id": "skull__AMNH_196486_Cranium",
+      "reason": "previous reference disconnected; dense diagnostics show real gap"
+    },
+    {
+      "id": "skull__AMNH_22886_Cranium",
+      "reason": "mesh/label QA failed in one sampling arm"
+    },
+    {
+      "id": "skull__AMNH_24168_Cranium",
+      "reason": "mesh/label QA failed in one sampling arm"
+    },
+    {
+      "id": "skull__AMNH_26594_Cranium",
+      "reason": "mesh/label QA failed in one sampling arm"
+    },
+    {
+      "id": "skull__AMNH_269854_Cranium",
+      "reason": "mesh/label QA failed in one sampling arm"
+    },
+    {
+      "id": "skull__AMNH_52226_Cranium",
+      "reason": "mesh/label QA failed in one sampling arm"
+    },
+    {
+      "id": "skull__AMNH_52228_Cranium",
+      "reason": "mesh/label QA failed in one sampling arm"
+    },
+    {
+      "id": "skull__AMNH_54288_Skull",
+      "reason": "mesh/label QA failed in one sampling arm"
+    },
+    {
+      "id": "skull__AMNH_71762_Cranium",
+      "reason": "mesh/label QA failed in one sampling arm"
+    },
+    {
+      "id": "skull__AMNH_76369_Skull",
+      "reason": "mesh/label QA failed in one sampling arm"
+    },
+    {
+      "id": "skull__AMNH_76374_Cranium",
+      "reason": "mesh/label QA failed in one sampling arm"
+    },
+    {
+      "id": "skull__AMNH_80403_Cranium",
+      "reason": "mesh/label QA failed in one sampling arm"
+    },
+    {
+      "id": "morphosource_v2__Cebus-apella-m-AMNH-245697-cranium",
+      "reason": "mesh/label QA failed in one sampling arm"
+    }
+  ],
+  "test_policy": "original specimen test split remains untouched by model training/evaluation",
+  "physical_scale": "experimental 200 mm maximum assembled extent",
+  "protocol": {
+    "total_points": 5000,
+    "minimum_points": [
+      20,
+      200
+    ],
+    "warmup_steps": 100,
+    "joint_steps": 150,
+    "lr": 1e-05,
+    "seed": 20261019,
+    "segmentation_weight": 0.2,
+    "inference_steps": 20,
+    "inference_iterations": 6,
+    "noise_seeds": [
+      41,
+      42
+    ],
+    "metric_cloud": "same min20 canonical points/labels for every arm; anchor excluded",
+    "checkpoint_selection": "fixed final step; no outcome-driven validation exclusion"
+  }
+}

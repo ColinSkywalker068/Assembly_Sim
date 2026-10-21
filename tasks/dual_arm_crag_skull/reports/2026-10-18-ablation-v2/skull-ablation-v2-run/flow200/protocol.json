@@ -1,0 +1,27 @@
+{
+  "arm": "flow200",
+  "minimum": 200,
+  "seg_weight": 0.0,
+  "train": [
+    "skull__AMNH_103655_Cranium",
+    "skull__AMNH_74427_Cranium",
+    "skull__AMNH_76373_Cranium",
+    "skull__AMNH_76373_Skull",
+    "skull__AMNH_80081_Cranium",
+    "skull__AMNH_81070_Cranium",
+    "skull__AMNH_83595_Cranium"
+  ],
+  "val": [
+    "morphosource_v1__Pan-paniscus-f-RMCA-RG-29045-cranium",
+    "morphosource_v1__USNM17994_Smilodectes_cranium_smooth",
+    "morphosource_v2__Alouatta-palliata-aequatorialis-m-NMNH-338107-cranium",
+    "morphosource_v2__Alouatta-seniculus-f-AMNH-42316-cranium",
+    "morphosource_v2__Aotus-griseimembra-f-MCZ-19801-cranium",
+    "morphosource_v2__Hylobates-lar-vestitus-f-NMNH-271047-cranium",
+    "morphosource_v2__Nomascus-gabriellae-f-AMNH-87253-cranium",
+    "skull__AMNH_200847_Cranium",
+    "skull__AMNH_26943_Skull"
+  ],
+  "start_checkpoint_sha256": "6e5efe94d45d5f5415d79162a912f7cb324e3bae58b6755a66d32893e9233e50",
+  "cohort_sha256": "f073dc58bc80ba4a6d9d2240f7fee97d1d6a50bf5793877c0727298b9e1373e6"
+}

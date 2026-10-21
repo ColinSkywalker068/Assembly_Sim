@@ -1,0 +1,186 @@
+[
+  {
+    "object": "AMNH_200847_Cranium",
+    "stage": "baseline",
+    "seed": 41,
+    "anchor": 0,
+    "parts": [
+      {
+        "part": 1,
+        "centroid_error_mm": 47.416841709365784,
+        "rotation_error_deg": 172.08263916875882,
+        "point_rmse_mm": 49.93256567234624
+      },
+      {
+        "part": 2,
+        "centroid_error_mm": 80.86243216153225,
+        "rotation_error_deg": 119.71552911055808,
+        "point_rmse_mm": 81.30475814303297
+      },
+      {
+        "part": 3,
+        "centroid_error_mm": 31.357160396608595,
+        "rotation_error_deg": 165.98831949749123,
+        "point_rmse_mm": 31.676504600713322
+      },
+      {
+        "part": 4,
+        "centroid_error_mm": 104.15397482506938,
+        "rotation_error_deg": 125.1588994628222,
+        "point_rmse_mm": 104.23952184118093
+      },
+      {
+        "part": 5,
+        "centroid_error_mm": 26.738990929479513,
+        "rotation_error_deg": 117.04333531474465,
+        "point_rmse_mm": 27.376833091130884
+      }
+    ],
+    "centroid_error_mm": 58.10588000441112,
+    "rotation_error_deg": 139.997744510875,
+    "point_rmse_mm": 58.90603666968087,
+    "fracture_f1": 0.11678832116788321,
+    "fracture_ranking": [
+      0.6242368572435933,
+      0.03288267629341591
+    ]
+  },
+  {
+    "object": "AMNH_200847_Cranium",
+    "stage": "baseline",
+    "seed": 42,
+    "anchor": 0,
+    "parts": [
+      {
+        "part": 1,
+        "centroid_error_mm": 52.822727418752386,
+        "rotation_error_deg": 139.08408928854044,
+        "point_rmse_mm": 54.1394540406804
+      },
+      {
+        "part": 2,
+        "centroid_error_mm": 80.96952619613084,
+        "rotation_error_deg": 119.47259550843607,
+        "point_rmse_mm": 81.41027401387919
+      },
+      {
+        "part": 3,
+        "centroid_error_mm": 37.24913087754196,
+        "rotation_error_deg": 138.63521188791518,
+        "point_rmse_mm": 37.49562632755216
+      },
+      {
+        "part": 4,
+        "centroid_error_mm": 104.00003268358273,
+        "rotation_error_deg": 124.46384708584463,
+        "point_rmse_mm": 104.08481980588891
+      },
+      {
+        "part": 5,
+        "centroid_error_mm": 45.264976861511,
+        "rotation_error_deg": 43.3987426971568,
+        "point_rmse_mm": 45.30909378128428
+      }
+    ],
+    "centroid_error_mm": 64.06127880750378,
+    "rotation_error_deg": 113.01089729357861,
+    "point_rmse_mm": 64.48785359385698,
+    "fracture_f1": 0.11678832116788321,
+    "fracture_ranking": [
+      0.6242368572435933,
+      0.03288267629341591
+    ]
+  },
+  {
+    "object": "AMNH_26943_Skull",
+    "stage": "baseline",
+    "seed": 41,
+    "anchor": 0,
+    "parts": [
+      {
+        "part": 1,
+        "centroid_error_mm": 47.857348898683505,
+        "rotation_error_deg": 117.39309513564467,
+        "point_rmse_mm": 88.92865847261209
+      },
+      {
+        "part": 2,
+        "centroid_error_mm": 97.8450026711719,
+        "rotation_error_deg": 164.15480152594623,
+        "point_rmse_mm": 98.07726037794777
+      },
+      {
+        "part": 3,
+        "centroid_error_mm": 108.70737399840209,
+        "rotation_error_deg": 122.78156267074864,
+        "point_rmse_mm": 109.56866704577536
+      },
+      {
+        "part": 4,
+        "centroid_error_mm": 105.6274476628381,
+        "rotation_error_deg": 177.59192981956537,
+        "point_rmse_mm": 105.89877342048852
+      },
+      {
+        "part": 5,
+        "centroid_error_mm": 23.67316738279485,
+        "rotation_error_deg": 115.64898939026075,
+        "point_rmse_mm": 24.241919326463595
+      }
+    ],
+    "centroid_error_mm": 76.7420681227781,
+    "rotation_error_deg": 139.51407570843315,
+    "point_rmse_mm": 85.34305572865745,
+    "fracture_f1": 0.24116424116424118,
+    "fracture_ranking": [
+      0.5730991368367606,
+      0.2569833825132647
+    ]
+  },
+  {
+    "object": "AMNH_26943_Skull",
+    "stage": "baseline",
+    "seed": 42,
+    "anchor": 0,
+    "parts": [
+      {
+        "part": 1,
+        "centroid_error_mm": 38.07721187341589,
+        "rotation_error_deg": 63.2146471284383,
+        "point_rmse_mm": 58.758692695814354
+      },
+      {
+        "part": 2,
+        "centroid_error_mm": 110.94585905771454,
+        "rotation_error_deg": 76.59882346055925,
+        "point_rmse_mm": 111.09231141053387
+      },
+      {
+        "part": 3,
+        "centroid_error_mm": 49.00121271120798,
+        "rotation_error_deg": 27.114784483697612,
+        "point_rmse_mm": 49.137828196151794
+      },
+      {
+        "part": 4,
+        "centroid_error_mm": 65.75562271307288,
+        "rotation_error_deg": 46.64176681052913,
+        "point_rmse_mm": 65.78873108655215
+      },
+      {
+        "part": 5,
+        "centroid_error_mm": 32.0640424769594,
+        "rotation_error_deg": 38.9613305957238,
+        "point_rmse_mm": 32.130960311024864
+      }
+    ],
+    "centroid_error_mm": 59.16878976647414,
+    "rotation_error_deg": 50.50627049578962,
+    "point_rmse_mm": 63.3817047400154,
+    "fracture_f1": 0.24116424116424118,
+    "fracture_ranking": [
+      0.5730991368367606,
+      0.2569833825132647
+    ]
+  }
+]

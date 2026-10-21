@@ -1,0 +1,812 @@
+[
+  {
+    "object": "AMNH_200847_Cranium",
+    "stage": "reference_control",
+    "seed": null,
+    "max_penetration_fraction": 0.6875,
+    "contact_components": 3,
+    "pairs": [
+      {
+        "pair": [
+          "0",
+          "1"
+        ],
+        "penetration_fraction": 0.0859375,
+        "contact_fraction": 0.01171875
+      },
+      {
+        "pair": [
+          "0",
+          "2"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.00390625
+      },
+      {
+        "pair": [
+          "0",
+          "3"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "0",
+          "4"
+        ],
+        "penetration_fraction": 0.6875,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "0",
+          "5"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.00390625
+      },
+      {
+        "pair": [
+          "1",
+          "2"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.28515625
+      },
+      {
+        "pair": [
+          "1",
+          "3"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "1",
+          "4"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "1",
+          "5"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0546875
+      },
+      {
+        "pair": [
+          "2",
+          "3"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "2",
+          "4"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "2",
+          "5"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "3",
+          "4"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "3",
+          "5"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "4",
+          "5"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      }
+    ],
+    "rejected": true,
+    "sample_count_per_part": 256,
+    "tolerance_m": 0.001,
+    "contact_m": 0.003,
+    "motion_feasibility_checked": false,
+    "sampling_can_miss_collisions": true
+  },
+  {
+    "object": "AMNH_200847_Cranium",
+    "stage": "baseline",
+    "seed": 41,
+    "max_penetration_fraction": 0.91015625,
+    "contact_components": 5,
+    "pairs": [
+      {
+        "pair": [
+          "0",
+          "1"
+        ],
+        "penetration_fraction": 0.02734375,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "0",
+          "2"
+        ],
+        "penetration_fraction": 0.09375,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "0",
+          "3"
+        ],
+        "penetration_fraction": 0.7734375,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "0",
+          "4"
+        ],
+        "penetration_fraction": 0.3125,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "0",
+          "5"
+        ],
+        "penetration_fraction": 0.91015625,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "1",
+          "2"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "1",
+          "3"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "1",
+          "4"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "1",
+          "5"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "2",
+          "3"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "2",
+          "4"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "2",
+          "5"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "3",
+          "4"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "3",
+          "5"
+        ],
+        "penetration_fraction": 0.01953125,
+        "contact_fraction": 0.27734375
+      },
+      {
+        "pair": [
+          "4",
+          "5"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      }
+    ],
+    "rejected": true,
+    "sample_count_per_part": 256,
+    "tolerance_m": 0.001,
+    "contact_m": 0.003,
+    "motion_feasibility_checked": false,
+    "sampling_can_miss_collisions": true
+  },
+  {
+    "object": "AMNH_200847_Cranium",
+    "stage": "baseline",
+    "seed": 42,
+    "max_penetration_fraction": 0.93359375,
+    "contact_components": 6,
+    "pairs": [
+      {
+        "pair": [
+          "0",
+          "1"
+        ],
+        "penetration_fraction": 0.01953125,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "0",
+          "2"
+        ],
+        "penetration_fraction": 0.06640625,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "0",
+          "3"
+        ],
+        "penetration_fraction": 0.5625,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "0",
+          "4"
+        ],
+        "penetration_fraction": 0.58203125,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "0",
+          "5"
+        ],
+        "penetration_fraction": 0.93359375,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "1",
+          "2"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "1",
+          "3"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "1",
+          "4"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "1",
+          "5"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "2",
+          "3"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "2",
+          "4"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "2",
+          "5"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "3",
+          "4"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "3",
+          "5"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "4",
+          "5"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      }
+    ],
+    "rejected": true,
+    "sample_count_per_part": 256,
+    "tolerance_m": 0.001,
+    "contact_m": 0.003,
+    "motion_feasibility_checked": false,
+    "sampling_can_miss_collisions": true
+  },
+  {
+    "object": "AMNH_26943_Skull",
+    "stage": "reference_control",
+    "seed": null,
+    "max_penetration_fraction": 0.66015625,
+    "contact_components": 2,
+    "pairs": [
+      {
+        "pair": [
+          "0",
+          "1"
+        ],
+        "penetration_fraction": 0.109375,
+        "contact_fraction": 0.15234375
+      },
+      {
+        "pair": [
+          "0",
+          "2"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.00390625
+      },
+      {
+        "pair": [
+          "0",
+          "3"
+        ],
+        "penetration_fraction": 0.25390625,
+        "contact_fraction": 0.015625
+      },
+      {
+        "pair": [
+          "0",
+          "4"
+        ],
+        "penetration_fraction": 0.4453125,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "0",
+          "5"
+        ],
+        "penetration_fraction": 0.66015625,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "1",
+          "2"
+        ],
+        "penetration_fraction": 0.03125,
+        "contact_fraction": 0.01171875
+      },
+      {
+        "pair": [
+          "1",
+          "3"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "1",
+          "4"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "1",
+          "5"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "2",
+          "3"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "2",
+          "4"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "2",
+          "5"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "3",
+          "4"
+        ],
+        "penetration_fraction": 0.11328125,
+        "contact_fraction": 0.19921875
+      },
+      {
+        "pair": [
+          "3",
+          "5"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "4",
+          "5"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      }
+    ],
+    "rejected": true,
+    "sample_count_per_part": 256,
+    "tolerance_m": 0.001,
+    "contact_m": 0.003,
+    "motion_feasibility_checked": false,
+    "sampling_can_miss_collisions": true
+  },
+  {
+    "object": "AMNH_26943_Skull",
+    "stage": "baseline",
+    "seed": 41,
+    "max_penetration_fraction": 0.31640625,
+    "contact_components": 6,
+    "pairs": [
+      {
+        "pair": [
+          "0",
+          "1"
+        ],
+        "penetration_fraction": 0.01953125,
+        "contact_fraction": 0.00390625
+      },
+      {
+        "pair": [
+          "0",
+          "2"
+        ],
+        "penetration_fraction": 0.01953125,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "0",
+          "3"
+        ],
+        "penetration_fraction": 0.31640625,
+        "contact_fraction": 0.0078125
+      },
+      {
+        "pair": [
+          "0",
+          "4"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "0",
+          "5"
+        ],
+        "penetration_fraction": 0.03515625,
+        "contact_fraction": 0.00390625
+      },
+      {
+        "pair": [
+          "1",
+          "2"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "1",
+          "3"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "1",
+          "4"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "1",
+          "5"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "2",
+          "3"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "2",
+          "4"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "2",
+          "5"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "3",
+          "4"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "3",
+          "5"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "4",
+          "5"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      }
+    ],
+    "rejected": true,
+    "sample_count_per_part": 256,
+    "tolerance_m": 0.001,
+    "contact_m": 0.003,
+    "motion_feasibility_checked": false,
+    "sampling_can_miss_collisions": true
+  },
+  {
+    "object": "AMNH_26943_Skull",
+    "stage": "baseline",
+    "seed": 42,
+    "max_penetration_fraction": 0.9609375,
+    "contact_components": 4,
+    "pairs": [
+      {
+        "pair": [
+          "0",
+          "1"
+        ],
+        "penetration_fraction": 0.0078125,
+        "contact_fraction": 0.01171875
+      },
+      {
+        "pair": [
+          "0",
+          "2"
+        ],
+        "penetration_fraction": 0.9609375,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "0",
+          "3"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0078125
+      },
+      {
+        "pair": [
+          "0",
+          "4"
+        ],
+        "penetration_fraction": 0.8671875,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "0",
+          "5"
+        ],
+        "penetration_fraction": 0.62890625,
+        "contact_fraction": 0.00390625
+      },
+      {
+        "pair": [
+          "1",
+          "2"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "1",
+          "3"
+        ],
+        "penetration_fraction": 0.00390625,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "1",
+          "4"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "1",
+          "5"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "2",
+          "3"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "2",
+          "4"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "2",
+          "5"
+        ],
+        "penetration_fraction": 0.31640625,
+        "contact_fraction": 0.48828125
+      },
+      {
+        "pair": [
+          "3",
+          "4"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "3",
+          "5"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      },
+      {
+        "pair": [
+          "4",
+          "5"
+        ],
+        "penetration_fraction": 0.0,
+        "contact_fraction": 0.0
+      }
+    ],
+    "rejected": true,
+    "sample_count_per_part": 256,
+    "tolerance_m": 0.001,
+    "contact_m": 0.003,
+    "motion_feasibility_checked": false,
+    "sampling_can_miss_collisions": true
+  }
+]

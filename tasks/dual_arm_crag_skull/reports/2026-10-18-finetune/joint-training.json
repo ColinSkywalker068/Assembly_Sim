@@ -1,0 +1,817 @@
+{
+  "steps": 100,
+  "optimizer_updates": 96,
+  "learning_rate": 1e-05,
+  "batch_size": 1,
+  "bn_mode": "eval frozen running statistics",
+  "before": {
+    "encoder": "f16cd6a18ec78d929fec80bb736c9347af52e77a4633af0961cc87b418eab19e",
+    "denoiser": "c7bb0b019966d651bea90a6ca4d43917b4390fedf4a48b4ccaf9c8646ed9a71b"
+  },
+  "after": {
+    "encoder": "01a3512d819168edb3562482e22ce420210e357c2132b98e795d3be31d385c33",
+    "denoiser": "6e691139ec699d3984d2759eddaec14be14cf7d8ee9b923cbd529001e30be3c4"
+  },
+  "history": [
+    {
+      "step": 0,
+      "object": "AMNH_103655_Cranium",
+      "loss": 0.8535075187683105,
+      "gradient_norm": null,
+      "optimizer_step_skipped": true,
+      "seconds": 1.3772361278533936
+    },
+    {
+      "step": 1,
+      "object": "AMNH_80081_Cranium",
+      "loss": 0.2857096493244171,
+      "gradient_norm": null,
+      "optimizer_step_skipped": true,
+      "seconds": 2.555490493774414
+    },
+    {
+      "step": 2,
+      "object": "AMNH_103402_Skull",
+      "loss": 1.03816819190979,
+      "gradient_norm": null,
+      "optimizer_step_skipped": true,
+      "seconds": 3.582247495651245
+    },
+    {
+      "step": 3,
+      "object": "AMNH_76373_Skull",
+      "loss": 1.3435869216918945,
+      "gradient_norm": 8.004327774047852,
+      "optimizer_step_skipped": false,
+      "seconds": 4.921467304229736
+    },
+    {
+      "step": 4,
+      "object": "AMNH_196486_Cranium",
+      "loss": 1.131866693496704,
+      "gradient_norm": 19.87271499633789,
+      "optimizer_step_skipped": false,
+      "seconds": 6.072233200073242
+    },
+    {
+      "step": 5,
+      "object": "AMNH_83595_Cranium",
+      "loss": 0.6008029580116272,
+      "gradient_norm": 37.56637191772461,
+      "optimizer_step_skipped": false,
+      "seconds": 7.304514169692993
+    },
+    {
+      "step": 6,
+      "object": "AMNH_74427_Cranium",
+      "loss": 1.2509037256240845,
+      "gradient_norm": null,
+      "optimizer_step_skipped": true,
+      "seconds": 8.546820878982544
+    },
+    {
+      "step": 7,
+      "object": "AMNH_76373_Cranium",
+      "loss": 0.5791718363761902,
+      "gradient_norm": 8.578818321228027,
+      "optimizer_step_skipped": false,
+      "seconds": 9.784764528274536
+    },
+    {
+      "step": 8,
+      "object": "AMNH_81070_Cranium",
+      "loss": 1.0193219184875488,
+      "gradient_norm": 23.208093643188477,
+      "optimizer_step_skipped": false,
+      "seconds": 10.901182889938354
+    },
+    {
+      "step": 9,
+      "object": "AMNH_83595_Cranium",
+      "loss": 0.43208885192871094,
+      "gradient_norm": 21.447647094726562,
+      "optimizer_step_skipped": false,
+      "seconds": 12.00876235961914
+    },
+    {
+      "step": 10,
+      "object": "AMNH_196486_Cranium",
+      "loss": 0.6974193453788757,
+      "gradient_norm": 9.569038391113281,
+      "optimizer_step_skipped": false,
+      "seconds": 13.169459104537964
+    },
+    {
+      "step": 11,
+      "object": "AMNH_103655_Cranium",
+      "loss": 0.8977890014648438,
+      "gradient_norm": 25.346925735473633,
+      "optimizer_step_skipped": false,
+      "seconds": 14.45920443534851
+    },
+    {
+      "step": 12,
+      "object": "AMNH_81070_Cranium",
+      "loss": 0.8259182572364807,
+      "gradient_norm": 14.700254440307617,
+      "optimizer_step_skipped": false,
+      "seconds": 15.708473682403564
+    },
+    {
+      "step": 13,
+      "object": "AMNH_74427_Cranium",
+      "loss": 0.8574877977371216,
+      "gradient_norm": 13.561524391174316,
+      "optimizer_step_skipped": false,
+      "seconds": 16.98572874069214
+    },
+    {
+      "step": 14,
+      "object": "AMNH_76373_Skull",
+      "loss": 0.6816704273223877,
+      "gradient_norm": 6.4481611251831055,
+      "optimizer_step_skipped": false,
+      "seconds": 18.501835346221924
+    },
+    {
+      "step": 15,
+      "object": "AMNH_76373_Cranium",
+      "loss": 0.5573005080223083,
+      "gradient_norm": 18.93370819091797,
+      "optimizer_step_skipped": false,
+      "seconds": 19.810576677322388
+    },
+    {
+      "step": 16,
+      "object": "AMNH_80081_Cranium",
+      "loss": 0.16537179052829742,
+      "gradient_norm": 9.73987102508545,
+      "optimizer_step_skipped": false,
+      "seconds": 20.785849809646606
+    },
+    {
+      "step": 17,
+      "object": "AMNH_103402_Skull",
+      "loss": 0.9611214399337769,
+      "gradient_norm": 18.00371742248535,
+      "optimizer_step_skipped": false,
+      "seconds": 22.008378267288208
+    },
+    {
+      "step": 18,
+      "object": "AMNH_74427_Cranium",
+      "loss": 0.6098914742469788,
+      "gradient_norm": 11.874059677124023,
+      "optimizer_step_skipped": false,
+      "seconds": 23.234557628631592
+    },
+    {
+      "step": 19,
+      "object": "AMNH_103402_Skull",
+      "loss": 0.6471366286277771,
+      "gradient_norm": 19.950916290283203,
+      "optimizer_step_skipped": false,
+      "seconds": 24.413702249526978
+    },
+    {
+      "step": 20,
+      "object": "AMNH_83595_Cranium",
+      "loss": 1.1178886890411377,
+      "gradient_norm": 31.92084503173828,
+      "optimizer_step_skipped": false,
+      "seconds": 25.353557586669922
+    },
+    {
+      "step": 21,
+      "object": "AMNH_103655_Cranium",
+      "loss": 0.4924265742301941,
+      "gradient_norm": 12.283506393432617,
+      "optimizer_step_skipped": false,
+      "seconds": 26.553402185440063
+    },
+    {
+      "step": 22,
+      "object": "AMNH_196486_Cranium",
+      "loss": 0.7326828241348267,
+      "gradient_norm": 10.852622032165527,
+      "optimizer_step_skipped": false,
+      "seconds": 27.825692415237427
+    },
+    {
+      "step": 23,
+      "object": "AMNH_80081_Cranium",
+      "loss": 0.599445641040802,
+      "gradient_norm": 48.33777618408203,
+      "optimizer_step_skipped": false,
+      "seconds": 29.069473028182983
+    },
+    {
+      "step": 24,
+      "object": "AMNH_76373_Cranium",
+      "loss": 0.9247366786003113,
+      "gradient_norm": 23.209571838378906,
+      "optimizer_step_skipped": false,
+      "seconds": 30.340829610824585
+    },
+    {
+      "step": 25,
+      "object": "AMNH_76373_Skull",
+      "loss": 0.6554921269416809,
+      "gradient_norm": 12.273809432983398,
+      "optimizer_step_skipped": false,
+      "seconds": 31.749804496765137
+    },
+    {
+      "step": 26,
+      "object": "AMNH_81070_Cranium",
+      "loss": 0.46645843982696533,
+      "gradient_norm": 10.593518257141113,
+      "optimizer_step_skipped": false,
+      "seconds": 33.03551506996155
+    },
+    {
+      "step": 27,
+      "object": "AMNH_80081_Cranium",
+      "loss": 0.40094801783561707,
+      "gradient_norm": 12.150918960571289,
+      "optimizer_step_skipped": false,
+      "seconds": 34.23468017578125
+    },
+    {
+      "step": 28,
+      "object": "AMNH_196486_Cranium",
+      "loss": 0.5239797830581665,
+      "gradient_norm": 10.639176368713379,
+      "optimizer_step_skipped": false,
+      "seconds": 35.35189628601074
+    },
+    {
+      "step": 29,
+      "object": "AMNH_81070_Cranium",
+      "loss": 0.6269834637641907,
+      "gradient_norm": 15.027970314025879,
+      "optimizer_step_skipped": false,
+      "seconds": 36.64989185333252
+    },
+    {
+      "step": 30,
+      "object": "AMNH_76373_Skull",
+      "loss": 0.7140860557556152,
+      "gradient_norm": 16.41404151916504,
+      "optimizer_step_skipped": false,
+      "seconds": 37.93425965309143
+    },
+    {
+      "step": 31,
+      "object": "AMNH_74427_Cranium",
+      "loss": 0.7419469356536865,
+      "gradient_norm": 16.275222778320312,
+      "optimizer_step_skipped": false,
+      "seconds": 39.105802059173584
+    },
+    {
+      "step": 32,
+      "object": "AMNH_103655_Cranium",
+      "loss": 0.6518683433532715,
+      "gradient_norm": 33.14319610595703,
+      "optimizer_step_skipped": false,
+      "seconds": 40.36644172668457
+    },
+    {
+      "step": 33,
+      "object": "AMNH_103402_Skull",
+      "loss": 0.514873743057251,
+      "gradient_norm": 4.492035388946533,
+      "optimizer_step_skipped": false,
+      "seconds": 41.59283685684204
+    },
+    {
+      "step": 34,
+      "object": "AMNH_83595_Cranium",
+      "loss": 0.6338569521903992,
+      "gradient_norm": 15.885279655456543,
+      "optimizer_step_skipped": false,
+      "seconds": 42.732500314712524
+    },
+    {
+      "step": 35,
+      "object": "AMNH_76373_Cranium",
+      "loss": 0.785531222820282,
+      "gradient_norm": 20.424251556396484,
+      "optimizer_step_skipped": false,
+      "seconds": 43.96220588684082
+    },
+    {
+      "step": 36,
+      "object": "AMNH_81070_Cranium",
+      "loss": 0.4002184271812439,
+      "gradient_norm": 13.669264793395996,
+      "optimizer_step_skipped": false,
+      "seconds": 45.21728301048279
+    },
+    {
+      "step": 37,
+      "object": "AMNH_80081_Cranium",
+      "loss": 0.5082900524139404,
+      "gradient_norm": 18.592077255249023,
+      "optimizer_step_skipped": false,
+      "seconds": 46.339404582977295
+    },
+    {
+      "step": 38,
+      "object": "AMNH_74427_Cranium",
+      "loss": 0.45524200797080994,
+      "gradient_norm": 4.785150527954102,
+      "optimizer_step_skipped": false,
+      "seconds": 47.515742778778076
+    },
+    {
+      "step": 39,
+      "object": "AMNH_76373_Skull",
+      "loss": 0.9351184964179993,
+      "gradient_norm": 14.671320915222168,
+      "optimizer_step_skipped": false,
+      "seconds": 48.68304491043091
+    },
+    {
+      "step": 40,
+      "object": "AMNH_83595_Cranium",
+      "loss": 0.4213782548904419,
+      "gradient_norm": 19.04926300048828,
+      "optimizer_step_skipped": false,
+      "seconds": 49.80134391784668
+    },
+    {
+      "step": 41,
+      "object": "AMNH_103402_Skull",
+      "loss": 0.5157387852668762,
+      "gradient_norm": 12.94304084777832,
+      "optimizer_step_skipped": false,
+      "seconds": 50.85284399986267
+    },
+    {
+      "step": 42,
+      "object": "AMNH_196486_Cranium",
+      "loss": 1.2734228372573853,
+      "gradient_norm": 27.96257781982422,
+      "optimizer_step_skipped": false,
+      "seconds": 51.98167419433594
+    },
+    {
+      "step": 43,
+      "object": "AMNH_76373_Cranium",
+      "loss": 0.6533376574516296,
+      "gradient_norm": 16.510181427001953,
+      "optimizer_step_skipped": false,
+      "seconds": 53.258240938186646
+    },
+    {
+      "step": 44,
+      "object": "AMNH_103655_Cranium",
+      "loss": 0.6247431635856628,
+      "gradient_norm": 22.794172286987305,
+      "optimizer_step_skipped": false,
+      "seconds": 54.426594257354736
+    },
+    {
+      "step": 45,
+      "object": "AMNH_76373_Skull",
+      "loss": 0.5762222409248352,
+      "gradient_norm": 13.145648002624512,
+      "optimizer_step_skipped": false,
+      "seconds": 55.669697284698486
+    },
+    {
+      "step": 46,
+      "object": "AMNH_74427_Cranium",
+      "loss": 0.8936313986778259,
+      "gradient_norm": 25.533645629882812,
+      "optimizer_step_skipped": false,
+      "seconds": 56.665446043014526
+    },
+    {
+      "step": 47,
+      "object": "AMNH_83595_Cranium",
+      "loss": 0.4434939920902252,
+      "gradient_norm": 14.707966804504395,
+      "optimizer_step_skipped": false,
+      "seconds": 57.73575139045715
+    },
+    {
+      "step": 48,
+      "object": "AMNH_76373_Cranium",
+      "loss": 0.7748557925224304,
+      "gradient_norm": 28.879913330078125,
+      "optimizer_step_skipped": false,
+      "seconds": 58.92510771751404
+    },
+    {
+      "step": 49,
+      "object": "AMNH_103655_Cranium",
+      "loss": 0.38880205154418945,
+      "gradient_norm": 18.80978012084961,
+      "optimizer_step_skipped": false,
+      "seconds": 60.13403248786926
+    },
+    {
+      "step": 50,
+      "object": "AMNH_103402_Skull",
+      "loss": 0.7500364780426025,
+      "gradient_norm": 14.805773735046387,
+      "optimizer_step_skipped": false,
+      "seconds": 61.248427867889404
+    },
+    {
+      "step": 51,
+      "object": "AMNH_81070_Cranium",
+      "loss": 0.500884473323822,
+      "gradient_norm": 23.509197235107422,
+      "optimizer_step_skipped": false,
+      "seconds": 62.39021444320679
+    },
+    {
+      "step": 52,
+      "object": "AMNH_80081_Cranium",
+      "loss": 0.27037906646728516,
+      "gradient_norm": 12.310364723205566,
+      "optimizer_step_skipped": false,
+      "seconds": 63.491923332214355
+    },
+    {
+      "step": 53,
+      "object": "AMNH_196486_Cranium",
+      "loss": 0.5647132396697998,
+      "gradient_norm": 18.26112174987793,
+      "optimizer_step_skipped": false,
+      "seconds": 64.48565435409546
+    },
+    {
+      "step": 54,
+      "object": "AMNH_81070_Cranium",
+      "loss": 0.6390065550804138,
+      "gradient_norm": 17.05431365966797,
+      "optimizer_step_skipped": false,
+      "seconds": 65.51247119903564
+    },
+    {
+      "step": 55,
+      "object": "AMNH_76373_Skull",
+      "loss": 0.62550950050354,
+      "gradient_norm": 8.423042297363281,
+      "optimizer_step_skipped": false,
+      "seconds": 66.78783130645752
+    },
+    {
+      "step": 56,
+      "object": "AMNH_80081_Cranium",
+      "loss": 0.22666531801223755,
+      "gradient_norm": 18.627294540405273,
+      "optimizer_step_skipped": false,
+      "seconds": 67.84882545471191
+    },
+    {
+      "step": 57,
+      "object": "AMNH_83595_Cranium",
+      "loss": 0.5955467224121094,
+      "gradient_norm": 13.196812629699707,
+      "optimizer_step_skipped": false,
+      "seconds": 68.85988783836365
+    },
+    {
+      "step": 58,
+      "object": "AMNH_103655_Cranium",
+      "loss": 0.4749802350997925,
+      "gradient_norm": 12.540331840515137,
+      "optimizer_step_skipped": false,
+      "seconds": 70.05620241165161
+    },
+    {
+      "step": 59,
+      "object": "AMNH_76373_Cranium",
+      "loss": 0.6659358739852905,
+      "gradient_norm": 18.770055770874023,
+      "optimizer_step_skipped": false,
+      "seconds": 71.12769913673401
+    },
+    {
+      "step": 60,
+      "object": "AMNH_74427_Cranium",
+      "loss": 1.0911771059036255,
+      "gradient_norm": 18.34010124206543,
+      "optimizer_step_skipped": false,
+      "seconds": 72.2469413280487
+    },
+    {
+      "step": 61,
+      "object": "AMNH_103402_Skull",
+      "loss": 0.7495613098144531,
+      "gradient_norm": 12.27823257446289,
+      "optimizer_step_skipped": false,
+      "seconds": 73.41878032684326
+    },
+    {
+      "step": 62,
+      "object": "AMNH_196486_Cranium",
+      "loss": 0.4659503400325775,
+      "gradient_norm": 13.350379943847656,
+      "optimizer_step_skipped": false,
+      "seconds": 74.71334934234619
+    },
+    {
+      "step": 63,
+      "object": "AMNH_80081_Cranium",
+      "loss": 0.25453776121139526,
+      "gradient_norm": 20.905658721923828,
+      "optimizer_step_skipped": false,
+      "seconds": 75.85505747795105
+    },
+    {
+      "step": 64,
+      "object": "AMNH_103402_Skull",
+      "loss": 0.8375009894371033,
+      "gradient_norm": 17.861852645874023,
+      "optimizer_step_skipped": false,
+      "seconds": 76.9801812171936
+    },
+    {
+      "step": 65,
+      "object": "AMNH_76373_Skull",
+      "loss": 0.59139484167099,
+      "gradient_norm": 8.070769309997559,
+      "optimizer_step_skipped": false,
+      "seconds": 78.4313633441925
+    },
+    {
+      "step": 66,
+      "object": "AMNH_76373_Cranium",
+      "loss": 0.7266845703125,
+      "gradient_norm": 11.76457405090332,
+      "optimizer_step_skipped": false,
+      "seconds": 79.58914756774902
+    },
+    {
+      "step": 67,
+      "object": "AMNH_83595_Cranium",
+      "loss": 0.3429223597049713,
+      "gradient_norm": 7.506786823272705,
+      "optimizer_step_skipped": false,
+      "seconds": 80.73018455505371
+    },
+    {
+      "step": 68,
+      "object": "AMNH_103655_Cranium",
+      "loss": 0.3943478465080261,
+      "gradient_norm": 16.316308975219727,
+      "optimizer_step_skipped": false,
+      "seconds": 81.97174263000488
+    },
+    {
+      "step": 69,
+      "object": "AMNH_74427_Cranium",
+      "loss": 0.7851306796073914,
+      "gradient_norm": 15.021031379699707,
+      "optimizer_step_skipped": false,
+      "seconds": 83.08432817459106
+    },
+    {
+      "step": 70,
+      "object": "AMNH_196486_Cranium",
+      "loss": 0.5595296621322632,
+      "gradient_norm": 12.342613220214844,
+      "optimizer_step_skipped": false,
+      "seconds": 84.24586653709412
+    },
+    {
+      "step": 71,
+      "object": "AMNH_81070_Cranium",
+      "loss": 0.17827093601226807,
+      "gradient_norm": 9.871882438659668,
+      "optimizer_step_skipped": false,
+      "seconds": 85.35570549964905
+    },
+    {
+      "step": 72,
+      "object": "AMNH_80081_Cranium",
+      "loss": 0.29524242877960205,
+      "gradient_norm": 14.4331693649292,
+      "optimizer_step_skipped": false,
+      "seconds": 86.43267011642456
+    },
+    {
+      "step": 73,
+      "object": "AMNH_103655_Cranium",
+      "loss": 0.32508155703544617,
+      "gradient_norm": 9.379578590393066,
+      "optimizer_step_skipped": false,
+      "seconds": 87.68918108940125
+    },
+    {
+      "step": 74,
+      "object": "AMNH_103402_Skull",
+      "loss": 0.81270831823349,
+      "gradient_norm": 22.258398056030273,
+      "optimizer_step_skipped": false,
+      "seconds": 88.91695928573608
+    },
+    {
+      "step": 75,
+      "object": "AMNH_196486_Cranium",
+      "loss": 0.3957415521144867,
+      "gradient_norm": 16.066165924072266,
+      "optimizer_step_skipped": false,
+      "seconds": 90.10850811004639
+    },
+    {
+      "step": 76,
+      "object": "AMNH_74427_Cranium",
+      "loss": 0.979976236820221,
+      "gradient_norm": 18.86569595336914,
+      "optimizer_step_skipped": false,
+      "seconds": 91.3451144695282
+    },
+    {
+      "step": 77,
+      "object": "AMNH_83595_Cranium",
+      "loss": 0.4500192105770111,
+      "gradient_norm": 11.879207611083984,
+      "optimizer_step_skipped": false,
+      "seconds": 92.427401304245
+    },
+    {
+      "step": 78,
+      "object": "AMNH_81070_Cranium",
+      "loss": 0.318628191947937,
+      "gradient_norm": 11.214089393615723,
+      "optimizer_step_skipped": false,
+      "seconds": 93.58793544769287
+    },
+    {
+      "step": 79,
+      "object": "AMNH_76373_Cranium",
+      "loss": 0.6881502866744995,
+      "gradient_norm": 16.558012008666992,
+      "optimizer_step_skipped": false,
+      "seconds": 94.70763206481934
+    },
+    {
+      "step": 80,
+      "object": "AMNH_76373_Skull",
+      "loss": 0.5984231233596802,
+      "gradient_norm": 11.586012840270996,
+      "optimizer_step_skipped": false,
+      "seconds": 95.96810364723206
+    },
+    {
+      "step": 81,
+      "object": "AMNH_83595_Cranium",
+      "loss": 0.47248807549476624,
+      "gradient_norm": 19.676773071289062,
+      "optimizer_step_skipped": false,
+      "seconds": 97.0983567237854
+    },
+    {
+      "step": 82,
+      "object": "AMNH_196486_Cranium",
+      "loss": 1.2690787315368652,
+      "gradient_norm": 20.859718322753906,
+      "optimizer_step_skipped": false,
+      "seconds": 98.29289126396179
+    },
+    {
+      "step": 83,
+      "object": "AMNH_80081_Cranium",
+      "loss": 0.2047642022371292,
+      "gradient_norm": 8.974047660827637,
+      "optimizer_step_skipped": false,
+      "seconds": 99.54331922531128
+    },
+    {
+      "step": 84,
+      "object": "AMNH_74427_Cranium",
+      "loss": 0.7758639454841614,
+      "gradient_norm": 9.387749671936035,
+      "optimizer_step_skipped": false,
+      "seconds": 100.66090250015259
+    },
+    {
+      "step": 85,
+      "object": "AMNH_103402_Skull",
+      "loss": 0.3772309720516205,
+      "gradient_norm": 12.048810005187988,
+      "optimizer_step_skipped": false,
+      "seconds": 101.73676228523254
+    },
+    {
+      "step": 86,
+      "object": "AMNH_81070_Cranium",
+      "loss": 0.5817332863807678,
+      "gradient_norm": 19.573156356811523,
+      "optimizer_step_skipped": false,
+      "seconds": 102.80928921699524
+    },
+    {
+      "step": 87,
+      "object": "AMNH_103655_Cranium",
+      "loss": 0.4900903105735779,
+      "gradient_norm": 11.790647506713867,
+      "optimizer_step_skipped": false,
+      "seconds": 103.95420408248901
+    },
+    {
+      "step": 88,
+      "object": "AMNH_76373_Cranium",
+      "loss": 0.7029281854629517,
+      "gradient_norm": 17.258623123168945,
+      "optimizer_step_skipped": false,
+      "seconds": 105.09649324417114
+    },
+    {
+      "step": 89,
+      "object": "AMNH_76373_Skull",
+      "loss": 0.6349483132362366,
+      "gradient_norm": 13.342350006103516,
+      "optimizer_step_skipped": false,
+      "seconds": 106.45309019088745
+    },
+    {
+      "step": 90,
+      "object": "AMNH_103655_Cranium",
+      "loss": 0.2025013417005539,
+      "gradient_norm": 12.23570442199707,
+      "optimizer_step_skipped": false,
+      "seconds": 107.74475836753845
+    },
+    {
+      "step": 91,
+      "object": "AMNH_103402_Skull",
+      "loss": 0.957184374332428,
+      "gradient_norm": 37.425113677978516,
+      "optimizer_step_skipped": false,
+      "seconds": 108.87456798553467
+    },
+    {
+      "step": 92,
+      "object": "AMNH_83595_Cranium",
+      "loss": 0.2533051073551178,
+      "gradient_norm": 8.379114151000977,
+      "optimizer_step_skipped": false,
+      "seconds": 110.1355881690979
+    },
+    {
+      "step": 93,
+      "object": "AMNH_74427_Cranium",
+      "loss": 1.1570945978164673,
+      "gradient_norm": 44.0538330078125,
+      "optimizer_step_skipped": false,
+      "seconds": 111.35866069793701
+    },
+    {
+      "step": 94,
+      "object": "AMNH_80081_Cranium",
+      "loss": 0.21998855471611023,
+      "gradient_norm": 11.69568920135498,
+      "optimizer_step_skipped": false,
+      "seconds": 112.52705550193787
+    },
+    {
+      "step": 95,
+      "object": "AMNH_76373_Skull",
+      "loss": 0.6864675879478455,
+      "gradient_norm": 14.30394172668457,
+      "optimizer_step_skipped": false,
+      "seconds": 113.91908478736877
+    },
+    {
+      "step": 96,
+      "object": "AMNH_76373_Cranium",
+      "loss": 0.5886808633804321,
+      "gradient_norm": 8.20593547821045,
+      "optimizer_step_skipped": false,
+      "seconds": 115.07251262664795
+    },
+    {
+      "step": 97,
+      "object": "AMNH_196486_Cranium",
+      "loss": 0.4501989483833313,
+      "gradient_norm": 11.249394416809082,
+      "optimizer_step_skipped": false,
+      "seconds": 116.3061010837555
+    },
+    {
+      "step": 98,
+      "object": "AMNH_81070_Cranium",
+      "loss": 0.9263323545455933,
+      "gradient_norm": 21.406078338623047,
+      "optimizer_step_skipped": false,
+      "seconds": 117.39914178848267
+    },
+    {
+      "step": 99,
+      "object": "AMNH_103402_Skull",
+      "loss": 0.8027151823043823,
+      "gradient_norm": 17.76372528076172,
+      "optimizer_step_skipped": false,
+      "seconds": 118.40102362632751
+    }
+  ]
+}

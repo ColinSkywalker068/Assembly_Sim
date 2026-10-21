@@ -8,6 +8,8 @@
 
 **当前包含 CPU 几何准备、GARF 工具、S2→S1→S0 契约以及三层的代码，尚不是完整装配系统。** S0（运动学、IK、约束执行）、S1（Diffusion Policy 数据管线与模型）、S2（Claude 规划器与编排状态机）都只在 CPU 测试、合成数据和离线回放上验证过，还没有接入 Isaac 中的闭环执行。DexAgent 与 ASPIRE 两个基线已离线接入 `baselines/`，尚未实跑，没有基线成绩（见文末「基线」一节）。上游演示保持独立；没有宣称完成 YAM 适配、头骨物理装配、真实示范上的训练或真实机器人部署。
 
+**已完成真实数据、生产推理、扩大验证集的联合微调与 PhysX 稳定性对照；尚不是完整装配系统。** 最新验证集由 2 扩到 9 个独立头骨，排除参考接触异常后，以 7 个模型/6 标本训练。固定 5000 点、小片最低预算 20→200，最佳中心误差 38.05 mm；联合分类辅助损失改善旋转，但 72 个候选仍全部被几何筛选拒绝。24 秒仿真中求解器对照使稳定碎片由 6/8 增至 7/8。详细协议、限制和图像复现见 [本轮报告](reports/2026-10-18-ablation-v2/README.md)。YAM、打印拓扑和自主装配仍待完成。
+
 CRX-10iA/L 是用户批准的临时型号，尚未核实捐赠实机。YAM 夹爪型号已定为 I2RT `linear_4310`（10-18 用户确认），官方模型已放进仓库（见下文「YAM / 三相机 / UMI」）；CRX 法兰上的转接板、实测 TCP、相机标定、真实控制选项仍待确认。原始 CRAG 数据已从用户服务器取得，权重、数据及生成结果均存放于仓库外。
 
 ```bash
@@ -46,7 +48,7 @@ python -m tasks.dual_arm_crag_skull.smoke --assembly runs/PATH/layout.json --out
 | S2 | ASPIRE Python 程序（默认 skills，可选 direct） | 可观测场景、候选与执行反馈 | skills：技能请求；direct：CAP 运动 API | skills 随事件重跑；direct 执行冻结程序 |
 | S1 | 条件 1D U-Net Diffusion Policy | 图像历史、双 TCP/开口状态、双手相对位姿、skill 与可观测目标 | 双臂末端动作块 | 滚动时域 |
 | S0 | FANUC 原生伺服（实机）/ PhysX drives（仿真）+ 外部运动适配 | 动作块、机器人状态、碰撞环境 | 12 轴位置目标与两个夹爪宽度目标 | 初始仿真目标 60 Hz |
-| 物理 | Isaac Sim 5.1 / PhysX | 关节驱动、接触几何、质量和材料参数 | 实际运动与接触 | 初始 240 Hz |
+| 物理 | Isaac Sim 5.1 / PhysX（已在 5.1 做场景 smoke） | 关节驱动、接触几何、质量和材料参数 | 实际运动与接触 | 初始 240 Hz |
 
 S2 默认与 ASPIRE 共用程序运行器，配置为 `s2.planner = aspire_program`、
 `s2.execution_mode = skills`。两种执行方式：
@@ -252,7 +254,9 @@ python -m tasks.dual_arm_crag_skull launch \
 ```bash
 python -m tasks.dual_arm_crag_skull.tools \
   --repository /data/GARF --checkpoint /data/GARF.ckpt \
-  --geometry /data/points/registry.json < /data/request.jsonl
+  --geometry /data/points/registry.json \
+  --mesh-registry /data/points/mesh_registry.json \
+  --model-unit-m 0.20749005075939986 < /data/request.jsonl
 ```
 
 注册表为 `{"part_0":"/data/part_0.npz", ...}`，NPZ 包含米制 `points: Nx3` 与 `normals: Nx3`。单行请求例子：
@@ -404,3 +408,11 @@ python -m tasks.dual_arm_crag_skull.smoke \
   - 10-19 已定、待实施：位置误差改量包围盒中心，静置判据对齐，会倾倒的起始摆放调稳。
 - **混杂因素**：原生 DexAgent 用的是另一套机器人和物理引擎；移植版只剩「MuJoCo 规划、Isaac 开环执行」这一差别。它成功的前提是通过自己的整套门禁；它自己的放手检查只静置 0.3 s（4 mm / 10°），我们是 1 s（3 mm / 3°）。与我们比较时必须写明这些差别。
 - **安全**：两个基线都会执行模型写的代码。DexAgent 的 Stage 3 和交付复核在 bwrap 沙箱里跑（无网络、无家目录，只有试验目录可写）；ASPIRE 的程序还没有沙箱，补上之前不实跑。实跑前先由用户确认预算和主机。
+
+## 2026-10-18：生产入口对齐与头骨特征诊断
+
+默认 JSONL 入口现使用 `OfficialGarfBackend`，直接调用固定版本的官方 `MeshInferenceDataset`：总5000点、面积加权、最低20点、相同共同尺度/逐片旋转和归一化，不再在生产入口按点云密度重新抽样。显式固定采样RNG，并复用同一几何特征，保障多noise可比。旧近似入口仅可通过 `--legacy-preprocessing` 使用。
+
+`--model-unit-m` 表示每个模型坐标单位对应多少米，必须来自输入标定或明确的实验尺度。上面的数值仅适用于本次最长边200 mm的头骨实验，不能套用于其他物体。`--mesh-registry` 是提供完整表面与面积的注册几何，必须与NPZ处于同一局部米制坐标；官方点云在服务端由该几何生成。只有无组织点云、没有面积/表面信息时，无法声称与官方mesh采样完全等价，默认入口会拒绝缺失元数据而不猜测。
+
+断裂面几何代理诊断显示，瓶子召回率约99.9%，头骨约8.0%；头骨最大片召回率为0。该差异支持编码器对头骨断裂几何泛化不足，但分类掩码未直接参与当前位姿模型，不能把它当作唯一已确认根因。详见 [本轮报告](reports/2026-10-18/README.md)。

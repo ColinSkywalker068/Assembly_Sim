@@ -1,0 +1,38 @@
+{
+  "baseline": {
+    "centroid_error_mm": 64.51950417529179,
+    "rotation_error_deg": 110.7572470021691,
+    "point_rmse_mm": 68.02966268305268,
+    "fracture_f1": 0.17897628116606218
+  },
+  "encoder": {
+    "centroid_error_mm": 53.02382993868714,
+    "rotation_error_deg": 112.04055156770373,
+    "point_rmse_mm": 55.371219932635775,
+    "fracture_f1": 0.5332361562993267
+  },
+  "joint": {
+    "centroid_error_mm": 40.90647055919915,
+    "rotation_error_deg": 90.49429776043628,
+    "point_rmse_mm": 41.62146539349406,
+    "fracture_f1": 0.4112520132709675
+  },
+  "hoolock_historical_transfer": {
+    "baseline": {
+      "mean_translation_error_mm": 97.12582192690206,
+      "mean_rotation_error_deg": 126.89430456577666
+    },
+    "joint": {
+      "mean_translation_error_mm": 38.31336801699409,
+      "mean_rotation_error_deg": 106.48196800515073
+    }
+  },
+  "provenance": {
+    "source_sha256": "d2306a2f0b26dc0589ea17bf5adc08ac7aa19965595bfda9fedd6c9c4c995226",
+    "encoder_checkpoint_sha256": "768b91e3931c9fd3289264106fb950ac1044b80399189ba00ee4531743813e9c",
+    "joint_checkpoint_sha256": "cadf13eef7f576737dcb6e1ae65f31494bf9064a962e9b030c85789d3c68b799",
+    "remote_root": "maxwell:/local_data/jz6676/jing_assembly_run",
+    "production_checkpoint_promoted": false,
+    "simulation_motion_authorized": false
+  }
+}

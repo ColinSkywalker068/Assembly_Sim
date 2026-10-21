@@ -1,0 +1,50 @@
+{
+  "train": [
+    "AMNH_103402_Skull",
+    "AMNH_103655_Cranium",
+    "AMNH_196486_Cranium",
+    "AMNH_74427_Cranium",
+    "AMNH_76373_Cranium",
+    "AMNH_76373_Skull",
+    "AMNH_80081_Cranium",
+    "AMNH_81070_Cranium",
+    "AMNH_83595_Cranium"
+  ],
+  "validation": [
+    "AMNH_200847_Cranium",
+    "AMNH_26943_Skull"
+  ],
+  "test": "QA only; not used in training or model evaluation",
+  "stages": [
+    "baseline",
+    "encoder",
+    "joint"
+  ],
+  "steps_per_stage": 100,
+  "seeds": [
+    41,
+    42
+  ],
+  "inference_steps": 20,
+  "inference_iterations": 6,
+  "dataset_manifest_sha256": "d6efb79b1efaab294c8aacf9a0781c5fc96974bbff959dc3d3a0ba3a50d5947d",
+  "data_sha256": {
+    "AMNH_103402_Skull": "a84058ee21a33386dd331a2aca1a0e5815243b2f2ba379d40e3ec8ead9b69820",
+    "AMNH_103655_Cranium": "8fe734e73595c3769d1e51ec07fb35eb2935040d2f8ee3ba5572e3e59631c53d",
+    "AMNH_196486_Cranium": "0917e09f70b72839d1657f2271a6d20d7b7cb78c7e2517c8777e2484eb7a5a84",
+    "AMNH_74427_Cranium": "2be21c57538848379654117ee464ab640a655cc4c0b4117911fe1d06fb74eca8",
+    "AMNH_76373_Cranium": "381118609636fcb2740fd011ee0533802faf6776e40058857943dadbf9e5b152",
+    "AMNH_76373_Skull": "89b1b664a246d7c164da1955057180b4c3bad4c8e4ffd3bacce92c3dca02111f",
+    "AMNH_80081_Cranium": "88f4053ef1567f114b9eae6401d7de2d61c5ae16f98f49dc2a631c04d1eed207",
+    "AMNH_81070_Cranium": "2ca26e9f8f185e2c856ccd11cfd130401dce1b7566aaeb1f1976938824ba9a35",
+    "AMNH_83595_Cranium": "95ed79354dba2c4c2f235ae639a81564e9cd4ba7fcef2aace0ac99b43725096e",
+    "AMNH_200847_Cranium": "f1e46737d562ba844a0a7d20af75ed94334683084d2b8f9a516d25812563a238",
+    "AMNH_26943_Skull": "8bc980b6ad709d9a4d1d7dd20131d84e3c51facb203aa177eb27dcb446b47ec1"
+  },
+  "stage_objectives": {
+    "encoder": "masked Dice with geometry pseudo-labels",
+    "joint": "official SE3 flow-matching vec_mse"
+  },
+  "selection": "fixed final step, no validation checkpoint selection; no hyperparameter search",
+  "limitation": "small single-seed sequential pilot, not a convergence or generalization claim"
+}

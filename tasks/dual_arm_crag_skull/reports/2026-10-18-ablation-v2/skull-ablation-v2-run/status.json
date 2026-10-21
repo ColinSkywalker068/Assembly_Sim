@@ -1,0 +1,47 @@
+{
+  "warmup": {
+    "state": "complete",
+    "gpu": "5",
+    "exit_code": 0
+  },
+  "previous": {
+    "state": "complete",
+    "gpu": "2",
+    "exit_code": 0
+  },
+  "flow20": {
+    "state": "complete",
+    "gpu": "5",
+    "exit_code": 0
+  },
+  "flow200": {
+    "state": "complete",
+    "gpu": "2",
+    "exit_code": 0
+  },
+  "previous-screen": {
+    "state": "complete",
+    "gpu": null,
+    "exit_code": 0
+  },
+  "multi200": {
+    "state": "complete",
+    "gpu": "5",
+    "exit_code": 0
+  },
+  "flow20-screen": {
+    "state": "complete",
+    "gpu": null,
+    "exit_code": 0
+  },
+  "flow200-screen": {
+    "state": "complete",
+    "gpu": null,
+    "exit_code": 0
+  },
+  "multi200-screen": {
+    "state": "complete",
+    "gpu": null,
+    "exit_code": 0
+  }
+}
