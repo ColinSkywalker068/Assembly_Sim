@@ -4,8 +4,9 @@ method is given, and their meshes). sim/check_assembly.py runs it on Isaac; the 
 
 Planning a step (`plan_step`): an arm (the one on the fragment's side first) and a chord grasp (sim/pick.py) with the
 fingertips at any height up the fragment, the highest the pads still hold first (the least of the fingers goes down
-into a pocket), on a line through the middle of its footprint or, failing that, on one moved across the closing axis
-by LATERAL_OFFSETS_M (a fragment in a pocket may leave room for the fingers only off its middle). The grasp is found
+into a pocket), on a line over its centre of mass (gravity then turns it less in the grasp) or, failing that, on one
+moved across the closing axis by LATERAL_OFFSETS_M (a fragment in a pocket may leave room for the fingers only there),
+the pads closing on at least MIN_CHORD_M (less would grip an edge). The grasp is found
 with the fragment as if it stood on the table in its goal orientation, so that the gripper comes down onto the goal
 upright (goal_aligned: for a fragment resting tilted, after toppling say, the fingers then come in tilted at the
 pick), and failing that where it rests, the fingers coming straight down (top_down); a fragment upright as in its goal
@@ -14,7 +15,8 @@ has the two the same. It must be such that
   fragments still on the table;
 - with the fragment carried to its goal (the grasp held: the TCP keeps its pose relative to the fragment), the fingers
   and the gripper body stay FINGER_MARGIN_M clear of the cells of the fragments already in place (the layout's voxel
-  grid) while the fragment comes down to where its insertion begins and all along the plan's straight insertion;
+  grid) while the fragment comes down to where its insertion begins and all along the plan's straight insertion,
+  and so does the fragment itself as it comes down (the plan answers for the insertion);
 - once the fingers open at the goal, only to RELEASE_GAP_M a side beyond the width at which they rise past the
   fragment (a pocket has no room for more), and while they back out and rise, they stay as clear of those cells and
   of the fragment's own;
@@ -66,6 +68,7 @@ RELEASE_GAP_M = 0.003  # a side, beyond the clear width: more than FINGER_MARGIN
 HEIGHT_STEP_M = 0.006
 LATERAL_OFFSETS_M = (0.0, -0.004, 0.004, -0.008, 0.008, -0.012, 0.012, -0.016, 0.016)  # the middle line first
 MAX_PREFLIGHTS = 16  # candidates a step tries through its Runner before it gives up
+MIN_CHORD_M = 0.015  # in Isaac an 8 mm chord slipped out of the closing pads
 PATH_STEP_M = 0.003
 THIN_CELL_M = 0.001  # the tips' points, one per 1 mm cell: none more than 1.7 mm from the mesh, inside FINGER_MARGIN_M
 TOP_PAD_M = 0.012  # the pads are 15 mm tall: grasping higher than this below the top grips nothing
@@ -82,6 +85,13 @@ STEP_SETTLE_S = 0.5
 def _world(points, pose):
     pose = np.asarray(pose, dtype=float)
     return np.asarray(points, dtype=float) @ pose[:3, :3].T + pose[:3, 3]
+
+
+def _centre_of_mass(vertices, faces):
+    """The centre of mass of the solid a closed, outward-facing triangle mesh bounds, at uniform density."""
+    corners = np.asarray(vertices, dtype=float)[np.asarray(faces, dtype=int)]
+    volumes = np.einsum('ij,ij->i', corners[:, 0], np.cross(corners[:, 1], corners[:, 2])) / 6.0
+    return (volumes[:, None] * corners.sum(axis=1) / 4.0).sum(axis=0) / volumes.sum()
 
 
 def fragment_mesh(task, key):
@@ -323,18 +333,23 @@ def plan_step(task, layout, model, limits, *, key, insertion, poses, placed, see
     for family, frame in _grasp_frames(vertices, start, goal, table):
         seen = points if family == 'top_down' else pick.surface_points(_world(vertices, frame), faces)
         highest = float(seen[:, 2].max())
+        through = _world(_centre_of_mass(vertices, faces)[None], frame)[0, :2]
         carry = start @ np.linalg.inv(frame)
         for arm in _side_arms(start):
             arm_model = model.arms[arm]
-            for tip_z, offset in itertools.product(
+            for tip_z, lateral in itertools.product(
                     np.arange(highest - TOP_PAD_M, table + pick.FINGERTIP_HEIGHT_M - 1e-9, -HEIGHT_STEP_M),
                     LATERAL_OFFSETS_M):
                 candidates = pick.grasp_candidates(key, seen, tip_z - pick.FINGERTIP_HEIGHT_M,
-                                                   limits.gripper_width_range_m[arm][1], offsets_m=(offset,))
+                                                   limits.gripper_width_range_m[arm][1], offsets_m=(lateral,),
+                                                   through_xy=through)
                 for grasp in sorted(candidates, key=lambda g: g.chord_m):
+                    if grasp.chord_m < MIN_CHORD_M:
+                        reject('thin')
+                        continue
                     placement = _try_grasp(task, model, limits, arm, arm_model, key, grasp, float(tip_z), carry,
                                            start, goal, out, offset, occupancy, released, staged_tree, top, drops,
-                                           seeds, reject)
+                                           points, seeds, reject)
                     if placement is None:
                         continue
                     candidate = Placement(key, arm, grasp, float(tip_z), placement['poses'], placement['q_pre'],
@@ -385,7 +400,7 @@ def _clearing_height(top, pick_pose, tcp_goal, drops):
 
 
 def _try_grasp(task, model, limits, arm, arm_model, key, grasp, tip_z, carry, start, goal, out, offset, occupancy,
-               released, staged_tree, top, drops, seeds, reject):
+               released, staged_tree, top, drops, surface, seeds, reject):
     # The geometry first (the fingers are symmetric, so it does not matter which way round IK turns the TCP), then
     # the neighbours on the table, then IK.
     pick_pose = carry @ pick.down_pose(grasp.center_xy, tip_z, grasp.yaw_rad)
@@ -401,11 +416,13 @@ def _try_grasp(task, model, limits, arm, arm_model, key, grasp, tip_z, carry, st
     over = _translated(tcp_begin, (0, 0, safe_z - tcp_begin[2, 3]))
     back = _translated(tcp_goal, BACK_M * out)
     leave = _translated(back, (0, 0, max(safe_z - back[2, 3], 0.0)))
+    held = _world(surface, np.linalg.inv(pick_pose))  # the fragment in the TCP frame, as grasped
     checks = (('release', loose, released, tcp_goal[:3, 3][None]),  # the cheapest first
               ('insertion', closed, occupancy, _line(tcp_begin[:3, 3], tcp_goal[:3, 3])),
               ('back_out', loose, released,
                np.vstack([_line(tcp_goal[:3, 3], back[:3, 3]), _line(back[:3, 3], leave[:3, 3])])),
-              ('descent_to_begin', closed, occupancy, _line(over[:3, 3], tcp_begin[:3, 3])))
+              ('descent_to_begin', closed, occupancy, _line(over[:3, 3], tcp_begin[:3, 3])),
+              ('carry_to_begin', held, occupancy, _line(over[:3, 3], tcp_begin[:3, 3])))
     for reason, gripper, cells, path in checks:
         if cells.hits(_sweep(gripper, tcp_goal[:3, :3], path), FINGER_MARGIN_M):
             reject(reason)
@@ -643,7 +660,10 @@ def run_step(runner, task, placement, records=None):
     near = place_window if low('begin') or low('goal') or low('back') else None
     line('lower', poses['begin'], grasp.close_width_m, near, contact_speed if near else TRANSIT_SPEED_M_S / 2)
     line('insert', poses['goal'], grasp.close_width_m, near, min(INSERT_SPEED_M_S, contact_speed))
-    loose = placement.release_width_m
+    # never less than the fingers are open: a fragment turned in the grasp may hold them wider than planned, and
+    # 'releasing' to less would squeeze it and carry it off
+    loose = min(max(placement.release_width_m, runner.state.widths[arm] + 2 * RELEASE_GAP_M),
+                limits.gripper_width_range_m[arm][1])
     width('release', grasp.close_width_m, loose, pick.CLOSE_S, near)
     line('back', poses['back'], loose, near, contact_speed if near else INSERT_SPEED_M_S)
     if poses['leave'][2, 3] > poses['back'][2, 3] + 1e-6:

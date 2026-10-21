@@ -79,15 +79,16 @@ class Grasp:
     clear_width_m: float
 
 
-def _candidates(fragment_id, points, table_z, max_width_m, fingers, yaws_deg, offsets_m=(0.0,)):
+def _candidates(fragment_id, points, table_z, max_width_m, fingers, yaws_deg, offsets_m=(0.0,), through_xy=None):
     """([Grasp] one per yaw and offset that has one, in yaw order and then offset order; whether the pads met the
-    fragment on any line). Each line closes along the yaw's closing axis, `offset` across it from the middle of the
-    points' footprint."""
+    fragment on any line). Each line closes along the yaw's closing axis, `offset` across it from `through_xy` (by
+    default the middle of the points' footprint)."""
     from .fingers import yam_finger_reach
     fingers = yam_finger_reach() if fingers is None else fingers
     plus, minus = (next(tip for tip, side in fingers.side.items() if side == sign) for sign in (1.0, -1.0))
     points = np.asarray(points, dtype=float)
-    centre = (points[:, :2].min(axis=0) + points[:, :2].max(axis=0)) / 2
+    centre = ((points[:, :2].min(axis=0) + points[:, :2].max(axis=0)) / 2 if through_xy is None
+              else np.asarray(through_xy, dtype=float))
     heights = points[:, 2] - (table_z + FINGERTIP_HEIGHT_M)
     found, met = [], False
     for yaw in np.radians(yaws_deg):
@@ -117,12 +118,13 @@ def _candidates(fragment_id, points, table_z, max_width_m, fingers, yaws_deg, of
     return found, met
 
 
-def grasp_candidates(fragment_id, points, table_z, max_width_m, *, fingers=None, yaws_deg=YAWS_DEG, offsets_m=(0.0,)):
+def grasp_candidates(fragment_id, points, table_z, max_width_m, *, fingers=None, yaws_deg=YAWS_DEG, offsets_m=(0.0,),
+                     through_xy=None):
     """Every top-down grasp of the fragment the open fingers can come down around, one per yaw and grasp line that has
-    one, in yaw order and then in the order of `offsets_m` (each line that far across the closing axis from the middle
-    of the fragment's footprint; the fingertips FINGERTIP_HEIGHT_M above `table_z`; choose_grasp says how each is
-    found)."""
-    return _candidates(fragment_id, points, table_z, max_width_m, fingers, yaws_deg, offsets_m)[0]
+    one, in yaw order and then in the order of `offsets_m` (each line that far across the closing axis from
+    `through_xy`, by default the middle of the fragment's footprint; the fingertips FINGERTIP_HEIGHT_M above
+    `table_z`; choose_grasp says how each is found)."""
+    return _candidates(fragment_id, points, table_z, max_width_m, fingers, yaws_deg, offsets_m, through_xy)[0]
 
 
 def choose_grasp(fragment_id, points, table_z, max_width_m, *, fingers=None, yaws_deg=YAWS_DEG):

@@ -87,9 +87,25 @@ def test_a_step_takes_a_grasp_whose_fingers_stay_out_of_the_seam(cubes):
     assert abs(closing[0]) < 0.2  # the fingers close along y at the goal, not along the insertion
     assert placement.rejected  # and grasps closing along x were tried and refused for the seam
     assert set(placement.rejected) <= {'descent_to_begin', 'insertion', 'release', 'back_out'}
+    # frag_b shares a face with the anchor: its insertion begins BEGIN_CLEARANCE_M out along +x
+    assert placement.begin_offset_m == pytest.approx(assemble.BEGIN_CLEARANCE_M)
     np.testing.assert_allclose(placement.poses['begin'][:3, 3] - placement.poses['goal'][:3, 3],
-                               [placement.begin_offset_m, 0.0, 0.0], atol=1e-12)
+                               [assemble.BEGIN_CLEARANCE_M, 0.0, 0.0], atol=1e-12)
     assert placement.tip_z == pytest.approx(0.79 - assemble.TOP_PAD_M)  # as high up the cube as the pads still hold
+
+
+def test_the_fragment_carried_down_to_where_its_insertion_begins_keeps_off_the_fragments_in_place(cubes, monkeypatch):
+    """With the insertion made to begin 30 mm inside the anchor, the fragment carried down onto it is refused even
+    where the gripper would come down clear (here it has no points at all; on the skull, orange's fingers were clear
+    of red while orange came down onto it)."""
+    monkeypatch.setattr(assemble, 'BEGIN_CLEARANCE_M', -0.03)
+    monkeypatch.setattr(assemble, '_gripper_points_cached', lambda arm_model, width: np.zeros((0, 3)))
+    task, layout = cubes
+    poses = {key: f.initial_world_T_fragment for key, f in zip(task.fragment_ids, task.fragments)}
+    step = task.assembly_plan[0]
+    with pytest.raises(ValueError, match='carry_to_begin'):
+        assemble.plan_step(task, layout, MODEL, LIMITS, key=step.fragment_id, insertion=step.insertion_direction,
+                           poses=poses, placed=['frag_a'], seeds=HOME)
 
 
 @pytest.mark.parametrize('tcp_m, centre_dx, expected', [
@@ -204,6 +220,69 @@ def test_a_fragment_resting_tilted_is_grasped_so_the_gripper_comes_down_upright_
     for name, width in (('pick', placement.grasp.chord_m), ('pre', placement.grasp.open_width_m)):
         points = assemble._world(assemble.gripper_points(arm_model, width), placement.poses[name])
         assert points[:, 2].min() >= LIMITS.table_top_z_m + assemble.FINGER_MARGIN_M
+
+
+def test_the_centre_of_mass_of_a_closed_mesh():
+    """An L: a 2 x 1 x 1 box (0..2, 0..1, 0..1) with a unit cube on its x < 1 half (0..1, 0..1, 1..2), volume 3,
+    centre of mass (2 (1, 1/2, 1/2) + (1/2, 1/2, 3/2)) / 3 = (5/6, 1/2, 5/6)."""
+    import trimesh
+    first = trimesh.creation.box(extents=(2, 1, 1))
+    first.apply_translation((1.0, 0.5, 0.5))
+    second = trimesh.creation.box(extents=(1, 1, 1))
+    second.apply_translation((0.5, 0.5, 1.5))
+    mesh = trimesh.util.concatenate([first, second])
+    np.testing.assert_allclose(assemble._centre_of_mass(mesh.vertices, mesh.faces), (5 / 6, 1 / 2, 5 / 6), atol=1e-9)
+
+
+def test_the_grasp_line_goes_over_the_centre_of_mass(cubes, monkeypatch):
+    """With frag_b's centre of mass taken 8 mm along x from its middle, the fingers (closing along y, out of the seam)
+    close on the line over it, not over the middle: gravity then turns it least in the grasp."""
+    centre = assemble._centre_of_mass
+    monkeypatch.setattr(assemble, '_centre_of_mass', lambda v, f: centre(v, f) + [0.008, 0.0, 0.0])
+    task, layout = cubes
+    poses = {key: f.initial_world_T_fragment for key, f in zip(task.fragment_ids, task.fragments)}
+    step = task.assembly_plan[0]
+    placement = assemble.plan_step(task, layout, MODEL, LIMITS, key=step.fragment_id,
+                                   insertion=step.insertion_direction, poses=poses, placed=['frag_a'], seeds=HOME)
+    mass = assemble._world(assemble._centre_of_mass(*assemble.fragment_mesh(task, step.fragment_id))[None],
+                           poses[step.fragment_id])[0]
+    assert placement.grasp.center_xy[0] == pytest.approx(mass[0], abs=1e-6)
+
+
+def test_a_grasp_too_thin_to_hold_is_passed_over(cubes, monkeypatch):
+    """Pads closing on less than MIN_CHORD_M (here more than the 40 mm cube is across, even corner to corner) would
+    grip an edge: none is taken."""
+    monkeypatch.setattr(assemble, 'MIN_CHORD_M', 0.1)
+    task, layout = cubes
+    poses = {key: f.initial_world_T_fragment for key, f in zip(task.fragment_ids, task.fragments)}
+    step = task.assembly_plan[0]
+    with pytest.raises(ValueError, match="'thin'"):
+        assemble.plan_step(task, layout, MODEL, LIMITS, key=step.fragment_id, insertion=step.insertion_direction,
+                           poses=poses, placed=['frag_a'], seeds=HOME)
+
+
+def test_the_fingers_never_release_to_less_than_they_are_open(cubes):
+    """If the fragment has turned in the grasp and holds the fingers wider than planned, the release opens beyond
+    that, not to the planned release width (which would squeeze it and carry it off)."""
+    task, layout = cubes
+    backend = _backend(task)
+    step = backend.step
+
+    def pried(targets, widths):  # the measured opening is 20 mm more than commanded
+        state = step(targets, widths)
+        return dataclasses.replace(state, widths={arm: width + 0.02 for arm, width in state.widths.items()})
+    backend.step = pried
+    seen, commanded = [], []
+    runner = assemble.Runner(backend, MODEL, LIMITS, on_step=lambda name, state, targets, contact: seen.append(name))
+    poses = {key: pose.world_T_fragment for key, pose in backend.observed_fragment_poses().items()}
+    first = task.assembly_plan[0]
+    placement = assemble.plan_step(task, layout, MODEL, LIMITS, key=first.fragment_id,
+                                   insertion=first.insertion_direction, poses=poses, placed=['frag_a'], seeds=HOME)
+    backend.step = lambda targets, widths: commanded.append(dict(widths)) or pried(targets, widths)
+    assemble.run_step(runner, task, placement)
+    released = [widths[placement.arm] for name, widths in zip(seen[-len(commanded):], commanded) if name == 'release']
+    assert released[-1] == pytest.approx(placement.grasp.close_width_m + 0.02 + 2 * assemble.RELEASE_GAP_M)
+    assert released[-1] > placement.release_width_m
 
 
 def test_where_the_line_through_the_middle_will_not_do_a_line_beside_it_is_tried(cubes, monkeypatch):

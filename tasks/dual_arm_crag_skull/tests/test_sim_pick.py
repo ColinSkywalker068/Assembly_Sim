@@ -60,6 +60,17 @@ def test_grasp_lines_can_be_offset_across_the_closing_axis():
         assert (np.asarray(grasp.center_xy) - found[0].center_xy) @ across == pytest.approx(offset, abs=1e-6)
 
 
+def test_grasp_lines_can_be_laid_through_a_given_point():
+    """Through a point 10 mm along the 60 mm box from its middle (its centre of mass, say), the first line closes
+    across the box there; the offsets are taken from that line."""
+    points = box_points((0.06, 0.03, 0.04), (0.3, -0.1), 0)
+    found = pick.grasp_candidates('f', points, TABLE, 0.094, yaws_deg=(90,), offsets_m=(0.0, 0.004),
+                                  through_xy=(0.31, -0.1))
+    assert found[0].center_xy[0] == pytest.approx(0.31, abs=1e-6)
+    assert found[1].center_xy[0] == pytest.approx(0.314, abs=1e-6)
+    assert found[0].chord_m == pytest.approx(0.03, abs=1e-4)
+
+
 def test_a_wide_part_the_fingers_would_land_on_blocks_a_top_down_grasp():
     """A 120 mm roof 50 mm up over a 30 mm foot: the rails beside the window come down on it at any opening."""
     foot = box_points((0.03, 0.03, 0.03), (0.0, 0.0), 0)
