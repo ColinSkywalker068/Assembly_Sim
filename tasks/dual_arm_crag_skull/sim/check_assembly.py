@@ -51,9 +51,10 @@ CRITERIA = {'every_step': True, 'within_tolerance_after_each_step': True, 'final
 
 class Telemetry:
     """Every control period as it went: segment, time, the contact window declared for it (arm and centre, or '' and
-    NaN), both arms' commanded targets, measured joints, joint speeds and widths, the widest opening S0 took each
-    gripper's boxes at for the segment (NaN: not given), and, if given, every fragment's pose (world, the simulator's;
-    `fragment_ids` orders them). The geometry S0 judges is worked out from these afterwards (s0_margins)."""
+    NaN), both arms' commanded targets, measured joints, joint speeds, widths and spans (RobotSnapshot), the widest
+    opening S0 took each gripper's boxes at for the segment (NaN: not given), and, if given, every fragment's pose
+    (world, the simulator's; `fragment_ids` orders them). The geometry S0 judges is worked out from these afterwards
+    (s0_margins)."""
 
     def __init__(self):
         self.rows, self.fragment_ids = [], None
@@ -66,6 +67,7 @@ class Telemetry:
             row[f'{arm}_joints'] = np.asarray(state.joints[arm], dtype=float)
             row[f'{arm}_speed'] = np.asarray(state.joint_velocities[arm], dtype=float)
             row[f'{arm}_width'] = float(state.widths[arm])
+            row[f'{arm}_span'] = float(state.spans[arm])
             row[f'{arm}_opening'] = np.nan if openings is None else float(openings[arm])
         if fragments is not None:
             self.fragment_ids = self.fragment_ids or tuple(sorted(fragments))

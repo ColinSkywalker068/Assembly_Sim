@@ -6,9 +6,14 @@ Planning a step (`plan_step`): an arm (the one on the fragment's side first) and
 fingertips at any height up the fragment, the highest the pads still hold first (the least of the fingers goes down
 into a pocket), on a line over its centre of mass (gravity then turns it less in the grasp) or, failing that, on one
 moved across the closing axis by LATERAL_OFFSETS_M (a fragment in a pocket may leave room for the fingers only there),
-the pads closing on at least MIN_CHORD_M (less would grip an edge), closing along the fragment's voxel grid first (the
-pads then meet faces; across the grid they meet edges and grip a strip). Grasps whose pads both grip at least
-MIN_PAD_GRIP_M of the fragment's side are looked for first, and only if there is none any that pass. The grasp is found
+the pads closing on at least MIN_CHORD_M (less would grip an edge). Grasps are looked for tier by tier (GRASP_TIERS), at
+every height, line and arm in each: lines within CENTRED_M of the centre of mass before lines further off it (gravity
+swings the fragment about the closing axis), each with pads closing along the fragment's voxel grid, then within
+NEAR_GRID_DEG of it, both first with both pads gripping at least MIN_PAD_GRIP_M of the fragment's side and then with
+any grip, and pads further off the grid last: across the grid the pads meet faces at an angle and the fragment turns
+in the grasp until they lie flat (in Isaac cyan, gripped 13.7 deg off its grid, turned 13.2-13.8 deg whatever the
+squeeze, past MAX_IN_HAND_DEG, and magenta slipped out); with a pad on only a 4 mm edge of the fragment four of five
+grasps let it go. The grasp is found
 with the fragment as if it stood on the table in its goal orientation, so that the gripper comes down onto the goal
 upright (goal_aligned: for a fragment resting tilted, after toppling say, the fingers then come in tilted at the
 pick), and failing that where it rests, the fingers coming straight down (top_down); a fragment upright as in its goal
@@ -39,7 +44,10 @@ in the hand (from the observed pose every method gets: the rest of the step puts
 the plan has it, and stops if it moved more than MAX_IN_HAND_M or MAX_IN_HAND_DEG), glide over the point where the
 insertion begins (turning to the goal orientation), come down to it, read the fragment again there and move to line
 it up, go in at INSERT_SPEED_M_S, open to the release width, back out BACK_M, rise and go back to where the arm started
-(out of the other arm's way); the other arm holds still. Near the table
+(out of the other arm's way); the other arm holds still. An arm reaching across to the other arm's side (the fragment
+rests there and the other arm's grasps would not go) has the other arm turn aside first, RETREAT_TURN_RAD about its
+base the way away from the fragment and its goal: waiting where it started it hangs over the fragments staged on its
+side (cyan's grasp along its grid came 18 mm from it, under S0's 20 mm). Near the table
 (fingertips within LOW_M of it, or wherever the plan found S0 needs it) the segment gets the contact window (grasp:
 centred on the fragment's observed pose; place: on its goal) and S0's contact speed. Then both arms hold for
 STEP_SETTLE_S and the drift of every placed fragment from its goal is read.
@@ -93,6 +101,22 @@ INSERT_SPEED_M_S = 0.02
 STEP_SETTLE_S = 0.5
 STEADY_S = 0.3  # held still in the air before the fragment's pose in the hand is read
 MAX_IN_HAND_M, MAX_IN_HAND_DEG = 0.01, 10.0  # beyond the plan's clearances: the step stops rather than go on
+RETREAT_TURN_RAD = np.radians(60.0)  # how far the other arm turns aside about its base for an arm reaching across
+# Pads closing at an angle to the fragment's voxel grid meet its faces on an edge, and it turns in the grasp until they
+# lie flat: by that angle (in Isaac cyan turned 13.2-13.8 deg in a grasp 13.7 deg off its grid, whatever the squeeze;
+# magenta, 13.7 deg off, slipped out as it was lifted). Within NEAR_GRID_DEG the turn stays inside MAX_IN_HAND_DEG.
+NEAR_GRID_DEG = 5.0
+# A line further than this from the centre of mass lets gravity swing the fragment about the closing axis: in Isaac
+# magenta, gripped 16 mm off it, swung out of the pads as they lifted (squeezed with 18 N, it went in 7.4 mm off),
+# and gripped on the line through it, with less of each pad (5.3 mm), it went in 0.8 mm / 1.5 deg off.
+CENTRED_M = 0.008
+# The order grasps are looked for in: (whether both pads must grip MIN_PAD_GRIP_M, how near the grid the pads close,
+# whether the line is within CENTRED_M of the centre of mass: None for either). The fragment turning in the grasp
+# stops the step beyond MAX_IN_HAND_DEG, so a line near the centre of mass comes before a fuller grip, and pads far
+# off the grid come last.
+GRASP_TIERS = ((True, 'grid', True), (True, 'near', True), (False, 'grid', True), (False, 'near', True),
+               (True, 'grid', False), (True, 'near', False), (False, 'grid', False), (False, 'near', False),
+               (True, 'far', None), (False, 'far', None))
 
 
 def _world(points, pose):
@@ -263,7 +287,8 @@ class Placement:
     """A planned step: the arm, the grasp (found as `family` says, with the TCP fingertips at tip_z in that frame), the
     TCP poses on the way (pre, pick, up, over, begin, goal, back, leave), the joints S0's IK found for pre, the width
     the fingers open to at the goal and which of pick, begin, goal and back need their contact window
-    (s0_table_use)."""
+    (s0_table_use); `retreat`, the joints the other arm turns aside to first when this one reaches across (None: it
+    holds where it is)."""
 
     fragment_id: str
     arm: str
@@ -277,9 +302,11 @@ class Placement:
     family: str = 'top_down'
     windows: Mapping[str, bool] = field(default_factory=dict)
     rejected: Mapping[str, int] = field(default_factory=dict)
+    retreat: np.ndarray | None = None
 
     def to_record(self):
         return {'fragment_id': self.fragment_id, 'arm': self.arm, 'family': self.family, 'tip_z': self.tip_z,
+                'retreat': None if self.retreat is None else np.asarray(self.retreat).tolist(),
                 'grasp': {'yaw_deg': float(np.degrees(self.grasp.yaw_rad)), 'chord_m': self.grasp.chord_m,
                           'open_width_m': self.grasp.open_width_m, 'close_width_m': self.grasp.close_width_m,
                           'clear_width_m': self.grasp.clear_width_m},
@@ -293,9 +320,30 @@ def _surface_at(task, key, pose):
     return pick.surface_points(_world(vertices, pose), faces)
 
 
+def _own_arm(start):
+    """The arm on the side of the table where the fragment rests."""
+    return 'left' if start[0, 3] < 0 else 'right'
+
+
 def _side_arms(start):
-    own = 'left' if start[0, 3] < 0 else 'right'
+    own = _own_arm(start)
     return (own, next(arm for arm in ARMS if arm != own))
+
+
+def _retreat(arm_model, q, away_xy):
+    """`q` turned RETREAT_TURN_RAD about the arm's base (joint 1), whichever way takes its TCP further from the
+    nearest of the points `away_xy` and stays inside the joint limits; None if neither does."""
+    best, far = None, -1.0
+    for sign in (1.0, -1.0):
+        turned = np.array(q, dtype=float)
+        turned[0] += sign * RETREAT_TURN_RAD
+        if turned[0] < arm_model.lower[0] or turned[0] > arm_model.upper[0]:
+            continue
+        tcp = arm_model.tcp(turned)[:2, 3]
+        distance = min(float(np.linalg.norm(tcp - np.asarray(point))) for point in away_xy)
+        if distance > far:
+            best, far = turned, distance
+    return best
 
 
 def _grasp_frames(vertices, start, goal, table):
@@ -349,19 +397,20 @@ def plan_step(task, layout, model, limits, *, key, insertion, poses, placed, see
     def reject(reason):
         rejected[reason] = rejected.get(reason, 0) + 1
 
-    for min_grip, (family, frame) in itertools.product((MIN_PAD_GRIP_M, 0.0),
-                                                       _grasp_frames(vertices, start, goal, table)):
+    for (gripped, tier, centred), (family, frame) in itertools.product(GRASP_TIERS,
+                                                                        _grasp_frames(vertices, start, goal, table)):
+        min_grip = MIN_PAD_GRIP_M if gripped else 0.0
+        offsets = [o for o in LATERAL_OFFSETS_M if centred is None or (abs(o) <= CENTRED_M + 1e-9) == centred]
         seen = points if family == 'top_down' else pick.surface_points(_world(vertices, frame), faces)
         highest = float(seen[:, 2].max())
         through = _world(_centre_of_mass(vertices, faces)[None], frame)[0, :2]
         grid = _grid_yaws_deg(frame, goal)
-        yaws = tuple(sorted(set(pick.YAWS_DEG) | set(grid)))
+        yaws = _tier_yaws(tier, grid)
         carry = start @ np.linalg.inv(frame)
-        for arm in _side_arms(start):
+        for arm in _side_arms(start) if yaws else ():
             arm_model = model.arms[arm]
             for tip_z, lateral in itertools.product(
-                    np.arange(highest - TOP_PAD_M, table + pick.FINGERTIP_HEIGHT_M - 1e-9, -HEIGHT_STEP_M),
-                    LATERAL_OFFSETS_M):
+                    np.arange(highest - TOP_PAD_M, table + pick.FINGERTIP_HEIGHT_M - 1e-9, -HEIGHT_STEP_M), offsets):
                 candidates = pick.grasp_candidates(key, seen, tip_z - pick.FINGERTIP_HEIGHT_M,
                                                    limits.gripper_width_range_m[arm][1], offsets_m=(lateral,),
                                                    through_xy=through, yaws_deg=yaws)
@@ -374,9 +423,14 @@ def plan_step(task, layout, model, limits, *, key, insertion, poses, placed, see
                                            points, min_grip, seeds, reject)
                     if placement is None:
                         continue
+                    retreat = None
+                    if arm != _own_arm(start):  # reaching across: the other arm turns aside first
+                        other = next(name for name in ARMS if name != arm)
+                        retreat = _retreat(model.arms[other], seeds[other], (start[:2, 3], goal[:2, 3]))
                     candidate = Placement(key, arm, grasp, float(tip_z), placement['poses'], placement['q_pre'],
                                           tuple(float(v) for v in insertion), offset, placement['release_width'],
-                                          family=family, windows=placement['windows'], rejected=dict(rejected))
+                                          family=family, windows=placement['windows'], rejected=dict(rejected),
+                                          retreat=retreat)
                     if runner is None:
                         return candidate
                     sweeps = _sweeps(candidate, points, occupancy, released, neighbours, itself)
@@ -436,12 +490,32 @@ def _grid_yaws_deg(pose, goal):
     return tuple(sorted(yaws))
 
 
-def _in_preferred_order(candidates, grid_yaws_deg, tolerance_deg=0.5):
-    """Grasps closing along the voxel grid first, each group narrowest first."""
-    def off_grid(grasp):
-        yaw = np.degrees(grasp.yaw_rad) % 180.0
-        return not any(min(abs(yaw - grid), 180.0 - abs(yaw - grid)) < tolerance_deg for grid in grid_yaws_deg)
-    return sorted(candidates, key=lambda grasp: (off_grid(grasp), grasp.chord_m))
+def _grid_angle(yaw_deg, grid_yaws_deg):
+    """How far (degrees, mod 180) pads closing at `yaw_deg` close from the nearest of the grid yaws (90 if none)."""
+    yaw = float(yaw_deg) % 180.0
+    return min((min(abs(yaw - grid), 180.0 - abs(yaw - grid)) for grid in grid_yaws_deg), default=90.0)
+
+
+def _off_grid(yaw_deg, grid_yaws_deg, tolerance_deg=0.5):
+    """Whether pads closing at `yaw_deg` close across the voxel grid (no grid yaw within the tolerance, mod 180)."""
+    return _grid_angle(yaw_deg, grid_yaws_deg) >= tolerance_deg
+
+
+def _tier_yaws(tier, grid_yaws_deg):
+    """The yaws of a GRASP_TIERS tier: 'grid' the grid's own, 'near' pick's yaws off it by at most NEAR_GRID_DEG,
+    'far' the rest."""
+    if tier == 'grid':
+        return tuple(grid_yaws_deg)
+    angles = {yaw: _grid_angle(yaw, grid_yaws_deg) for yaw in pick.YAWS_DEG}
+    if tier == 'near':
+        return tuple(yaw for yaw, angle in angles.items() if _off_grid(yaw, grid_yaws_deg) and angle <= NEAR_GRID_DEG)
+    return tuple(yaw for yaw, angle in angles.items() if angle > NEAR_GRID_DEG)
+
+
+def _in_preferred_order(candidates, grid_yaws_deg):
+    """Grasps nearest the voxel grid first (along it first of all), each group narrowest first."""
+    return sorted(candidates, key=lambda grasp: (round(_grid_angle(np.degrees(grasp.yaw_rad), grid_yaws_deg), 3),
+                                                 grasp.chord_m))
 
 
 def _clearing_height(top, pick_pose, tcp_goal, drops):
@@ -487,37 +561,56 @@ def _try_grasp(task, model, limits, arm, arm_model, key, grasp, tip_z, carry, st
         if staged_tree.query(down, distance_upper_bound=STAGED_MARGIN_M)[0].min() < STAGED_MARGIN_M:
             reject('staged_neighbour')
             return None
-    try:
-        q_pre, pre = pick.solve_reachable(arm_model, pre, seeds[arm])
-    except ValueError:
-        reject('ik_pick')
-        return None
-    if not np.allclose(pre[:3, :3], pick_pose[:3, :3]):  # IK took the TCP turned half way round: the same grasp
-        pick_pose = _translated(pre, pick.APPROACH_HEIGHT_M * pre[:3, 0])
-        tcp_goal = goal @ np.linalg.inv(start) @ pick_pose
-        tcp_begin, back = _translated(tcp_goal, offset * out), _translated(tcp_goal, BACK_M * out)
-        over = _translated(tcp_begin, (0, 0, safe_z - tcp_begin[2, 3]))
-        leave = _translated(back, (0, 0, max(safe_z - back[2, 3], 0.0)))
-    options = IKOptions(max_seed_jump_rad=3.5)
-    windows = {}
     # how wide the fingers are at each: open at the pick, gripping the fragment's chord where it begins and goes in,
     # released at the goal and backed out (run_step opens to RELEASE_GAP_M a side past the measured opening at least)
-    loose = max(release_width, grasp.chord_m + 2 * RELEASE_GAP_M)
-    openings = {'pick': grasp.open_width_m, 'goal': loose, 'begin': grasp.chord_m, 'back': loose}
-    for name, pose, centre in (('pick', pick_pose, start[:2, 3]), ('goal', tcp_goal, goal[:2, 3]),
-                               ('begin', tcp_begin, goal[:2, 3]), ('back', back, goal[:2, 3]), ('over', over, None),
-                               ('leave', leave, None)):  # the low ones first, each with S0's table rules
+    released_m = max(release_width, grasp.chord_m + 2 * RELEASE_GAP_M)
+    openings = {'pick': grasp.open_width_m, 'goal': released_m, 'begin': grasp.chord_m, 'back': released_m}
+    # The fingers are symmetric: the TCP turned half way round about its approach axis is the same grasp, and the arm
+    # may reach the whole way only one way round (to its goal, say), so each is tried through every pose.
+    furthest = (-1, None)
+    for turn in (pick_pose, _half_turned(pick_pose)):
+        tried = _reach_grasp(arm_model, limits, turn, start, goal, offset, out, safe_z, seeds[arm], openings)
+        if 'poses' in tried:
+            return {**tried, 'release_width': release_width}
+        furthest = max(furthest, (tried['stage'], tried['reason']), key=lambda pair: pair[0])
+    reject(furthest[1])
+    return None
+
+
+def _half_turned(pose):
+    """The TCP pose turned half way round about its approach axis (x): the same grasp for symmetric fingers."""
+    turned = np.array(pose, dtype=float, copy=True)
+    turned[:3, 1:3] *= -1
+    return turned
+
+
+def _reach_grasp(arm_model, limits, pick_pose, start, goal, offset, out, safe_z, seed, openings):
+    """IK and S0's table rules for a grasp at the TCP pose `pick_pose` the whole way: {'q_pre', 'windows', 'poses'},
+    or {'stage', 'reason'}, how far it got (0 the pre-grasp pose, then pick, goal, begin, back, over, leave)."""
+    pre = _translated(pick_pose, -pick.APPROACH_HEIGHT_M * pick_pose[:3, 0])  # back along the approach axis
+    options = IKOptions(max_seed_jump_rad=3.5)
+    solution = solve_ik(arm_model, pre, seed, options)
+    if not solution.ok:
+        return {'stage': 0, 'reason': 'ik_pick'}
+    q_pre = solution.q
+    tcp_goal = goal @ np.linalg.inv(start) @ pick_pose
+    tcp_begin, back = _translated(tcp_goal, offset * out), _translated(tcp_goal, BACK_M * out)
+    over = _translated(tcp_begin, (0, 0, safe_z - tcp_begin[2, 3]))
+    leave = _translated(back, (0, 0, max(safe_z - back[2, 3], 0.0)))
+    windows = {}
+    for stage, (name, pose, centre) in enumerate(
+            (('pick', pick_pose, start[:2, 3]), ('goal', tcp_goal, goal[:2, 3]), ('begin', tcp_begin, goal[:2, 3]),
+             ('back', back, goal[:2, 3]), ('over', over, None), ('leave', leave, None)), start=1):
+        # the low ones first, each with S0's table rules
         solution = solve_ik(arm_model, pose, q_pre, options)
         if not solution.ok:
-            reject(f'ik_{name}')
-            return None
+            return {'stage': stage, 'reason': f'ik_{name}'}
         if centre is not None:
             windows[name], problem = s0_table_use(arm_model, limits, solution.q, centre, openings[name])
             if problem is not None:
-                reject(f's0_{name}_{problem}')
-                return None
+                return {'stage': stage, 'reason': f's0_{name}_{problem}'}
     up = _translated(pre, (0, 0, max(safe_z - pre[2, 3], 0.0)))
-    return {'q_pre': q_pre, 'release_width': release_width, 'windows': windows,
+    return {'q_pre': q_pre, 'windows': windows,
             'poses': {'pre': pre, 'pick': pick_pose, 'up': up, 'over': over, 'begin': tcp_begin, 'goal': tcp_goal,
                       'back': back, 'leave': leave}}
 
@@ -752,6 +845,10 @@ def run_step(runner, task, placement, records=None):
         segment = pick.width_segment(name, runner.state.joints[arm], start, end, seconds, servo_hz, window)
         records.append(runner.run(arm, segment))
 
+    if placement.retreat is not None:  # the other arm turns aside first
+        other = next(name for name in ARMS if name != arm)
+        records.append(runner.run(other, pick.joint_segment('retreat', limits, runner.state.joints[other],
+                                                            placement.retreat, runner.widths[other], servo_hz)))
     records.append(runner.run(arm, pick.joint_segment('approach', limits, runner.state.joints[arm], placement.q_pre,
                                                       grasp.open_width_m, servo_hz)))
     pick_window = grasp_window if low('pick') else None

@@ -275,12 +275,27 @@ def test_the_voxel_grid_gives_the_yaws_whose_pads_close_on_faces():
 
 
 def test_grasps_closing_along_the_voxel_grid_come_first():
-    """Pads closing across voxel edges grip a strip (in Isaac green slid out of such a grasp); along the grid they
-    close on faces. Those come first, the narrowest of them first, then the rest by chord."""
+    """Pads closing across voxel edges grip a strip (in Isaac green slid out of such a grasp) and turn the fragment
+    until they lie flat; along the grid they close on faces. Those come first, the narrowest of them first, then the
+    rest nearest the grid first."""
     grasp = lambda yaw, chord: pick.Grasp('f', np.radians(yaw), (0.0, 0.0), chord, chord + 0.02, chord - 0.006, chord)
     found = [grasp(45.0, 0.030), grasp(17.0, 0.050), grasp(107.0, 0.040), grasp(60.0, 0.020)]
     order = [np.degrees(g.yaw_rad) for g in assemble._in_preferred_order(found, (17.0, 107.0))]
-    assert order == pytest.approx([107.0, 17.0, 60.0, 45.0])
+    assert order == pytest.approx([107.0, 17.0, 45.0, 60.0])  # 45 is 28 deg off the grid, 60 is 43 deg
+
+
+def test_the_grasp_tiers_split_the_yaws_by_how_far_off_the_grid_they_close():
+    grid = (23.7, 113.7)
+    assert assemble._tier_yaws('grid', grid) == grid
+    near = assemble._tier_yaws('near', grid)
+    assert set(near) == {20.0, 25.0, 110.0, 115.0} and assemble.NEAR_GRID_DEG == 5.0
+    far = assemble._tier_yaws('far', grid)
+    assert not set(near) & set(far) and len(near) + len(far) == len(pick.YAWS_DEG)
+    assert assemble._tier_yaws('near', ()) == () and len(assemble._tier_yaws('far', ())) == len(pick.YAWS_DEG)
+    tiers = [tier for _, tier, _ in assemble.GRASP_TIERS]
+    assert tiers.index('far') > max(i for i, tier in enumerate(tiers) if tier != 'far')
+    centred = [i for i, (_, tier, near) in enumerate(assemble.GRASP_TIERS) if near]
+    assert max(centred) < min(i for i, (_, _, near) in enumerate(assemble.GRASP_TIERS) if near is False)
 
 
 def test_a_pads_grip_is_how_far_up_it_the_fragment_reaches():
@@ -732,3 +747,71 @@ def test_the_runner_bounds_the_fingers_reach_by_what_s0_checked(cubes):
     assert len(bounds) == 2 and bounds[-1]['left'] == pytest.approx(0.03 + LIMITS.finger_opening_margin_m)
     assert assemble._ending(runner, task) is None  # the ending opens both fully
     assert bounds[-1]['left'] == pytest.approx(WIDTHS['left'][1] + LIMITS.finger_opening_margin_m)
+
+
+def test_a_grasp_along_the_grid_anywhere_comes_before_one_across_it(cubes, monkeypatch):
+    """Across the grid the pads meet faces at an angle and the fragment turns in the grasp until they lie flat (cyan,
+    gripped 13.7 deg off its grid in Isaac, turned 13.2-13.8 deg whatever the squeeze): with nothing along the grid
+    going at the top, the step grasps along it lower down rather than across it at the top."""
+    task, layout = cubes
+    task = _tilted(task, 'z', 20.0)  # frag_b turned 20 deg about the vertical: its grid yaws are 20 and 110 deg
+    poses = {key: np.array(f.initial_world_T_fragment) for key, f in zip(task.fragment_ids, task.fragments)}
+    grid = assemble._grid_yaws_deg(poses['frag_b'], task.fragment('frag_b').goal_world_T_fragment)
+    assert grid == pytest.approx((20.0, 110.0))
+    real, heights = assemble._try_grasp, []
+
+    def nothing_along_the_grid_at_the_top(*args):
+        grasp, tip_z = args[6], args[7]
+        heights.append(tip_z)
+        if not assemble._off_grid(np.degrees(grasp.yaw_rad), grid) and tip_z >= heights[0] - 1e-9:
+            return None
+        return real(*args)
+
+    monkeypatch.setattr(assemble, '_try_grasp', nothing_along_the_grid_at_the_top)
+    step = task.assembly_plan[0]
+    placement = assemble.plan_step(task, layout, MODEL, LIMITS, key=step.fragment_id,
+                                   insertion=step.insertion_direction, poses=poses, placed=['frag_a'], seeds=HOME)
+    assert not assemble._off_grid(np.degrees(placement.grasp.yaw_rad), grid)
+    assert placement.tip_z < heights[0] - 1e-9
+
+
+def test_an_arm_reaching_across_has_the_other_turn_aside_first(cubes, monkeypatch):
+    """When the fragment's own arm cannot take it, the other reaches across, and the arm waiting on that side turns
+    RETREAT_TURN_RAD about its base first, away from the fragment and its goal, through S0 like every segment."""
+    task, layout = cubes
+    backend = _backend(task)
+    poses = {key: pose.world_T_fragment for key, pose in backend.observed_fragment_poses().items()}
+    step = task.assembly_plan[0]
+    own = assemble._own_arm(np.asarray(poses[step.fragment_id]))
+    across = next(arm for arm in ARMS if arm != own)
+    monkeypatch.setattr(assemble, '_side_arms', lambda start: (across,))
+    runner = assemble.Runner(backend, MODEL, LIMITS)
+    placement = assemble.plan_step(task, layout, MODEL, LIMITS, key=step.fragment_id,
+                                   insertion=step.insertion_direction, poses=poses, placed=['frag_a'],
+                                   seeds=runner.targets, runner=runner)
+    assert placement.arm == across and placement.retreat is not None
+    assert abs(placement.retreat[0] - runner.targets[own][0]) == pytest.approx(assemble.RETREAT_TURN_RAD)
+    records = assemble.run_step(runner, task, placement)
+    assert [(r['name'], r['arm']) for r in records[:2]] == [('retreat', own), ('approach', across)]
+    np.testing.assert_allclose(runner.state.joints[own], placement.retreat, atol=1e-9)
+    assert placement.to_record()['retreat'] == pytest.approx(list(placement.retreat))
+
+
+def test_a_line_near_the_centre_of_mass_comes_before_a_fuller_grip_off_it(cubes, monkeypatch):
+    """Gravity swings a fragment gripped off its centre of mass about the closing axis (in Isaac magenta, 16 mm off,
+    swung out of the pads as they lifted): with the pads gripping thinly on lines near it and fully only on lines far
+    off it, the step still grasps on a line near it."""
+    task, layout = cubes
+    poses = {key: np.array(f.initial_world_T_fragment) for key, f in zip(task.fragment_ids, task.fragments)}
+    step = task.assembly_plan[0]
+    centre = poses[step.fragment_id][:2, 3]  # the cube's centre of mass, in plan
+
+    def off_centre(pick_pose):
+        across = pick_pose[:2, 2] / np.linalg.norm(pick_pose[:2, 2])  # TCP z: across the closing axis, horizontal
+        return abs(float((pick_pose[:2, 3] - centre) @ across))
+
+    monkeypatch.setattr(assemble, '_pad_grip_m', lambda surface, pick_pose, chord:
+                        0.02 if off_centre(pick_pose) > assemble.CENTRED_M + 1e-6 else 0.004)
+    placement = assemble.plan_step(task, layout, MODEL, LIMITS, key=step.fragment_id,
+                                   insertion=step.insertion_direction, poses=poses, placed=['frag_a'], seeds=HOME)
+    assert off_centre(placement.poses['pick']) <= assemble.CENTRED_M + 1e-6
