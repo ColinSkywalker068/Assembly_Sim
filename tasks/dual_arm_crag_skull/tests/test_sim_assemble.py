@@ -7,6 +7,7 @@ from types import SimpleNamespace
 
 import numpy as np
 import pytest
+import trimesh
 from scipy.spatial import cKDTree
 from scipy.spatial.transform import Rotation
 
@@ -247,6 +248,58 @@ def test_the_grasp_line_goes_over_the_centre_of_mass(cubes, monkeypatch):
     mass = assemble._world(assemble._centre_of_mass(*assemble.fragment_mesh(task, step.fragment_id))[None],
                            poses[step.fragment_id])[0]
     assert placement.grasp.center_xy[0] == pytest.approx(mass[0], abs=1e-6)
+
+
+def test_the_voxel_grid_gives_the_yaws_whose_pads_close_on_faces():
+    """A fragment turned 17 degrees about the vertical from its goal has its voxel grid's horizontal axes at 17 and 107
+    degrees; tilted 30 degrees about x, only its x axis stays horizontal (closing along world y would meet its tilted
+    y faces on an edge); tilted about a diagonal, none does."""
+    goal = np.eye(4)
+    turned = np.eye(4)
+    turned[:3, :3] = Rotation.from_euler('z', 17, degrees=True).as_matrix()
+    assert sorted(assemble._grid_yaws_deg(turned, goal)) == pytest.approx([17.0, 107.0])
+    tilted = np.eye(4)
+    tilted[:3, :3] = Rotation.from_euler('x', 30, degrees=True).as_matrix()
+    assert sorted(assemble._grid_yaws_deg(tilted, goal)) == pytest.approx([0.0])
+    corner = np.eye(4)
+    corner[:3, :3] = Rotation.from_rotvec(np.radians(30) * np.array([1.0, 1.0, 0.0]) / np.sqrt(2)).as_matrix()
+    assert assemble._grid_yaws_deg(corner, goal) == ()
+
+
+def test_grasps_closing_along_the_voxel_grid_come_first():
+    """Pads closing across voxel edges grip a strip (in Isaac green slid out of such a grasp); along the grid they
+    close on faces. Those come first, the narrowest of them first, then the rest by chord."""
+    grasp = lambda yaw, chord: pick.Grasp('f', np.radians(yaw), (0.0, 0.0), chord, chord + 0.02, chord - 0.006, chord)
+    found = [grasp(45.0, 0.030), grasp(17.0, 0.050), grasp(107.0, 0.040), grasp(60.0, 0.020)]
+    order = [np.degrees(g.yaw_rad) for g in assemble._in_preferred_order(found, (17.0, 107.0))]
+    assert order == pytest.approx([107.0, 17.0, 60.0, 45.0])
+
+
+def test_a_pads_grip_is_how_far_up_it_the_fragment_reaches():
+    """A 40 x 30 x 40 mm box gripped across its 30 mm with the fingertips 28 mm up: the box rises 12 mm into each pad
+    (it ends 12 mm above the fingertips); with the fingertips 20 mm up, the pads' whole 15 mm."""
+    corners = np.array([[x, y, z] for x in (-0.02, 0.02) for y in (-0.015, 0.015) for z in (0.0, 0.04)])
+    hull = trimesh.convex.convex_hull(corners)
+    surface = pick.surface_points(np.asarray(hull.vertices) + [0.35, 0.0, 0.75], np.asarray(hull.faces))
+    high = pick.down_pose((0.35, 0.0), 0.75 + 0.028, np.pi / 2)  # closing along y
+    low = pick.down_pose((0.35, 0.0), 0.75 + 0.020, np.pi / 2)
+    assert assemble._pad_grip_m(surface, high, 0.03) == pytest.approx(0.012, abs=0.0021)
+    assert assemble._pad_grip_m(surface, low, 0.03) == pytest.approx(assemble.PAD_DEPTH_M, abs=0.0021)
+
+
+@pytest.mark.parametrize('grip, lowered', [(0.0135, True), (0.016, False)])
+def test_grasps_whose_pads_both_grip_well_come_first(cubes, monkeypatch, grip, lowered):
+    """In Isaac four of five grasps with a pad on only a 4 mm edge of the fragment let it go, and none gripping 12 mm
+    on both pads did. Asked for more grip than the cube's top grasp gives, the step grasps lower; asked for more than
+    the pads have, it falls back on the grasps it would take otherwise, the top one."""
+    task, layout = cubes
+    poses = {key: f.initial_world_T_fragment for key, f in zip(task.fragment_ids, task.fragments)}
+    step = task.assembly_plan[0]
+    monkeypatch.setattr(assemble, 'MIN_PAD_GRIP_M', grip)
+    placement = assemble.plan_step(task, layout, MODEL, LIMITS, key=step.fragment_id,
+                                   insertion=step.insertion_direction, poses=poses, placed=['frag_a'], seeds=HOME)
+    top = 0.79 - assemble.TOP_PAD_M
+    assert (placement.tip_z < top - 1e-6) == lowered and placement.rejected['pad_grip'] >= 1
 
 
 def test_a_grasp_too_thin_to_hold_is_passed_over(cubes, monkeypatch):
@@ -582,6 +635,17 @@ def test_the_cubes_go_together_with_s0s_contact_phase_off(cubes):
                                  contact_max_speed_m_s=None)
     result = assemble.run_assembly(_backend(task), MODEL, limits, task, layout)
     assert result['error'] is None and result['ending_error'] is None and result['score'].success, result['error']
+
+
+def test_an_assembly_can_start_part_way_through_the_plan(cubes):
+    """With frag_b already at its goal, a run of the rest of the plan does frag_c alone, frag_b counted as in place."""
+    task, layout = cubes
+    backend = _backend(task)
+    backend.poses['frag_b'] = np.array(task.fragment('frag_b').goal_world_T_fragment)
+    result = assemble.run_assembly(backend, MODEL, LIMITS, task, layout, plan=task.assembly_plan[1:],
+                                   placed=['frag_a', 'frag_b'])
+    assert result['error'] is None and [step.fragment_id for step in result['steps']] == ['frag_c']
+    assert set(result['steps'][0].drift_mm_deg) == {'frag_b', 'frag_c'} and result['score'].success
 
 
 def test_the_cube_assembly_goes_together_on_the_kinematic_backend(cubes):

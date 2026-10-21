@@ -6,7 +6,9 @@ Planning a step (`plan_step`): an arm (the one on the fragment's side first) and
 fingertips at any height up the fragment, the highest the pads still hold first (the least of the fingers goes down
 into a pocket), on a line over its centre of mass (gravity then turns it less in the grasp) or, failing that, on one
 moved across the closing axis by LATERAL_OFFSETS_M (a fragment in a pocket may leave room for the fingers only there),
-the pads closing on at least MIN_CHORD_M (less would grip an edge). The grasp is found
+the pads closing on at least MIN_CHORD_M (less would grip an edge), closing along the fragment's voxel grid first (the
+pads then meet faces; across the grid they meet edges and grip a strip). Grasps whose pads both grip at least
+MIN_PAD_GRIP_M of the fragment's side are looked for first, and only if there is none any that pass. The grasp is found
 with the fragment as if it stood on the table in its goal orientation, so that the gripper comes down onto the goal
 upright (goal_aligned: for a fragment resting tilted, after toppling say, the fingers then come in tilted at the
 pick), and failing that where it rests, the fingers coming straight down (top_down); a fragment upright as in its goal
@@ -72,6 +74,11 @@ HEIGHT_STEP_M = 0.006
 LATERAL_OFFSETS_M = (0.0, -0.004, 0.004, -0.008, 0.008, -0.012, 0.012, -0.016, 0.016)  # the middle line first
 MAX_PREFLIGHTS = 16  # candidates a step tries through its Runner before it gives up
 MIN_CHORD_M = 0.015  # in Isaac an 8 mm chord slipped out of the closing pads
+PAD_DEPTH_M = 0.015  # the solid last 15 mm of the fingertips, which the pads press with
+PAD_CONTACT_M = 0.0015  # the fragment's surface this close to a pad's plane is what it presses on once squeezed
+# how far up each pad the fragment's side must reach, preferably: in Isaac four of five grasps with a pad on only a 4 mm
+# edge (at the fingertip) let the fragment go (pressed through it, or slid on the lift); none with 12 mm on both did
+MIN_PAD_GRIP_M = 0.008
 PATH_STEP_M = 0.003
 THIN_CELL_M = 0.001  # the tips' points, one per 1 mm cell: none more than 1.7 mm from the mesh, inside FINGER_MARGIN_M
 TOP_PAD_M = 0.012  # the pads are 15 mm tall: grasping higher than this below the top grips nothing
@@ -335,10 +342,13 @@ def plan_step(task, layout, model, limits, *, key, insertion, poses, placed, see
     def reject(reason):
         rejected[reason] = rejected.get(reason, 0) + 1
 
-    for family, frame in _grasp_frames(vertices, start, goal, table):
+    for min_grip, (family, frame) in itertools.product((MIN_PAD_GRIP_M, 0.0),
+                                                       _grasp_frames(vertices, start, goal, table)):
         seen = points if family == 'top_down' else pick.surface_points(_world(vertices, frame), faces)
         highest = float(seen[:, 2].max())
         through = _world(_centre_of_mass(vertices, faces)[None], frame)[0, :2]
+        grid = _grid_yaws_deg(frame, goal)
+        yaws = tuple(sorted(set(pick.YAWS_DEG) | set(grid)))
         carry = start @ np.linalg.inv(frame)
         for arm in _side_arms(start):
             arm_model = model.arms[arm]
@@ -347,14 +357,14 @@ def plan_step(task, layout, model, limits, *, key, insertion, poses, placed, see
                     LATERAL_OFFSETS_M):
                 candidates = pick.grasp_candidates(key, seen, tip_z - pick.FINGERTIP_HEIGHT_M,
                                                    limits.gripper_width_range_m[arm][1], offsets_m=(lateral,),
-                                                   through_xy=through)
-                for grasp in sorted(candidates, key=lambda g: g.chord_m):
+                                                   through_xy=through, yaws_deg=yaws)
+                for grasp in _in_preferred_order(candidates, grid):
                     if grasp.chord_m < MIN_CHORD_M:
                         reject('thin')
                         continue
                     placement = _try_grasp(task, model, limits, arm, arm_model, key, grasp, float(tip_z), carry,
                                            start, goal, out, offset, occupancy, released, staged_tree, top, drops,
-                                           points, seeds, reject)
+                                           points, min_grip, seeds, reject)
                     if placement is None:
                         continue
                     candidate = Placement(key, arm, grasp, float(tip_z), placement['poses'], placement['q_pre'],
@@ -397,6 +407,36 @@ def _sweeps(placement, points, occupancy, released, neighbours, itself):
     return sweeps
 
 
+def _pad_grip_m(surface, pick_pose, chord_m):
+    """The less of the two pads' grips of a grasp at `pick_pose` closing on `chord_m`: how far along the approach the
+    fragment's surface (world points) reaches within PAD_CONTACT_M of the pad's plane over the last PAD_DEPTH_M of
+    the fingertips."""
+    tcp = _world(surface, np.linalg.inv(np.asarray(pick_pose, dtype=float)))  # x approach, y closing, z across
+    band = (tcp[:, 0] > -PAD_DEPTH_M) & (tcp[:, 0] <= PAD_CONTACT_M)
+    grips = []
+    for side in (1.0, -1.0):
+        along = tcp[band & (np.abs(tcp[:, 1] - side * chord_m / 2) < PAD_CONTACT_M), 0]
+        grips.append(float(np.ptp(along)) if len(along) > 1 else 0.0)
+    return min(grips)
+
+
+def _grid_yaws_deg(pose, goal):
+    """The yaws (degrees, in [0, 180)) of those of the fragment's voxel grid axes that lie horizontal with it at `pose`
+    (the grid is the assembly's, axis-aligned with the fragment at `goal`): pads closing along one meet faces."""
+    turn = np.asarray(pose, dtype=float)[:3, :3] @ np.asarray(goal, dtype=float)[:3, :3].T
+    yaws = {round(float(np.degrees(np.arctan2(axis[1], axis[0]))) % 180.0, 6) for axis in turn.T
+            if abs(axis[2]) < np.sin(np.radians(1.0))}
+    return tuple(sorted(yaws))
+
+
+def _in_preferred_order(candidates, grid_yaws_deg, tolerance_deg=0.5):
+    """Grasps closing along the voxel grid first, each group narrowest first."""
+    def off_grid(grasp):
+        yaw = np.degrees(grasp.yaw_rad) % 180.0
+        return not any(min(abs(yaw - grid), 180.0 - abs(yaw - grid)) < tolerance_deg for grid in grid_yaws_deg)
+    return sorted(candidates, key=lambda grasp: (off_grid(grasp), grasp.chord_m))
+
+
 def _clearing_height(top, pick_pose, tcp_goal, drops):
     """The TCP height at which the fragment clears `top` by SAFE_CLEARANCE_M held either way it is on the way: as at
     the pick, and as at its goal (it turns from one to the other while it glides); `drops` are its lowest points
@@ -405,7 +445,7 @@ def _clearing_height(top, pick_pose, tcp_goal, drops):
 
 
 def _try_grasp(task, model, limits, arm, arm_model, key, grasp, tip_z, carry, start, goal, out, offset, occupancy,
-               released, staged_tree, top, drops, surface, seeds, reject):
+               released, staged_tree, top, drops, surface, min_grip, seeds, reject):
     # The geometry first (the fingers are symmetric, so it does not matter which way round IK turns the TCP), then
     # the neighbours on the table, then IK.
     pick_pose = carry @ pick.down_pose(grasp.center_xy, tip_z, grasp.yaw_rad)
@@ -432,6 +472,9 @@ def _try_grasp(task, model, limits, arm, arm_model, key, grasp, tip_z, carry, st
         if cells.hits(_sweep(gripper, tcp_goal[:3, :3], path), FINGER_MARGIN_M):
             reject(reason)
             return None
+    if min_grip and _pad_grip_m(surface, pick_pose, grasp.chord_m) < min_grip:
+        reject('pad_grip')
+        return None
     if staged_tree is not None:
         down = _sweep(opened, pick_pose[:3, :3], _line(pick_pose[:3, 3], pre[:3, 3], 0.005))
         if staged_tree.query(down, distance_upper_bound=STAGED_MARGIN_M)[0].min() < STAGED_MARGIN_M:
@@ -734,9 +777,11 @@ def reordered_plan(task, layout, order):
 
 
 def run_assembly(backend, model, limits, task, layout, *, on_step: Callable | None = None, settle_s=STEP_SETTLE_S,
-                 plan=None):
+                 plan=None, placed=None):
     """Every step of the task's plan (or of `plan`, reordered_plan's), each planned and run (plan_step, run_step) and
-    followed by a hold of `settle_s`, then the ending every method gets and the score. Stops at the first step that
+    followed by a hold of `settle_s`, then the ending every method gets and the score; `placed` (the anchor's id and
+    any fragments already at their goals, for a run that starts part way through a plan) is the anchor alone by
+    default. Stops at the first step that
     cannot be planned or that S0 (or the backend) refuses. Returns {'steps': [StepRecord], 'error', 'ending_error',
     'score'}: a run that stopped, or whose ending did not finish, is not settled."""
     from ..baselines.scoring import score_assembly
@@ -744,7 +789,7 @@ def run_assembly(backend, model, limits, task, layout, *, on_step: Callable | No
     if plan is None:
         raise ValueError('the task has no assembly plan')
     runner = Runner(backend, model, limits, on_step)
-    steps, placed, error = [], [task.anchor_id], None
+    steps, placed, error = [], [task.anchor_id] if placed is None else list(placed), None
     for step in plan:
         record = StepRecord(step.fragment_id)
         steps.append(record)

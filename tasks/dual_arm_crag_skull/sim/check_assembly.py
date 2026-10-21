@@ -20,6 +20,8 @@ an order the robot may manage where the plan's fails; the report records the ord
 --no-video skips the cameras (about three fifths of a run's wall time) for quicker rounds; the telemetry, with every
 fragment's pose each control period, and the report are the same. --collider-inset-mm X makes every fragment's
 colliders X mm smaller on each face instead of the protocol's baselines.collider_inset_m (an experiment; recorded).
+--from-step K starts at the plan's K-th step, the fragments of the steps before it put at their goals at reset (to
+work on one step without running those before it; recorded).
 
 Writes DIR/assembly.json (last, before Kit shuts down), DIR/telemetry.npz, DIR/<camera>.mp4 and DIR/step_<k>.jpg (the
 close-up after each step's settle; fragments painted in the colours they are named by); exits 1 on any failure.
@@ -212,7 +214,7 @@ def judge(report):
     return failures
 
 
-def run(task_path, output, order=None, video=True, collider_inset_m=None):
+def run(task_path, output, order=None, video=True, collider_inset_m=None, from_step=1):
     from ..__main__ import DEFAULT_CONFIG
     from ..baselines.task import AssemblyTask, verify_task
     from ..experiments.assembly_replay_isaac import Recorder, display_colours, paint
@@ -226,12 +228,17 @@ def run(task_path, output, order=None, video=True, collider_inset_m=None):
     task = verify_task(AssemblyTask.from_record(json.loads(Path(task_path).read_text())))
     layout = load_layout(task)
     plan = task.assembly_plan if order is None else reordered_plan(task, layout, order)  # before Kit starts
+    if not 1 <= from_step <= len(plan):
+        raise SystemExit(f'--from-step must be 1..{len(plan)}')
+    done = [step.fragment_id for step in plan[:from_step - 1]]
     backend, recorder, code, telemetry = None, None, 1, Telemetry()
     try:
         backend = IsaacAssemblyBackend(config, cameras=False, collider_inset_m=collider_inset_m)
         backend.reset(task)
         paint(backend.stage, display_colours(task))
         output.mkdir(parents=True)
+        if done:
+            backend.put_fragments({key: task.fragment(key).goal_world_T_fragment for key in done})
         recorder = Recorder(backend, output, (1280, 960)) if video else None
         limits = s0_test_limits(task, backend)
         state = {'count': 0, 'last': None, 'steps': 0}
@@ -254,7 +261,8 @@ def run(task_path, output, order=None, video=True, collider_inset_m=None):
         if recorder is not None:
             recorder.frame()
         began = time.time()
-        result = run_assembly(backend, backend.model, limits, task, layout, on_step=on_step, plan=plan)
+        result = run_assembly(backend, backend.model, limits, task, layout, on_step=on_step, plan=plan[from_step - 1:],
+                              placed=[task.anchor_id, *done])
         if recorder is not None:
             recorder.frame()
         if state['last'] == 'settle':  # the last step ended without a later segment
@@ -268,7 +276,7 @@ def run(task_path, output, order=None, video=True, collider_inset_m=None):
         except Exception:
             margins, margins_error = None, traceback.format_exc()
         report = {'task_id': task.task_id, 'seed': task.seed, 'criteria': CRITERIA,
-                  'plan_steps': len(task.assembly_plan),
+                  'plan_steps': len(task.assembly_plan) - len(done), 'from_step': from_step, 'put_in_place': done,
                   'order': [step.fragment_id for step in plan], 'order_is_plan': tuple(plan) == task.assembly_plan,
                   'tolerance': {'position_mm': 1000 * task.position_tolerance_m,
                                 'rotation_deg': task.rotation_tolerance_deg},
@@ -312,11 +320,12 @@ def main(argv=None):
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--order', type=lambda text: text.split(','), help="fragment ids, comma separated")
     parser.add_argument('--no-video', action='store_true', help='no cameras: quicker, the same telemetry and report')
+    parser.add_argument('--from-step', type=int, default=1, help="the plan's step to start at (the ones before put)")
     parser.add_argument('--collider-inset-mm', type=float, default=None,
                         help="an experiment: fragment colliders this much smaller on each face, not the protocol's")
     args = parser.parse_args(argv)
     inset = None if args.collider_inset_mm is None else args.collider_inset_mm / 1000
-    run(args.task, args.output, args.order, video=not args.no_video, collider_inset_m=inset)
+    run(args.task, args.output, args.order, video=not args.no_video, collider_inset_m=inset, from_step=args.from_step)
     return 0
 
 

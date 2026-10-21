@@ -397,6 +397,20 @@ class IsaacAssemblyBackend:
         return settled_start(self._fragment_ids, self.privileged_fragment_poses(), initial, steps / self.physics_hz,
                              resting, self._fragment_view.get_velocities())
 
+    def put_fragments(self, poses):
+        """For a check that starts part way through a plan, not for a method: the fragments of `poses` {id:
+        world_T_fragment} moved there at rest, then everything stepped, the robot held, until it is at rest again."""
+        self._require_reset()
+        index = [self._fragment_ids.index(key) for key in poses]
+        self._fragment_view.set_world_poses(positions=np.array([np.asarray(pose)[:3, 3] for pose in poses.values()]),
+                                            orientations=np.array([_wxyz(pose) for pose in poses.values()]),
+                                            indices=np.array(index))
+        self._fragment_view.set_velocities(np.zeros((len(index), 6)), indices=np.array(index))
+        start = self._settle(self.task)
+        if not start.at_rest:
+            raise RuntimeError('the fragments put in place did not come to rest')
+        return start
+
     def _apply_targets(self, arm_targets, widths, arm_velocities=None):
         """Arm joint position and velocity targets (velocity 0 unless given), and the finger targets for `widths` (an
         arm's None leaves its fingers' targets; their velocity targets are 0)."""
