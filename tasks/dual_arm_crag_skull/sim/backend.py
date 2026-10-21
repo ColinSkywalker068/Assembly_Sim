@@ -22,8 +22,9 @@ reset(task):
   the trial's start (`start.to_record()` for a run record); the clock restarts at 0.
 
 Protective stop (configs/jing.json s0.protective_stop, the same for every method): at the end of each control period
-the measured joints are checked against the targets commanded for it and their maximum speeds (baselines.backend.
-StopMonitor); a stop raises ProtectiveStop and the trial ends there, as the real CRX's contact stop would end it.
+the measured joints are checked against the targets commanded for it and their maximum speeds, and the fingers' span
+against the bound S0's last accepted motion set (bound_reach) (baselines.backend.StopMonitor); a stop raises
+ProtectiveStop and the trial ends there, as the real CRX's contact stop would end it.
 
 State: joints and joint velocities are PhysX's; widths are the pad gap from the measured finger joints; TCPs are
 the S0 model's FK of the measured joints (s0.kinematics.yam_model; sim/check_yam.py measured PhysX within 0.001 mm
@@ -449,6 +450,11 @@ class IsaacAssemblyBackend:
         """Play again after rendering; World.play() commits the change, a bare timeline.play() would not."""
         self.world.play()
         self._require_playing()
+
+    def bound_reach(self, bounds):
+        """How far the fingers may reach from now on (AssemblyBackend.bound_reach), checked by the protective stop."""
+        self._require_reset()
+        self._stop.bound_reach(bounds)
 
     def step(self, joints, widths):
         self._require_reset()

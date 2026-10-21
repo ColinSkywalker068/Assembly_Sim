@@ -538,3 +538,21 @@ def test_the_executor_gives_s0_how_far_the_fingers_reach(task, monkeypatch):
     chunks = seen[:-1]  # the last is the ending, fully open
     assert len(chunks) >= 2  # after the first, the last command is the 20 mm one: only the span says 50 mm
     assert all(opening['left'] == pytest.approx(0.05) for opening in chunks)  # the right jaws are fully open
+
+
+def test_the_executor_bounds_the_fingers_reach_by_what_s0_checked(task):
+    """Once S0 accepts a chunk and before it is stepped, the executor tells the backend how far the fingers may reach
+    (the protective stop's finger rule): the chunk's widest opening plus S0's margin; the ending opens them fully."""
+    sim = backend()
+    sim.reset(task)
+    bounds, real = [], sim.bound_reach
+    sim.bound_reach = lambda value: bounds.append(value) or real(value)
+    narrow = GRIPPER.travel_m - (0.02 - GRIPPER.closed_gap_m) / 2  # the jaw target for a 20 mm gap
+    deliv = delivery(np.repeat(HOME[None], 75, axis=0), [''] * 75, jaws=np.full((75, 2), narrow))  # 2.5 s
+    commands = executor.servo_commands(deliv, GRIPPER, LIMITS.servo_hz, OBJECTS)
+    result = executor.execute(sim, task, MODEL, LIMITS, commands)
+    assert result.status == 'completed' and result.settled and len(bounds) >= 3
+    margin = LIMITS.finger_opening_margin_m
+    assert bounds[0]['left'] == pytest.approx(WIDTHS['left'][1] + margin)  # the jaws start open
+    assert bounds[1]['left'] == pytest.approx(0.02 + margin)
+    assert bounds[-1]['left'] == pytest.approx(WIDTHS['left'][1] + margin)

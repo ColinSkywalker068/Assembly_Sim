@@ -115,7 +115,8 @@
       "tracking_error_rad": 0.01,
       "periods": 3,
       "speed_factor": 1.1,
-      "status": "frozen 2026-10-19 (user decision): every method, in simulation, as the real CRX contact stop; a joint more than tracking_error_rad from the target it was commanded to for periods control periods in a row, or faster than speed_factor x its maximum speed, ends the trial as protective_stop (a failure). Normal pick-and-place on Isaac lagged 0.32 mrad at most (DexAgent orange delivery incl. set-down; ASPIRE reference 0.18; free 1.2 rad/s ramp 0.07); a held fragment jammed on the anchor reached 279 mrad and 4.9 rad/s (10 mrad x 3 periods fires 0.3 s after contact)"
+      "finger_reach": true,
+      "status": "frozen 2026-10-19 (user decision): every method, in simulation, as the real CRX contact stop; a joint more than tracking_error_rad from the target it was commanded to for periods control periods in a row, or faster than speed_factor x its maximum speed, ends the trial as protective_stop (a failure). finger_reach added 2026-10-21 (user decision): so do fingers reaching further out (RobotSnapshot.spans) than the opening S0 boxed them at for the motion plus its margin (AssemblyBackend.bound_reach), since S0 reads the opening where a motion begins and a fragment jammed between the fingers pried them 6-12 mm open on Isaac (with the seams open, normal runs widened them 1.15 mm at most). Normal pick-and-place on Isaac lagged 0.32 mrad at most (DexAgent orange delivery incl. set-down; ASPIRE reference 0.18; free 1.2 rad/s ramp 0.07); a held fragment jammed on the anchor reached 279 mrad and 4.9 rad/s (10 mrad x 3 periods fires 0.3 s after contact)"
     }
   },
   "garf": {

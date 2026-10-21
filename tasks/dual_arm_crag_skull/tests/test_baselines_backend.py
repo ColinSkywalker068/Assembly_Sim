@@ -298,3 +298,41 @@ def test_a_joint_faster_than_the_arm_can_move_stops_it_at_once():
     StopMonitor(RULE, MAX_SPEED).check(targets, measured(speed=1.09 * vmax))
     with pytest.raises(ProtectiveStop, match='left joint_2 moved at'):
         StopMonitor(RULE, MAX_SPEED).check(targets, measured(speed=-1.11 * vmax))
+
+
+def test_fingers_reaching_further_than_s0_boxed_them_stop_the_robot():
+    """StopRule.finger_reach (2026-10-21): S0 takes a motion's fingers where it begins, and a fragment jammed between
+    them can pry them open; past the bound set once S0 accepted the motion (its opening plus S0's margin) the robot
+    stops. Without a bound nothing is checked."""
+    targets = {arm: HOME.copy() for arm in ARMS}
+    monitor = StopMonitor(RULE, MAX_SPEED)
+    wide = replace(measured(), spans={'left': 0.07, 'right': 0.05})
+    monitor.check(targets, wide)  # no bound yet
+    monitor.bound_reach({'left': 0.06, 'right': 0.06})
+    monitor.check(targets, measured())  # 50 mm: inside
+    with pytest.raises(ProtectiveStop, match='left fingers reached 70.0 mm apart, further than the 60.0 mm') as stop:
+        monitor.check(targets, wide)
+    assert stop.value.log[-1]['left']['span_m'] == 0.07 and stop.value.log[-1]['left']['reach_bound_m'] == 0.06
+    monitor.bound_reach(None)
+    monitor.check(targets, wide)
+    off = StopMonitor(replace(RULE, finger_reach=False), MAX_SPEED)
+    off.bound_reach({'left': 0.06, 'right': 0.06})
+    off.check(targets, wide)
+    for bad in ({'left': 0.06}, {'left': -0.01, 'right': 0.06}, {'left': float('nan'), 'right': 0.06}):
+        with pytest.raises(ValueError, match='reach bounds'):
+            monitor.bound_reach(bad)
+    with pytest.raises(ValueError, match='finger_reach'):
+        StopRule(**{**RULE.__dict__, 'finger_reach': 1})
+
+
+def test_the_kinematic_double_stops_a_width_past_its_reach_bound(task):
+    """Its fingers reach exactly as commanded, so a command wider than the bound is a width S0 did not check; reset
+    lifts the bound."""
+    sim = backend()
+    sim.reset(task)
+    sim.bound_reach({arm: 0.06 for arm in ARMS})
+    sim.step(targets(HOME), {arm: 0.06 for arm in ARMS})
+    with pytest.raises(ProtectiveStop, match='right fingers reached 70.0 mm'):
+        sim.step(targets(HOME), {'left': 0.06, 'right': 0.07})
+    sim.reset(task)
+    sim.step(targets(HOME), {arm: 0.08 for arm in ARMS})

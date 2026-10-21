@@ -188,6 +188,11 @@ review's surviving mutations and the new behaviour, 54 mutations are now caught.
   trial ends there, unscored, recorded as `protective_stop` (a failure) with the periods before it. Normal
   pick-and-place on Isaac lags 0.32 mrad at most (the DexAgent orange delivery with its set-down; ASPIRE's reference
   0.18; a free 1.2 rad/s ramp 0.07); the jam reached 279 mrad, and the rule would have stopped it 0.3 s after contact.
+  Added 2026-10-21 (`finger_reach`): fingers reaching further out (`RobotSnapshot.spans`) than S0 boxed them for the
+  motion stop the robot too. Every method's executor (ASPIRE's adapter, DexAgent's executor and its S0 replay, the
+  scripted reference) calls `AssemblyBackend.bound_reach` with S0's opening plus its margin once S0 accepts a motion
+  and before stepping it. S0 reads the opening where a motion begins; a fragment jammed between the fingers pried them
+  6-12 mm open before the seams were opened, and normal runs since widened them 1.15 mm at most.
 - **DexAgent's port is not finished** (above): its tool library on the bench, the MuJoCo <-> Isaac calibration, a
   mock end-to-end trial.
 - **One step budget** for every method (ASPIRE's default 18,000 control steps is provisional).

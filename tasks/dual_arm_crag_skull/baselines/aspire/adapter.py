@@ -50,7 +50,7 @@ from cap_harness.contracts import (ArmCommand, CameraObservation, ExecutionResul
 from cap_harness.errors import ApiError, ErrorCode
 
 from ...contracts.actions import ARMS, ContactWindow
-from ...s0.adapter import Rejected, check_geometry, check_joint_path, needs_contact, widest_opening
+from ...s0.adapter import Rejected, check_geometry, check_joint_path, needs_contact, reach_bounds, widest_opening
 from ..backend import ProtectiveStop
 from ..scoring import score_assembly
 from ..task import (AssemblyTask, canonical_split, configured_initial_condition, pose_to_wxyz, require_canonical,
@@ -409,7 +409,8 @@ class SkullAssemblyAdapter:
     def _check(self, snapshot, times, path, samples):
         """Raise Rejected unless the path passes check_joint_path and, between control periods, the geometry checks
         at S0's servo rate (joints interpolated linearly from one target to the next), with each gripper's widest
-        opening over the path (S0's boxes at the openings, when its limits take them)."""
+        opening over the path (S0's boxes at the openings, when its limits take them); then bound the fingers' reach
+        on the backend for the path (AssemblyBackend.bound_reach)."""
         for _, widths in samples:
             for arm in ARMS:
                 low, high = self.limits.gripper_width_range_m[arm]
@@ -434,6 +435,7 @@ class SkullAssemblyAdapter:
             check_geometry(self.model, self.limits, (starts[:, None] + fractions * self.control_period_s).ravel(),
                            between, contacts=contacts, openings=openings,
                            start=(snapshot.time_s, {arm: np.asarray(snapshot.joints[arm], dtype=float) for arm in ARMS}))
+        self.backend.bound_reach(reach_bounds(self.limits, openings))
 
     def _run(self, samples):
         """Check the (joints, widths) samples, one per control period, as one path from the measured state; step

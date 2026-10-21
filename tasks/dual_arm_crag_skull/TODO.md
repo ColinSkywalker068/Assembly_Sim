@@ -71,7 +71,7 @@
   - `sim/fingers.py` 从网格算内伸量图（0.5 mm 格），`choose_grasp` 改用它：弦长取合拢时最先接触的宽度，TCP 平移到两指同时接触，张开要清掉下降途中扫过的整根手指。
   - 碰撞体按片内连通性拆开窗口，每块 ≤64 顶点；`check_yam` 加了 3 mm 杆形探针和烹制形状读回。
 - [ ] 手指根部（离指端 ≥57 mm）截面呈 L 形，凸包填角，74–80 mm 处向内多伸 48 mm。要做根部的凸分解，否则不能抓高于约 6 cm 的物体。
-- [x] 保护性停机（10-19 用户决定，已实施并冻结）：`configs/jing.json` `s0.protective_stop` = 跟踪误差 > 10 mrad 连续 3 个控制周期，或关节速度 > 1.1 × 最高速度 → `ProtectiveStop`；Isaac 后端每周期检查（`baselines/backend.StopMonitor`）；DexAgent 执行器与 ASPIRE 适配器/运行器结束试验、不评分、记 `protective_stop`（失败）并留日志（`execution.json` / `protective_stop.json`）。阈值依据：Isaac 上正常抓放最大 0.32 mrad（DexAgent 橙色交付含放下）、ASPIRE 参考 0.18、自由 1.2 rad/s 斜坡 0.07；锚点卡死 279 mrad、4.9 rad/s，此规则在接触后 0.3 s 触发。测试 + 变异 14 处全部抓到（同环境基线先过）。Isaac 上的两条验证（正常不误停、卡死被停）见日志。
+- [x] 保护性停机（10-19 用户决定，已实施并冻结）：`configs/jing.json` `s0.protective_stop` = 跟踪误差 > 10 mrad 连续 3 个控制周期，或关节速度 > 1.1 × 最高速度 → `ProtectiveStop`；Isaac 后端每周期检查（`baselines/backend.StopMonitor`）；DexAgent 执行器与 ASPIRE 适配器/运行器结束试验、不评分、记 `protective_stop`（失败）并留日志（`execution.json` / `protective_stop.json`）。阈值依据：Isaac 上正常抓放最大 0.32 mrad（DexAgent 橙色交付含放下）、ASPIRE 参考 0.18、自由 1.2 rad/s 斜坡 0.07；锚点卡死 279 mrad、4.9 rad/s，此规则在接触后 0.3 s 触发。测试 + 变异 14 处全部抓到（同环境基线先过）。Isaac 上的两条验证（正常不误停、卡死被停）见日志。10-21 用户加 `finger_reach`：手指张开超过 S0 为这段运动所取的开口加余量也停机（各方法用 `bound_reach` 交界，见 README）。
 - [ ] CRX 资产里 10 个刚体的 MassAPI 质量和密度都是 0，PhysX 按碰撞体体积乘默认密度算质量。刚性位置驱动下对跟踪影响很小，但要做限力或力控时需要真实惯量。
 - [ ] 种子 101 的筛选：96 mm 那片任何方向都超过 YAM 94 mm 开口，顶抓不了；有几组被拒是因为另一只手臂停在初始位挡路（臂间间隙），需要双臂协调（另一只手让开）。
 

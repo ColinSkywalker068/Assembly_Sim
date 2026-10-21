@@ -172,3 +172,18 @@ def test_recorded_jaws_reach_as_far_as_the_jaw_closed_least():
     spans = s0_check.recorded_spans(gripper, names, np.array([0.0, half, closing, closing + 0.001]))
     assert spans['left'] == pytest.approx(gripper.max_width_m)  # one jaw fully open: as if both were
     assert spans['right'] == pytest.approx(0.0, abs=1e-12)
+
+
+def test_the_replay_stops_where_the_recording_pries_the_fingers_past_their_bound():
+    """The protective stop's finger rule on the replay: where DexAgent's recording has the jaws further out than the
+    bound S0's last chunk set, the replay stops as the robot would."""
+    from tasks.dual_arm_crag_skull.baselines.backend import ProtectiveStop
+    recording = (np.array([0.0, 0.5]), np.zeros((2, 1)), ['unused'])
+    recorded = {0: {'left': 0.0, 'right': 0.0}, 1: {'left': 0.06, 'right': 0.0}}
+    replay = s0_check.ReplayBackend({arm: HOME for arm in ARMS}, 60, {arm: 0.03 for arm in ARMS}, recording,
+                                    np.eye(4), [], recorded_spans=lambda frame: recorded[frame])
+    replay.bound_reach({arm: 0.034 for arm in ARMS})
+    replay.step({arm: HOME for arm in ARMS}, {arm: 0.03 for arm in ARMS})
+    with pytest.raises(ProtectiveStop, match='left fingers reached 60.0 mm'):
+        for _ in range(40):
+            replay.step({arm: HOME for arm in ARMS}, {arm: 0.03 for arm in ARMS})

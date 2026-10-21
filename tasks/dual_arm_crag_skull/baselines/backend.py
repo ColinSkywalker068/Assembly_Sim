@@ -181,11 +181,14 @@ class StopRule:
     """configs/jing.json s0.protective_stop, the same for every method: a joint whose measured position stays more than
     `tracking_error_rad` from the target it was commanded to for `periods` control periods in a row, or that moves
     faster than `speed_factor` times its maximum speed, stops the robot. Frozen 2026-10-19 from normal pick-and-place
-    on Isaac (0.32 mrad at most; 279 mrad when a held fragment jammed on the anchor)."""
+    on Isaac (0.32 mrad at most; 279 mrad when a held fragment jammed on the anchor). With `finger_reach` (added
+    2026-10-21) so do fingers reaching further out than S0 boxed them for the motion (AssemblyBackend.bound_reach):
+    S0 takes them where the motion begins, and a fragment jammed between them pried them 6-12 mm wider on Isaac."""
 
     tracking_error_rad: float
     periods: int
     speed_factor: float
+    finger_reach: bool = True
 
     def __post_init__(self):
         error, periods, factor = self.tracking_error_rad, self.periods, self.speed_factor
@@ -195,29 +198,63 @@ class StopRule:
             raise ValueError('periods must be a positive integer')
         if isinstance(factor, bool) or not isinstance(factor, numbers.Real) or not (np.isfinite(factor) and factor > 1):
             raise ValueError('speed_factor must be finite and above 1')
+        if not isinstance(self.finger_reach, bool):
+            raise ValueError('finger_reach must be true or false')
 
     @classmethod
     def from_config(cls, config):
         rule = config['s0']['protective_stop']
-        return cls(rule['tracking_error_rad'], rule['periods'], rule['speed_factor'])
+        return cls(rule['tracking_error_rad'], rule['periods'], rule['speed_factor'], rule['finger_reach'])
+
+
+# A span this much past its bound is float rounding, not fingers pried open.
+REACH_SLACK_M = 1e-6
+
+
+def reach_bounds(bounds):
+    """`bounds` for AssemblyBackend.bound_reach checked: None, or {arm: a finite width >= 0 (m)} for both arms."""
+    if bounds is None:
+        return None
+    if set(bounds) != set(ARMS):
+        raise ValueError(f'reach bounds must cover {ARMS}')
+    out = {arm: float(bounds[arm]) for arm in ARMS}
+    if not all(np.isfinite(value) and value >= 0 for value in out.values()):
+        raise ValueError('reach bounds must be finite widths >= 0')
+    return out
+
+
+def check_reach(bounds, spans, log=()):
+    """Raise ProtectiveStop if fingers reach further out (RobotSnapshot.spans) than `bounds` (reach_bounds; None: no
+    bound) allow."""
+    for arm in ARMS if bounds is not None else ():
+        if spans[arm] > bounds[arm] + REACH_SLACK_M:
+            raise ProtectiveStop(f'{arm} fingers reached {1000 * spans[arm]:.1f} mm apart, further than the '
+                                 f'{1000 * bounds[arm]:.1f} mm S0 boxed them at for this motion', log)
 
 
 class StopMonitor:
     """A StopRule applied period by period: `check(targets, state)` after each control period (the joints commanded for
-    its end, the snapshot measured then) raises ProtectiveStop; the last `history` periods are kept for its log."""
+    its end, the snapshot measured then) raises ProtectiveStop; the last `history` periods are kept for its log.
+    `bound_reach(bounds)` sets how far the fingers may reach from then on (AssemblyBackend.bound_reach)."""
 
     def __init__(self, rule, max_joint_velocity_rad_s, history=60):
         self.rule = rule
         self.max_speed = {arm: np.asarray(max_joint_velocity_rad_s[arm], dtype=float) for arm in ARMS}
         self.over = {arm: 0 for arm in ARMS}
         self.log = deque(maxlen=int(history))
+        self.reach = None
+
+    def bound_reach(self, bounds):
+        self.reach = reach_bounds(bounds)
 
     def check(self, targets, state):
         errors = {arm: np.abs(np.asarray(targets[arm], dtype=float) - np.asarray(state.joints[arm], dtype=float))
                   for arm in ARMS}
         speeds = {arm: np.abs(np.asarray(state.joint_velocities[arm], dtype=float)) for arm in ARMS}
         self.log.append({'time_s': state.time_s,
-                         **{arm: {'tracking_error_rad': errors[arm].tolist(), 'speed_rad_s': speeds[arm].tolist()}
+                         **{arm: {'tracking_error_rad': errors[arm].tolist(), 'speed_rad_s': speeds[arm].tolist(),
+                                  'span_m': state.spans[arm],
+                                  'reach_bound_m': None if self.reach is None else self.reach[arm]}
                             for arm in ARMS}})
         for arm in ARMS:
             ratio = speeds[arm] / self.max_speed[arm]
@@ -232,6 +269,8 @@ class StopMonitor:
                 raise ProtectiveStop(f'{arm} joint_{joint + 1} lagged its target by {1000 * errors[arm][joint]:.1f} mrad '
                                      f'for {self.rule.periods} control periods (the limit is '
                                      f'{1000 * self.rule.tracking_error_rad:g} mrad)', self.log)
+        if self.rule.finger_reach:
+            check_reach(self.reach, state.spans, self.log)
 
 
 @runtime_checkable
@@ -257,6 +296,13 @@ class AssemblyBackend(Protocol):
 
     def step(self, joints: Mapping[str, np.ndarray], widths: Mapping[str, float]) -> RobotSnapshot:
         """Track these joint and width targets for one control period (1 / control_hz seconds)."""
+        ...
+
+    def bound_reach(self, bounds: Mapping[str, float] | None) -> None:
+        """How far each gripper's fingers may reach (RobotSnapshot.spans) from now on: the opening S0 checked the
+        coming motion at, plus S0's margin (s0.adapter.reach_bounds). A step that measures them further out stops the
+        robot (ProtectiveStop; StopRule.finger_reach). None lifts the bound; reset lifts it too. Every method calls it
+        after S0 accepts a motion and before stepping it."""
         ...
 
     def privileged_fragment_poses(self) -> Mapping[str, np.ndarray]:
@@ -295,7 +341,13 @@ class KinematicBackend:
         self.widths = {arm: self.width_range[arm][1] for arm in ARMS}
         self.poses = task.initial_poses()
         self.held = {arm: None for arm in ARMS}  # arm -> (fragment_id, tcp_T_fragment)
+        self.reach = None
         return self.robot_state()
+
+    def bound_reach(self, bounds):
+        """The fingers here reach exactly as commanded, so a step past the bound means a width S0 did not check."""
+        self._require_reset()
+        self.reach = reach_bounds(bounds)
 
     def _require_reset(self):
         if self.task is None:
@@ -350,7 +402,9 @@ class KinematicBackend:
                 key, tcp_T_fragment = self.held[arm]
                 self.poses[key] = self.model.arms[arm].tcp(self.joints[arm]) @ tcp_T_fragment
         self.time_s += 1.0 / self.control_hz
-        return self.robot_state()
+        state = self.robot_state()
+        check_reach(self.reach, state.spans)
+        return state
 
     def holding(self):
         """Test helper: arm -> held fragment id (privileged; a real backend has no such oracle)."""

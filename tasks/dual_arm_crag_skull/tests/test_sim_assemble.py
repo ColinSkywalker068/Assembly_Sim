@@ -716,3 +716,19 @@ def test_the_runner_gives_s0_how_far_the_fingers_reach(cubes, monkeypatch):
     runner.widths = {arm: 0.02 for arm in ARMS}
     runner._check('left', pick.width_segment('hold', HOME['left'], 0.02, 0.02, 0.1, 60))
     assert seen == [{'left': 0.05, 'right': 0.03}]
+
+
+def test_the_runner_bounds_the_fingers_reach_by_what_s0_checked(cubes):
+    """Once S0 accepts a segment and before it is stepped, the runner tells the backend how far the fingers may reach
+    (the protective stop's finger rule): the segment's widest opening plus S0's margin."""
+    task, _ = cubes
+    backend = _backend(task)
+    bounds, real = [], backend.bound_reach
+    backend.bound_reach = lambda value: bounds.append(value) or real(value)
+    runner = assemble.Runner(backend, MODEL, LIMITS)
+    runner.run('left', pick.width_segment('close', HOME['left'], WIDTHS['left'][1], 0.03, 0.2, 60))
+    assert bounds[-1]['left'] == pytest.approx(WIDTHS['left'][1] + LIMITS.finger_opening_margin_m)  # it was open
+    runner.run('left', pick.width_segment('hold', HOME['left'], 0.03, 0.03, 0.1, 60))
+    assert len(bounds) == 2 and bounds[-1]['left'] == pytest.approx(0.03 + LIMITS.finger_opening_margin_m)
+    assert assemble._ending(runner, task) is None  # the ending opens both fully
+    assert bounds[-1]['left'] == pytest.approx(WIDTHS['left'][1] + LIMITS.finger_opening_margin_m)

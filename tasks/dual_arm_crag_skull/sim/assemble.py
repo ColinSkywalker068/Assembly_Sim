@@ -61,7 +61,7 @@ from scipy.spatial.transform import Rotation
 
 from ..baselines.backend import RobotSnapshot
 from ..contracts.actions import ARMS, ContactWindow
-from ..s0.adapter import Rejected, check_joint_path, widest_opening
+from ..s0.adapter import Rejected, check_joint_path, reach_bounds, widest_opening
 from ..s0.ik import IKOptions, solve_ik
 from . import pick
 
@@ -587,6 +587,7 @@ class Runner:
 
     def run(self, arm, segment):
         self._check(arm, segment)
+        self.backend.bound_reach(reach_bounds(self.limits, self.openings))
         for k in range(len(segment.joints)):
             self.targets[arm] = np.asarray(segment.joints[k], dtype=float)
             self.widths[arm] = float(segment.widths[k])
@@ -851,6 +852,7 @@ def _ending(runner, task):
                          joints=hold, openings=openings)
     except Rejected as exc:
         return f'S0 refused the ending: {exc}'
+    runner.backend.bound_reach(reach_bounds(limits, openings))
     try:
         for k in range(periods):
             runner.state = runner.backend.step({arm: hold[arm][k] for arm in ARMS}, widths)

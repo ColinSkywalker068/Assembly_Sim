@@ -163,10 +163,12 @@ def test_a_whole_pick_and_place_on_the_kinematic_backend(tmp_path):
     task, backend = kinematic_scene(tmp_path)
     start = backend.privileged_fragment_poses()
     observed = backend.observed_fragment_poses()['frag_b'].world_T_fragment[:2, 3]
-    seen = []
+    seen, bounds, real = [], [], backend.bound_reach
+    backend.bound_reach = lambda value: bounds.append(value) or real(value)  # each segment bounds the fingers' reach
     record = pick.run_pick_and_place(backend, MODEL, LIMITS, arm='left', fragment_id='frag_b',
                                      points=cube_points(task, 'frag_b', start['frag_b']), carry_xy=(0.0, -0.05),
                                      tip_reach_m=REACH, on_step=lambda name, state: seen.append(name))
+    assert len(bounds) == len(record.segments) and all(bound is not None for bound in bounds)
     end = backend.privileged_fragment_poses()
     moved = end['frag_b'][:3, 3] - start['frag_b'][:3, 3]
     np.testing.assert_allclose(moved, [0.0, -0.05, 0.0], atol=1e-3)

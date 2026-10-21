@@ -421,6 +421,13 @@ def widest_opening(measured, commanded, targets=()):
     return float(values.max())
 
 
+def reach_bounds(limits, openings):
+    """{arm: how far the fingers may reach while a motion S0 checked at `openings` runs}: the opening plus the margin,
+    as wide as S0's boxes allowed for (AssemblyBackend.bound_reach); None when S0 boxed the whole stroke."""
+    widths = _box_widths(limits, openings)
+    return None if limits.finger_opening_margin_m is None else widths
+
+
 def _box_widths(limits, openings):
     """{arm: the opening S0 takes the tool and finger boxes at, or None for the whole stroke}."""
     margin = limits.finger_opening_margin_m

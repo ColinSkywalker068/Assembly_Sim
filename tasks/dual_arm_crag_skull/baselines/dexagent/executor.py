@@ -36,7 +36,7 @@ from typing import Mapping
 import numpy as np
 
 from ...contracts.actions import ARMS, ContactWindow
-from ...s0.adapter import Rejected, check_joint_path, widest_opening
+from ...s0.adapter import Rejected, check_joint_path, reach_bounds, widest_opening
 from ..backend import ProtectiveStop
 from ..scoring import score_assembly
 
@@ -272,6 +272,7 @@ def execute(backend, task, model, limits, commands, chunk_s=CHUNK_S):
             except Rejected as exc:
                 rejection = f'S0 rejected the delivery at t={state.time_s:.3f} s: {exc}'
                 break
+            backend.bound_reach(reach_bounds(limits, openings))
             declared = pending
             windows.extend(new)
             for k in range(stop - start):
@@ -296,13 +297,14 @@ def release_and_settle(backend, task, model, limits, targets, contacts=None):
     hold = {arm: np.repeat(np.asarray(targets[arm], dtype=float)[None], periods, axis=0) for arm in ARMS}
     widths = {arm: limits.gripper_width_range_m[arm][1] for arm in ARMS}
     times = state.time_s + period * np.arange(1, periods + 1)
+    openings = {arm: widest_opening(state.spans[arm], widths[arm]) for arm in ARMS}
     try:
         check_joint_path(model, limits, now=state.time_s, q_now=state.joints, qd_now=state.joint_velocities,
                          qd_window_s=state.velocity_window_s, times=times, joints=hold,
-                         contacts=tuple((contacts or {}).values()),
-                         openings={arm: widest_opening(state.spans[arm], widths[arm]) for arm in ARMS})
+                         contacts=tuple((contacts or {}).values()), openings=openings)
     except Rejected as exc:
         return False, f'S0 rejected the release-and-settle hold: {exc}'
+    backend.bound_reach(reach_bounds(limits, openings))
     for k in range(periods):
         backend.step({arm: hold[arm][k] for arm in ARMS}, widths)
     return True, None

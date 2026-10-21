@@ -1090,3 +1090,20 @@ def test_the_adapter_gives_s0_how_far_the_fingers_reach_and_bands_by_it(task, mo
     monkeypatch.setattr(adapter_module, 'check_geometry', lambda *args, **kwargs: None)
     env.set_gripper(0.3, arm='right')
     assert seen and seen[0]['left'] == pytest.approx(0.09)
+
+
+def test_the_adapter_bounds_the_fingers_reach_by_what_s0_checked(task):
+    """Once S0 accepts a command and before it is stepped, the adapter tells the backend how far the fingers may reach
+    (the protective stop's finger rule): the command's widest opening plus S0's margin."""
+    from tasks.dual_arm_crag_skull.s0.kinematics import yam_model, yam_width_range_m
+    yam, widths = yam_model(), {arm: yam_width_range_m() for arm in ARMS}
+    sim = KinematicBackend(yam, home_joints={arm: HOME for arm in ARMS}, width_range_m=widths, control_hz=20)
+    env = SkullAssemblyAdapter(sim, yam, limits(gripper_width_range_m=widths, finger_opening_margin_m=0.004),
+                               config=CONFIG, mode='practice')
+    env.reset(task, 101)
+    bounds, real = [], sim.bound_reach
+    sim.bound_reach = lambda value: bounds.append(value) or real(value)
+    env.set_gripper(0.3, arm='left')
+    assert bounds[0]['left'] == pytest.approx(widths['left'][1] + 0.004)  # it was fully open
+    env.set_gripper(0.3, arm='left')
+    assert bounds[-1]['left'] == pytest.approx(0.3 * widths['left'][1] + 0.004)

@@ -24,7 +24,7 @@ from core.workcell.config import load_workcell_preset
 from ...contracts.actions import ARMS
 from ...s0.adapter import S0Limits
 from ...s0.kinematics import yam_model
-from ..backend import ObservedPose, RobotSnapshot
+from ..backend import ObservedPose, RobotSnapshot, check_reach, reach_bounds
 from ..task import AssemblyTask
 from . import executor
 from .export import pose_matrix
@@ -96,6 +96,12 @@ class ReplayBackend:
         self.velocity_window_s = self.period  # each step's difference over the period
         self.recording, self.world_T_rig, self.objects = recording, world_T_rig, objects
         self.recorded_spans = recorded_spans
+        self.reach = None
+
+    def bound_reach(self, bounds):
+        """The protective stop's finger rule (AssemblyBackend.bound_reach): a recorded span past the bound stops the
+        replay as it would stop the robot."""
+        self.reach = reach_bounds(bounds)
 
     def robot_state(self):
         return RobotSnapshot(self.time_s, self.joints, self.velocities, self.widths, {arm: np.eye(4) for arm in ARMS},
@@ -128,6 +134,7 @@ class ReplayBackend:
         self.widths = {arm: float(widths[arm]) for arm in ARMS}
         recorded = {} if self.recorded_spans is None else self.recorded_spans(self._frame())
         self.spans = {arm: max(self.widths[arm], recorded.get(arm, 0.0)) for arm in ARMS}
+        check_reach(self.reach, self.spans)
 
 
 def recorded_spans(gripper, names, row):

@@ -28,7 +28,7 @@ import numpy as np
 from scipy.spatial.transform import Rotation, Slerp
 
 from ..contracts.actions import ARMS, ContactWindow
-from ..s0.adapter import Rejected, check_joint_path, widest_opening
+from ..s0.adapter import Rejected, check_joint_path, reach_bounds, widest_opening
 from ..s0.ik import IKOptions, solve_ik
 
 FINGERTIP_HEIGHT_M = 0.003
@@ -319,11 +319,12 @@ def run_pick_and_place(backend, model, limits, *, arm, fragment_id, points, carr
         nonlocal state
         times = state.time_s + np.arange(1, len(segment.joints) + 1) / servo_hz
         joints = {arm: segment.joints, other: np.repeat(hold[None], len(segment.joints), axis=0)}
+        openings = {arm: widest_opening(state.spans[arm], sent[arm], segment.widths),
+                    other: widest_opening(state.spans[other], sent[other], [wide])}
         check_joint_path(model, limits, now=state.time_s, q_now=state.joints, qd_now=state.joint_velocities,
                          qd_window_s=state.velocity_window_s, times=times, joints=joints,
-                         contacts=() if segment.contact is None else (segment.contact,),
-                         openings={arm: widest_opening(state.spans[arm], sent[arm], segment.widths),
-                                   other: widest_opening(state.spans[other], sent[other], [wide])})
+                         contacts=() if segment.contact is None else (segment.contact,), openings=openings)
+        backend.bound_reach(reach_bounds(limits, openings))
         for k in range(len(segment.joints)):
             sent.update({arm: float(segment.widths[k]), other: wide})
             state = backend.step({arm: segment.joints[k], other: hold}, dict(sent))
