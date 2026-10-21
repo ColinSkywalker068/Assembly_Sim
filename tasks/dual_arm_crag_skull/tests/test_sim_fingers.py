@@ -50,6 +50,18 @@ def test_closing_on_a_box_stops_where_check_yam_predicts(depth, width):
     assert stop == pytest.approx(predicted_stop_width(GRIPPER, depth, width), abs=FINGERS.cell_m / 2)
 
 
+@pytest.mark.parametrize('shift', [0.005, -0.005])
+def test_the_coupled_fingers_stop_with_the_first_pad_to_meet_a_box_off_the_middle(shift):
+    """A box 5 mm off the middle (towards yam_usd.DRIVEN_TIP for +): the near pad meets it and both fingers stop, 10 mm
+    wider than on the box in the middle, as check_yam predicts; uncoupled ones would close on both faces."""
+    from tasks.dual_arm_crag_skull.sim.yam_usd import DRIVEN_TIP
+    heights, laterals, along = box_columns(0.005, 0.040, BOX_SIDE_M / 2)
+    driven_side = float(GRIPPER.slide_axes[DRIVEN_TIP][0])  # along runs on the mount's x, which the tip opens along
+    stop = FINGERS.stop_width(heights, laterals, along + driven_side * shift)
+    assert stop == pytest.approx(predicted_stop_width(GRIPPER, 0.005, 0.040, shift_m=shift), abs=FINGERS.cell_m / 2)
+    assert stop == pytest.approx(FINGERS.stop_width(heights, laterals, along) + 2 * abs(shift), abs=FINGERS.cell_m / 2)
+
+
 def box_columns(depth, width, half):
     grid = np.arange(-half, half + 1e-9, FINGERS.cell_m / 2)
     h, u = (values.ravel() for values in np.meshgrid(depth + grid, grid, indexing='ij'))

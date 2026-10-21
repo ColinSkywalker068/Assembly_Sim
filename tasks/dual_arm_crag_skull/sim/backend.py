@@ -85,8 +85,9 @@ def measured_width(gripper, q_left, q_right):
 
 
 def measured_span(gripper, q_left, q_right):
-    """The pad gap with both fingers as far out as the farther one (RobotSnapshot.spans): nothing couples the fingers
-    here (yam_usd), so a held fragment pushed sideways moves one out as the other goes in, at the same gap."""
+    """The pad gap with both fingers as far out as the farther one (RobotSnapshot.spans). The fingers are coupled
+    (yam_usd's mimic joint), so this is the gap to within the coupling's give; uncoupled, a held fragment pushed
+    sideways moved one finger out as the other went in, at the same gap."""
     return gripper.width(max(_finger_joints(gripper, q_left, q_right)))
 
 

@@ -16,9 +16,14 @@ mesh; above, the finger's root is L-shaped across a slab and its hull bridges th
 74-80 mm up): nothing that tall is held here. The tips are authored fully open and never
 collide with each other (a filtered pair, as the MJCF excludes them: the pads overlap 1 mm at q = 0). Each tip
 hangs on a prismatic joint along its slide axis, limited from pad contact (contact_joint_m) to travel_m, with a
-linear position drive; the joint prim's name is the DOF name. A fixed joint holds the body on the flange at
-flange_T_mount. Nothing couples the two fingers: commanding the same target to both stands in for the MJCF's 1:1
-equality constraint, so when one pad touches first the other keeps closing on its own.
+linear position drive; the joint prim's name is the DOF name. The other tip follows DRIVEN_TIP through a PhysX mimic
+joint (gearing -1: the same joint value), as the real gripper's fingers and the MJCF's 1:1 equality constraint move
+together: when one pad touches first both stop, and a held fragment pushed sideways cannot move one finger out and
+the other in (uncoupled, insertions in Isaac pushed one finger 2-3.5 mm out at the same gap, 2026-10-21). The follower
+keeps its own drive: with the drive on the driven tip alone (twice as strong), two pads on a kinematic box stood
+1.1 mm a side off it (the two contacts and the mimic joint over-constrain the pair), with both 0.37 mm. A fixed joint
+holds the body on the flange at flange_T_mount. The articulation the flange belongs to solves with at least
+POSITION_ITERATIONS position iterations.
 
 The drive values are PROVISIONAL: the real gripper's force and servo gains are not measured.
 """
@@ -33,6 +38,14 @@ import numpy as np
 from core.robots.kinematics import R_to_quat
 from core.robots.linear_4310 import LINKS, TIPS
 
+DRIVEN_TIP = 'tip_left'  # the coupling's reference: the other tip follows it, both keep a drive (module docstring)
+# PhysxMimicJointAPI's instance name: it allows only rotX, rotY and rotZ (an unknown one, transZ, was ignored without
+# a word), and a prismatic joint's single degree of freedom is implicit
+MIMIC_AXIS = 'rotX'
+# Position iterations of the articulation the gripper hangs on, at least: the mimic joint, the drives and a pad's
+# contact are solved together, and at the arm asset's 32 a pad stood 0.13-0.37 mm off a kinematic box (0.03 at 64,
+# 0.04 at 255; uncoupled, 0.00 at 32), 2026-10-21
+POSITION_ITERATIONS = 64
 SLAB_M = 0.002
 TIP_SAMPLE_M = 0.0005
 HULL_VERTEX_LIMIT = 64  # PhysX's GPU convex limit, physxConvexHullCollision:hullVertexLimit's default (authored too)
@@ -348,6 +361,23 @@ def _author_mass(prim, inertial):
     mass.CreatePrincipalAxesAttr(Gf.Quatf(w, x, y, z))
 
 
+def _at_least_position_iterations(stage, path, count):
+    """Raise the position iterations of the articulation `path` belongs to (its nearest ancestor with the articulation
+    root API) to at least `count`; ValueError if it belongs to none."""
+    from pxr import Sdf, UsdPhysics
+    prim = stage.GetPrimAtPath(path)
+    while prim.IsValid() and not prim.HasAPI(UsdPhysics.ArticulationRootAPI):
+        prim = prim.GetParent()
+    if not prim.IsValid():
+        raise ValueError(f'{path} is in no articulation: the coupled fingers need one')
+    name = 'physxArticulation:solverPositionIterationCount'
+    attribute = prim.GetAttribute(name)
+    current = attribute.Get() if attribute and attribute.HasAuthoredValue() else None
+    if current is None or current < count:
+        prim.AddAppliedSchema('PhysxArticulationAPI')
+        prim.CreateAttribute(name, Sdf.ValueTypeNames.Int).Set(int(count))
+
+
 def author_linear_4310(stage, root_path, *, flange_path, flange_T_mount, gripper, drive=FingerDrive(),
                        physics_material=None) -> YamPrims:
     """Author the gripper under `root_path` (outside the arm's prims: rigid bodies must not nest) and mount it on the
@@ -404,6 +434,17 @@ def author_linear_4310(stage, root_path, *, flange_path, flange_T_mount, gripper
         joint.GetPrim().CreateAttribute('physxJoint:maxJointVelocity', Sdf.ValueTypeNames.Float).Set(
             float(drive.max_speed_m_s))
         joints[tip] = path
+    for tip in TIPS:
+        if tip != DRIVEN_TIP:  # follows the driven tip: joint value + gearing x the driven one's + offset = 0
+            prim = stage.GetPrimAtPath(joints[tip])
+            prim.AddAppliedSchema(f'PhysxMimicJointAPI:{MIMIC_AXIS}')
+            prim.CreateRelationship(f'physxMimicJoint:{MIMIC_AXIS}:referenceJoint').SetTargets(
+                [Sdf.Path(joints[DRIVEN_TIP])])
+            prim.CreateAttribute(f'physxMimicJoint:{MIMIC_AXIS}:referenceJointAxis', Sdf.ValueTypeNames.Token).Set(
+                MIMIC_AXIS)
+            prim.CreateAttribute(f'physxMimicJoint:{MIMIC_AXIS}:gearing', Sdf.ValueTypeNames.Float).Set(-1.0)
+            prim.CreateAttribute(f'physxMimicJoint:{MIMIC_AXIS}:offset', Sdf.ValueTypeNames.Float).Set(0.0)
+    _at_least_position_iterations(stage, flange_path, POSITION_ITERATIONS)
     mount_path = f'{flange_path}/GripperMountJoint'
     mount = UsdPhysics.FixedJoint.Define(stage, mount_path)
     mount.CreateBody0Rel().SetTargets([Sdf.Path(flange_path)])

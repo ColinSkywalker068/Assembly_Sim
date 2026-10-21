@@ -10,7 +10,8 @@
   holds them (pad_midpoint, within 0.15 mm of I2RT's grasp site on the meshes). This checks flange_T_tcp against
   the simulated pads, not against the constants it was built from.
 - Pads on a known width: with the arms at home, each gripper closes on a kinematic box between its pads (BOX_PROBES:
-  how far up from the fingertips, how wide, within what tolerance, how thick across); the width it stops at must
+  how far up from the fingertips, how wide, within what tolerance, how thick across, how far off the middle: the
+  coupled fingers stop with the near pad, 2 x that wider); the width it stops at must
   match where the tip meshes say it stops (predicted_stop_width: the box's own width on the pad, a little less on the
   slope above it, fully closed for the rod in the window, which meets no material). This measures the tip colliders
   against geometry, which the free-space widths cannot (PhysX's default decomposition stopped 1.8 mm per side short;
@@ -56,10 +57,18 @@ ROTATION_TOLERANCE_DEG = 0.1
 TCP_FROM_PADS_TOLERANCE_M = 5e-4
 # (distance up from the fingertips, box width along the closing axis, tolerance against the meshes' prediction)
 BOX_SIDE_M = 0.012
-# (how far up from the fingertips, how wide along the closing axis, tolerance, side across the closing axis): 12 mm
-# boxes on the pad and the slope, and a 3 mm rod 35 mm up on the middle line, inside the window between the rails
-BOX_PROBES = ((0.005, 0.040, 5e-4, BOX_SIDE_M), (0.011, 0.040, 5e-4, BOX_SIDE_M), (0.025, 0.040, 5e-4, BOX_SIDE_M),
-              (0.008, 0.020, 5e-4, BOX_SIDE_M), (0.035, 0.020, 5e-4, 0.003))
+# (how far up from the fingertips, how wide along the closing axis, tolerance, side across the closing axis, how far
+# the box sits off the middle towards the driven tip). 12 mm boxes on the pad and the slope, each 1 mm off the middle
+# one way and then the other, so that one pad touches it, the other still 2 mm off its face: the coupled fingers stop
+# with that pad, and each pad is measured on its own (two pads on a kinematic box and the mimic joint over-constrain
+# the pair: PhysX settled them 0.37 mm a side off a box in the middle). A 3 mm rod 35 mm up on the middle line, inside
+# the window between the rails, which meets no material. A box 5 mm off the middle, which the coupled fingers stop on
+# 10 mm wider than on a box in the middle; uncoupled, each would close on its own face. It is judged against the box
+# 1 mm off the middle the same way, where the same pad touches (box_excesses).
+BOX_PROBES = tuple((depth, width, 5e-4, BOX_SIDE_M, shift) for depth, width in ((0.005, 0.040), (0.011, 0.040),
+                                                                                (0.025, 0.040), (0.008, 0.020))
+                   for shift in (0.001, -0.001)) + ((0.035, 0.020, 5e-4, 0.003, 0.0),
+                                                     (0.005, 0.040, 5e-4, BOX_SIDE_M, 0.005))
 # How far PhysX's cooked hull of a collider may stick out of the authored points' hull, and fall short of it. Set
 # after the first run with these colliders (2026-10-19): fixed before it at 2e-5 both ways, PhysX's cooking dropped
 # near-coplanar points from every hull, up to 0.083 mm inside, never outside; 0.1 mm is the order of the colliders'
@@ -122,10 +131,9 @@ def judge(report):
                                 'midpoint of the pads')
         if len(record['boxes']) != len(BOX_PROBES):
             failures.append(f"{arm}: {len(record['boxes'])} box probes, expected {len(BOX_PROBES)}")
-        for box in record['boxes']:
-            if not abs(box['excess_m']) <= box['tolerance_m']:
-                failures.append(f"{arm}: on a {box['width_m'] * 1000:.0f} mm box {box['depth_m'] * 1000:.0f} mm up "
-                                f"the fingers stopped {box['excess_m'] * 1000:+.2f} mm off the meshes' prediction")
+        for name, excess, tolerance in box_excesses(record['boxes']):
+            if not abs(excess) <= tolerance:
+                failures.append(f"{arm}: {name} {excess * 1000:+.2f} mm")
     if not report['arms']:
         failures.append('no arm was checked')
     cooked = report['cooked']
@@ -221,11 +229,51 @@ def _measure_poses(physx, model, gripper, arm, robot, prims, arm_indices, finger
     return {'q': q.tolist(), 'finger_joints_m': fingers.tolist(), 'errors': errors, 'tcp_from_pads_m': from_pads}
 
 
-def predicted_stop_width(gripper, depth_m, width_m, half_m=None):
-    """The width at which the fingers, closing on a box `width_m` wide and 2 `half_m` (BOX_SIDE_M) thick across,
-    centred `depth_m` up from the fingertips, first touch it: each tip's mesh reaches its face where it comes furthest
-    inward over the box; a tip with no material over it closes to its limit (pad contact)."""
-    from .yam_usd import tip_points_in_link
+def box_excesses(boxes):
+    """[(what, how far off the meshes' prediction, tolerance)] of a report's box probes. With each pad standing dD and
+    dO off a face and the pads' middle c off the TCP towards the driven tip, a box 1 mm off the middle towards the
+    driven tip stops the coupled fingers 2 (dD - c) wider than predicted and one 1 mm the other way 2 (dO + c): the
+    mean of the two is how far the pads stand off the faces in all, dD + dO (what both pads on a box in the middle gave
+    with the fingers uncoupled), and a quarter of their difference c + (dO - dD) / 2, how far the pads' middle lies from
+    the TCP (held to TCP_FROM_PADS_TOLERANCE_M, as the TCP is). A box further off the middle (the coupling probe) is
+    judged against the 1 mm one the same way, where the same pad touches and c cancels; every other probe on its
+    own."""
+    pairs, out, far = {}, [], []
+    for box in boxes:
+        if abs(abs(box['shift_m']) - 0.001) < 1e-9:
+            pairs.setdefault((box['depth_m'], box['width_m'], box['side_m']), {})[np.sign(box['shift_m'])] = box
+        elif abs(box['shift_m']) > 0.001:
+            far.append(box)
+        else:
+            out.append((f"on a {box['width_m'] * 1000:.0f} mm box {box['depth_m'] * 1000:.0f} mm up the fingers "
+                        "stopped off the meshes' prediction by", box['excess_m'], box['tolerance_m']))
+    for box in far:
+        what = (f"on a {box['width_m'] * 1000:.0f} mm box {box['depth_m'] * 1000:.0f} mm up "
+                f"{box['shift_m'] * 1000:.0f} mm off the middle the fingers stopped off the meshes' prediction")
+        near = pairs.get((box['depth_m'], box['width_m'], box['side_m']), {}).get(np.sign(box['shift_m']))
+        if near is None:
+            out.append((f'{what} by', box['excess_m'], box['tolerance_m']))
+        else:
+            out.append((f'{what}, beyond the box 1 mm off it the same way, by', box['excess_m'] - near['excess_m'],
+                        box['tolerance_m']))
+    for (depth, width, side), pair in pairs.items():
+        what = f'on a {width * 1000:.0f} mm box {depth * 1000:.0f} mm up'
+        if set(pair) != {1.0, -1.0}:
+            out.append((f'{what}: one of the two probes 1 mm off the middle is missing, by', float('inf'), 0.0))
+            continue
+        toward, away = pair[1.0]['excess_m'], pair[-1.0]['excess_m']
+        out.append((f'{what} the pads stood off the faces, the two together, by', (toward + away) / 2,
+                    pair[1.0]['tolerance_m']))
+        out.append((f'{what} the pads\' middle lay off the TCP by', (away - toward) / 4, TCP_FROM_PADS_TOLERANCE_M))
+    return out
+
+
+def predicted_stop_width(gripper, depth_m, width_m, half_m=None, shift_m=0.0):
+    """The width at which the coupled fingers stop on a box `width_m` wide and 2 `half_m` (BOX_SIDE_M) thick across,
+    centred `depth_m` up from the fingertips and `shift_m` off the middle towards yam_usd.DRIVEN_TIP: each tip's mesh
+    reaches its face where it comes furthest inward over the box, a tip with no material over it closing to its limit
+    (pad contact), and the first tip to touch stops both."""
+    from .yam_usd import DRIVEN_TIP, tip_points_in_link
     half_m = BOX_SIDE_M / 2 if half_m is None else half_m
     end = gripper.mount_T_tcp[2, 3]
     joints = []
@@ -234,15 +282,16 @@ def predicted_stop_width(gripper, depth_m, width_m, half_m=None):
         points = tip_points_in_link(gripper, tip) @ frame[:3, :3].T + frame[:3, 3]
         near = (np.abs(points[:, 2] - (end - depth_m)) <= half_m) & (np.abs(points[:, 1]) <= half_m)
         inward = -gripper.slide_axes[tip]
-        joints.append(float((points[near] @ inward).max()) + width_m / 2 if near.any() else gripper.contact_joint_m)
-    return gripper.width_between(*np.clip(joints, gripper.contact_joint_m, gripper.travel_m))
+        face = width_m / 2 + (shift_m if tip == DRIVEN_TIP else -shift_m)
+        joints.append(float((points[near] @ inward).max()) + face if near.any() else gripper.contact_joint_m)
+    return gripper.width(float(np.clip(max(joints), gripper.contact_joint_m, gripper.travel_m)))
 
 
 def _box_probes(world, stage, gripper, model, handles):
     """Close each gripper on a kinematic box between its pads at home (BOX_PROBES); {arm: [records]}."""
     from pxr import Gf, UsdGeom, UsdPhysics
     records = {arm: [] for arm in handles}
-    for depth, width, tolerance, side in BOX_PROBES:
+    for depth, width, tolerance, side, shift in BOX_PROBES:
         world.stop()
         for arm, (robot, prims, arm_indices, finger_indices, home) in handles.items():
             path = f'/World/BoxProbe_{arm}'
@@ -250,7 +299,7 @@ def _box_probes(world, stage, gripper, model, handles):
                 stage.RemovePrim(path)
             tcp = model.arms[arm].tcp(home)
             pose = tcp.copy()
-            pose[:3, 3] -= tcp[:3, 0] * depth
+            pose[:3, 3] += -tcp[:3, 0] * depth + _towards_driven(stage, prims, tcp) * shift
             box = UsdGeom.Cube.Define(stage, path)
             box.CreateSizeAttr(1.0)
             xform = UsdGeom.Xformable(box)
@@ -269,11 +318,24 @@ def _box_probes(world, stage, gripper, model, handles):
         for arm, (robot, prims, arm_indices, finger_indices, home) in handles.items():
             fingers = np.asarray(robot.get_joint_positions(joint_indices=np.asarray(finger_indices)), dtype=float)
             measured = gripper.width_between(*np.clip(fingers, 0.0, gripper.travel_m))
-            predicted = predicted_stop_width(gripper, depth, width, side / 2)
-            records[arm].append({'depth_m': depth, 'width_m': width, 'side_m': side, 'tolerance_m': tolerance,
+            predicted = predicted_stop_width(gripper, depth, width, side / 2, shift)
+            records[arm].append({'depth_m': depth, 'width_m': width, 'side_m': side, 'shift_m': shift,
+                                 'tolerance_m': tolerance,
                                  'finger_joints_m': fingers.tolist(), 'measured_m': measured,
                                  'predicted_m': predicted, 'excess_m': measured - predicted})
     return records
+
+
+def _towards_driven(stage, prims, tcp):
+    """The unit direction along the closing axis from the TCP towards the driven tip (yam_usd.DRIVEN_TIP), from the
+    tips' authored rigid-body positions."""
+    from pxr import UsdGeom
+    from .yam_usd import DRIVEN_TIP
+    closing = tcp[:3, 1]
+    positions = {tip: np.asarray(UsdGeom.Xformable(stage.GetPrimAtPath(path)).ComputeLocalToWorldTransform(0))
+                 .T[:3, 3] for tip, path in prims.links.items() if tip.startswith('tip')}
+    other = next(tip for tip in positions if tip != DRIVEN_TIP)
+    return closing if (positions[DRIVEN_TIP] - positions[other]) @ closing > 0 else -closing
 
 
 def _float3(value):

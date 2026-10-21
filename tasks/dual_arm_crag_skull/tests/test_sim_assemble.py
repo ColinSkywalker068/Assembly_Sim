@@ -717,8 +717,8 @@ def test_a_preflight_takes_fingers_closed_on_a_fragment_to_stop_at_its_chord(cub
 
 
 def test_the_runner_gives_s0_how_far_the_fingers_reach(cubes, monkeypatch):
-    """S0 boxes the fingers by how far they reach (RobotSnapshot.spans), which Isaac's uncoupled fingers make wider
-    than the gap when one is pushed out: the widest opening the runner gives S0 starts from the span."""
+    """S0 boxes the fingers by how far they reach (RobotSnapshot.spans), wider than the gap when one finger is out
+    further than the other: the widest opening the runner gives S0 starts from the span."""
     task, _ = cubes
     backend = _backend(task)
     backend.step({arm: HOME[arm] for arm in ARMS}, {arm: 0.02 for arm in ARMS})

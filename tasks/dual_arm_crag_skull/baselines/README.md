@@ -192,7 +192,10 @@ review's surviving mutations and the new behaviour, 54 mutations are now caught.
   motion stop the robot too. Every method's executor (ASPIRE's adapter, DexAgent's executor and its S0 replay, the
   scripted reference) calls `AssemblyBackend.bound_reach` with S0's opening plus its margin once S0 accepts a motion
   and before stepping it. S0 reads the opening where a motion begins; a fragment jammed between the fingers pried them
-  6-12 mm open before the seams were opened, and normal runs since widened them 1.15 mm at most.
+  6-12 mm open before the seams were opened. The fingers have been coupled since 2026-10-21 (Isaac's mimic joint,
+  the MuJoCo bench's joint equality), so the span is the gap: in the scripted reference's full Isaac run the five
+  fragments placed opened them at most 0.02 mm past the command, and magenta, jammed in its insertion, pried them
+  7 mm open (stopped at 3.9 mm with the rule on).
 - **DexAgent's port is not finished** (above): its tool library on the bench, the MuJoCo <-> Isaac calibration, a
   mock end-to-end trial.
 - **One step budget** for every method (ASPIRE's default 18,000 control steps is provisional).

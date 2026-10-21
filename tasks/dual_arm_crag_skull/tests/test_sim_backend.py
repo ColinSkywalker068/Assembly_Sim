@@ -41,8 +41,8 @@ def test_measured_width_clips_solver_overshoot():
 
 
 def test_the_span_is_the_gap_with_both_fingers_as_far_out_as_the_farther():
-    """Nothing couples Isaac's fingers: pushed sideways, one goes out as the other comes in at the same gap, and S0
-    boxes each finger by the one further out."""
+    """S0 boxes each finger by the one further out: the gap for coupled fingers (Isaac's are, through a mimic joint),
+    wider when one finger is out further than the other, as uncoupled ones were when pushed sideways."""
     assert measured_span(GRIPPER, 0.02, 0.02) == pytest.approx(measured_width(GRIPPER, 0.02, 0.02))
     assert measured_span(GRIPPER, 0.023, 0.017) == pytest.approx(GRIPPER.width(0.023))
     assert measured_span(GRIPPER, 0.023, 0.017) > measured_width(GRIPPER, 0.023, 0.017) + 0.005

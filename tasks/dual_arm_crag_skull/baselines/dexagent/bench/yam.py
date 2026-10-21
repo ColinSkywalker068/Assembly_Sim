@@ -15,8 +15,11 @@ thumb (tip_left) and index (tip_right):
   the pad are not;
 - tip sites `<side>_<finger>_tip` PAD_RADIUS_M behind the middle of each pad face, where DexAgent puts the site of a
   pad it finds no capsule on (hand.pad_radius); `<side>_<finger>_pip` as far behind the finger 40 mm up; `<side>_tcp`;
-- a position servo `<joint>_position` per finger with Isaac's stiffness, damping and force cap. The two fingers get
-  the same target and nothing couples them, as in Isaac.
+- a position servo `<joint>_position` per finger with Isaac's stiffness, damping and force cap; the two get the same
+  target, and a joint equality `<side>_fingers_coupled` makes the index follow the thumb, as the official MJCF couples
+  its two slides and Isaac's mimic joint does (sim/yam_usd.py). It is as stiff as the bench's contacts (COUPLING):
+  MuJoCo's default softness scales with the 71 g fingers, and the index servo's 20 N pulled them as far apart as with
+  no coupling.
 
 Geometry (yam_pieces): each tip's merged convex pieces are both its visible geoms and its collision geoms
 `collision_hand_<side>_<finger>_<k>`. DexAgent checks robots against objects by the convex hulls of their visible
@@ -49,6 +52,10 @@ MESH_DIR = 'assets/yam_gripper'
 WRIST_KP = 1000.0
 WRIST_MASS_KG, WRIST_INERTIA_KG_M2 = 0.1, 0.01  # each floating-wrist body, as DexAgent's own hand files have it
 VISIBLE, COLLISION, HIDDEN = '1', '3', '4'
+# The fingers' coupling, as stiff as the bench's contacts (scene.py's geom default). With MuJoCo's default (0.02 s,
+# impedance 0.9-0.95) closing on a box 5 mm off the middle left the slides 9.9 mm apart, as with no coupling; with
+# these, 0.13 mm (scratch probe, 2026-10-21).
+COUPLING = {'solref': '0.005 1', 'solimp': '0.99 0.999 0.0005'}
 RGBA = '0.2 0.2 0.22 1'
 WRIST = (('base_tx', 'pos_x', 'slide', '1 0 0'), ('base_ty', 'pos_y', 'slide', '0 1 0'),
          ('base_tz', 'pos_z', 'slide', '0 0 1'), ('base_roll', 'rot_x', 'hinge', '1 0 0'),
@@ -220,6 +227,14 @@ def actuators(hand, side, prefix=''):
     return elements
 
 
+def coupling(side, prefix=''):
+    """The joint equality `<prefix><side>_fingers_coupled`: the index slide (tip_right) equals the thumb's (tip_left), as
+    the official MJCF's polycoef 0 1 0 0 0 on its two slides and Isaac's mimic joint on tip_right."""
+    head = f'{prefix}{side}_'
+    return ET.Element('joint', name=f'{head}fingers_coupled', joint1=f"{head}{FINGERS['tip_right']}_FE",
+                      joint2=f"{head}{FINGERS['tip_left']}_FE", polycoef='0 1 0 0 0', **COUPLING)
+
+
 def copy_meshes(setup_dir):
     """Copy the official meshes (and their licence) under `setup_dir`/MESH_DIR."""
     target = Path(setup_dir) / MESH_DIR
@@ -240,6 +255,7 @@ def write_hand(setup_dir, side, hand=None):
     ET.SubElement(root, 'compiler', angle='radian', meshdir='../')
     ET.SubElement(root, 'asset').extend(assets(hand, side))
     ET.SubElement(root, 'worldbody').append(floating_hand(hand, side))
+    ET.SubElement(root, 'equality').append(coupling(side))
     ET.SubElement(root, 'actuator').extend(actuators(hand, side))
     ET.indent(root)
     path = setup_dir / 'robot' / f'yam_{side}.xml'

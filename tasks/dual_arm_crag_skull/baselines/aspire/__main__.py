@@ -30,10 +30,11 @@ MAX_STEPS = 18000
 TEST_ONLY_WARNING = ('S0 limits are TEST values (configs/jing.json has none), so every record is test_only; backend '
                      'kinematic is moreover a physics-free test double')
 # TEST S0 values, the same as tests/test_s0_adapter.py limits() plus the contact phase of the S0 tests and S0's boxes at
-# the grippers' openings (2026-10-21). Their 4 mm margin: with the 1 mm seams, in the scripted runs on Isaac, a gripper
-# held at one command opened at most 1.15 mm wider while it moved (a fragment knocked in the grip) and a release
-# overshot by 0.05 mm at most; jams before the seams pried fingers open by up to 12 mm, which no margin covers (S0 reads
-# the opening at each chunk's start); the real gripper's width is not calibrated. The real CRX acceleration limit,
+# the grippers' openings (2026-10-21). Their 4 mm margin: with the fingers coupled (2026-10-21), in the scripted
+# reference's full Isaac run, the fingers opened at most 0.02 mm past the command while the arm moved; a fragment
+# jammed in its insertion pried them 7 mm open (the protective stop's finger_reach ends that), as jams before the seams
+# did by up to 12 mm, which no margin covers (S0 reads the opening at each chunk's start); the real gripper's width is
+# not calibrated. The real CRX acceleration limit,
 # clearances and contact values are still null in configs/jing.json.
 TEST_ONLY_LIMITS = dict(max_joint_acceleration_rad_s2=20.0, arm_arm_clearance_m=0.02, table_clearance_m=0.01,
                         tcp_min_height_m=0.02, servo_hz=60, max_observation_age_s=0.5,

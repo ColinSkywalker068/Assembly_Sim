@@ -9,7 +9,8 @@ world shifted down by the tabletop height (RIG_T_WORLD); the layout is not moved
 - `table` / `g_table`, the workcell's table;
 - per side, the arm (`robot_<side>_arm_root` at the workcell's base pose, bench/crx.py) and the floating hand DexAgent
   plans with (`robot_<side>_<side>_base_tx` .. `_base_yaw`, bench/yam.py) held to the flange by a position-only weld
-  at the mount (flange_T_mount), with a wrist camera `wrist_<side>` where the workcell's wrist camera is;
+  at the mount (flange_T_mount), with a wrist camera `wrist_<side>` where the workcell's wrist camera is, and its
+  fingers coupled (`robot_<side>_<side>_fingers_coupled`);
 - `ego`, the workcell's agent camera;
 - explicit table pairs for every hand collision geom (the arms' come with DexAgent's runtime);
 - keyframe `home`: both arms at the workcell's home joints, each hand on its flange, the grippers fully open.
@@ -197,6 +198,7 @@ def scene_xml(workcell, links, hand):
     for arm in ARMS:
         ET.SubElement(equality, 'weld', body1=f'robot_{arm}_arm_gripper', body2=f'robot_{arm}_{arm}_base_yaw',
                       anchor='0 0 0', relpose=_values(relpose), torquescale='0')
+        equality.append(yam.coupling(arm, prefix=f'robot_{arm}_'))
     actuator = ET.SubElement(root, 'actuator')
     for arm in ARMS:
         actuator.extend(yam.actuators(hand, arm, prefix=f'robot_{arm}_'))

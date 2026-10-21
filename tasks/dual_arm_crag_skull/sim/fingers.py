@@ -52,10 +52,11 @@ class FingerReach:
         return self._joints(self.swept, heights, laterals, along)
 
     def stop_width(self, heights, laterals, along):
-        """The width between the pads when both tips have stopped on the points (each at its limit if it meets none)."""
+        """The width between the pads when the coupled fingers, closing together, stop on the points: at the joint
+        where the first tip meets one (at the pads' contact if neither meets any)."""
         joints = self.stop_joints(heights, laterals, along)
         low, high = self.gripper.contact_joint_m, self.gripper.travel_m
-        return self.gripper.width_between(*(float(np.clip(joints[tip], low, high)) for tip in ('tip_left', 'tip_right')))
+        return self.gripper.width(float(np.clip(max(joints.values()), low, high)))
 
 
 def finger_reach(gripper, cell_m=CELL_M, spacing_m=None):

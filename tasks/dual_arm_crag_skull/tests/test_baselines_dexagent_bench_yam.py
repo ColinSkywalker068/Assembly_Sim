@@ -59,7 +59,7 @@ def test_the_hand_follows_dexagents_naming(hand_xml, hand):
     _, paths = hand_xml
     for side, path in paths.items():
         root = ET.parse(path).getroot()
-        joints = [joint.get('name') for joint in root.iter('joint')]
+        joints = [joint.get('name') for joint in root.find('worldbody').iter('joint')]
         wrist = [f'{side}_{name}' for name in ('pos_x', 'pos_y', 'pos_z', 'rot_x', 'rot_y', 'rot_z')]
         assert joints == [*wrist, f'{side}_thumb_FE', f'{side}_index_FE']
         actuators = {element.get('joint'): element.get('name') for element in root.find('actuator')}
@@ -156,6 +156,91 @@ def test_the_fingers_have_isaacs_drive(hand_xml):
         np.testing.assert_allclose(_floats(actuator.get('biasprm')), [0.0, -drive.stiffness_n_m, -drive.damping_n_s_m])
         assert actuator.get('forcelimited') == 'true'
         np.testing.assert_allclose(_floats(actuator.get('forcerange')), [-drive.max_force_n, drive.max_force_n])
+
+
+def test_the_index_follows_the_thumb_as_stiff_as_the_contacts(hand_xml):
+    """The official MJCF's coupling of its two slides (polycoef 0 1 0 0 0), tip_right following tip_left as Isaac's
+    mimic joint does, at the bench's contact softness rather than MuJoCo's default."""
+    _, paths = hand_xml
+    for side, path in paths.items():
+        joints = list(ET.parse(path).getroot().find('equality'))
+        assert [(e.tag, e.get('name'), e.get('joint1'), e.get('joint2'), e.get('polycoef')) for e in joints] == [
+            ('joint', f'{side}_fingers_coupled', f'{side}_index_FE', f'{side}_thumb_FE', '0 1 0 0 0')]
+        assert {key: joints[0].get(key) for key in ('solref', 'solimp')} == yam.COUPLING
+    assert yam.FINGERS == {'tip_left': 'thumb', 'tip_right': 'index'}
+
+
+COUPLING_PROBE = textwrap.dedent('''
+    """Close the hand, its wrist rigid, on a fixed box between the pads, the references ramped at the drive\'s speed cap
+    as DexAgent\'s runtime keeps them: argv hand.xml box_centre(3) box_axes(9, columns) box_half(3) coupling(none |
+    default | the hand\'s) -> the two slides at rest."""
+    import json, sys
+    import xml.etree.ElementTree as ET
+    import mujoco
+    root = ET.parse(sys.argv[1]).getroot()
+    root.find('compiler').set('meshdir', sys.argv[1].rsplit('/robot/', 1)[0] + '/')
+    ET.SubElement(root, 'option', timestep='0.002', integrator='implicitfast', impratio='5', gravity='0 0 0')
+    for body in root.iter('body'):
+        for joint in [j for j in body.findall('joint') if '_pos_' in j.get('name') or '_rot_' in j.get('name')]:
+            body.remove(joint)
+    actuator = root.find('actuator')
+    for servo in [a for a in actuator if '_pos_' in a.get('name') or '_rot_' in a.get('name')]:
+        actuator.remove(servo)
+    coupled = root.find('equality')[0]
+    if sys.argv[5] == 'none':
+        root.remove(root.find('equality'))
+    elif sys.argv[5] == 'default':
+        del coupled.attrib['solref'], coupled.attrib['solimp']
+    ET.SubElement(root.find('worldbody'), 'geom', name='box', type='box', pos=sys.argv[2], size=sys.argv[4],
+                  quat=sys.argv[3], contype='0', conaffinity='0')
+    contact = ET.SubElement(root, 'contact')
+    for geom in root.iter('geom'):
+        name = geom.get('name') or ''
+        if name.startswith('collision_hand_left_') and 'hand_C_MC' not in name:
+            ET.SubElement(contact, 'pair', geom1='box', geom2=name, solref='0.005', solimp='0.99 0.999 0.0005',
+                          friction='0.8 0.8 0.005 0.0001 0.0001')
+    model = mujoco.MjModel.from_xml_string(ET.tostring(root, encoding='unicode'))
+    data = mujoco.MjData(model)
+    fingers = ('thumb', 'index')
+    closed = {f: model.jnt_range[model.joint(f'left_{f}_FE').id][1] for f in fingers}
+    for _ in range(750):
+        for f in fingers:
+            data.ctrl[model.actuator(f'left_{f}_FE_position').id] = min(closed[f], 0.1 * data.time)
+        mujoco.mj_step(model, data)
+    print(json.dumps({f: float(data.qpos[model.joint(f'left_{f}_FE').qposadr[0]]) for f in fingers}))
+''')
+
+
+@needs_dexagent
+def test_the_coupled_fingers_stop_together_on_a_box_off_the_middle(hand_xml, hand, tmp_path):
+    """A box 5 mm off the middle towards the thumb: coupled, the thumb touches first and both stop there, 10 mm wider
+    than the box (check_yam.predicted_stop_width, as Isaac measures it); uncoupled, or coupled at MuJoCo\'s default
+    softness, the index servo closes on the box\'s other face."""
+    from tasks.dual_arm_crag_skull.sim.check_yam import BOX_SIDE_M, predicted_stop_width
+    from core.robots.kinematics import R_to_quat
+    _, paths = hand_xml
+    script = tmp_path / 'probe.py'
+    script.write_text(COUPLING_PROBE)
+    gripper, depth, width, shift = hand.gripper, 0.005, 0.040, 0.005
+    closing = gripper.slide_axes['tip_left'] / np.linalg.norm(gripper.slide_axes['tip_left'])
+    approach = gripper.mount_T_tcp[:3, 2]
+    centre = gripper.mount_T_tcp[:3, 3] - approach * depth + closing * shift
+    axes = np.stack([closing, np.cross(approach, closing), approach], axis=1)
+    text = lambda values: ' '.join(format(float(v), '.17g') for v in values)
+    spans = {}
+    for coupling in ('hand', 'none', 'default'):
+        result = subprocess.run([dexenv.dexagent_python(), '-I', '-B', str(script), str(paths['left']), text(centre),
+                                 text(R_to_quat(axes)), text([width / 2, BOX_SIDE_M / 2, BOX_SIDE_M / 2]), coupling],
+                                capture_output=True, text=True, timeout=300)
+        assert result.returncode == 0, result.stderr[-3000:]
+        slides = json.loads(result.stdout)
+        opening = [gripper.travel_m - slides[yam.FINGERS[tip]] for tip in TIPS]
+        spans[coupling] = (gripper.width_between(*opening), slides['thumb'] - slides['index'])
+    predicted = predicted_stop_width(gripper, depth, width, BOX_SIDE_M / 2, shift)
+    assert predicted == pytest.approx(width + 2 * shift, abs=1e-4)
+    assert spans['hand'][0] == pytest.approx(predicted, abs=5e-4) and abs(spans['hand'][1]) < 3e-4
+    for loose in ('none', 'default'):
+        assert spans[loose][0] == pytest.approx(width, abs=5e-4) and abs(spans[loose][1]) > 0.009
 
 
 def test_the_wrist_is_the_mount_frame_with_z_the_approach(hand_xml, hand):

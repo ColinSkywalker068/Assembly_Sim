@@ -140,6 +140,11 @@ def test_the_scene_names_what_dexagent_looks_up(bench):
     assert [(w.get('body1'), w.get('body2'), w.get('torquescale')) for w in welds] == [
         ('robot_left_arm_gripper', 'robot_left_left_base_yaw', '0'),
         ('robot_right_arm_gripper', 'robot_right_right_base_yaw', '0')]
+    coupled = [e for e in root.find('equality') if e.tag == 'joint']
+    assert [(e.get('name'), e.get('joint1'), e.get('joint2'), e.get('polycoef')) for e in coupled] == [
+        (f'robot_{arm}_{arm}_fingers_coupled', f'robot_{arm}_{arm}_index_FE', f'robot_{arm}_{arm}_thumb_FE',
+         '0 1 0 0 0') for arm in ('left', 'right')]
+    assert all({key: e.get(key) for key in ('solref', 'solimp')} == yam.COUPLING for e in coupled)
 
 
 def test_the_home_keyframe_puts_each_wrist_on_its_flange_at_the_mount(bench):

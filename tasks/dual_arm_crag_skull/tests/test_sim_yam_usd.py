@@ -3,7 +3,7 @@ import numpy as np
 import pytest
 
 pxr = pytest.importorskip('pxr')
-from pxr import Gf, Usd, UsdGeom, UsdPhysics  # noqa: E402
+from pxr import Gf, Sdf, Usd, UsdGeom, UsdPhysics  # noqa: E402
 
 from core.robots.kinematics import T  # noqa: E402
 from core.robots.linear_4310 import load_linear_4310  # noqa: E402
@@ -11,7 +11,8 @@ from tasks.dual_arm_crag_skull.s0.kinematics import yam_flange_T_mount  # noqa: 
 from tasks.dual_arm_crag_skull.sim.yam_usd import FingerDrive, author_linear_4310  # noqa: E402
 
 GRIPPER = load_linear_4310()
-FLANGE = '/World/Robots/Left/flange'
+ARM = '/World/Robots/Left'
+FLANGE = f'{ARM}/flange'
 ROOT = '/World/Grippers/Left/YAM_Linear_4310'
 WORLD_T_FLANGE = T([0.4, -0.3, 1.1], [0.9238795, 0.0, 0.3826834, 0.0])  # 45 deg about y
 
@@ -35,13 +36,20 @@ def joint_frames(stage, joint):
     return first, second
 
 
-@pytest.fixture
-def scene():
+def arm_stage():
+    """A stage with the left arm's articulation root and its flange, a rigid body at WORLD_T_FLANGE."""
     stage = Usd.Stage.CreateInMemory()
     UsdGeom.Xform.Define(stage, '/World')
+    UsdPhysics.ArticulationRootAPI.Apply(UsdGeom.Xform.Define(stage, ARM).GetPrim())
     flange = UsdGeom.Xform.Define(stage, FLANGE)
     flange.AddTransformOp().Set(Gf.Matrix4d(WORLD_T_FLANGE.T.tolist()))
     UsdPhysics.RigidBodyAPI.Apply(flange.GetPrim())
+    return stage
+
+
+@pytest.fixture
+def scene():
+    stage = arm_stage()
     prims = author_linear_4310(stage, ROOT, flange_path=FLANGE, flange_T_mount=yam_flange_T_mount(), gripper=GRIPPER)
     return stage, prims
 
@@ -75,10 +83,26 @@ def test_meshes_sit_where_the_description_puts_them(scene):
 
 
 
-def test_finger_joints_slide_open_from_the_pad_contact_and_are_driven(scene):
+def test_finger_joints_slide_open_from_the_pad_contact_are_driven_and_move_together(scene):
+    """Each tip has its drive, and the one that is not DRIVEN_TIP follows it through a mimic joint, joint value equal
+    (gearing -1), as the real gripper's fingers move together."""
+    from tasks.dual_arm_crag_skull.sim.yam_usd import DRIVEN_TIP, MIMIC_AXIS
     stage, prims = scene
     world_T_mount = WORLD_T_FLANGE @ yam_flange_T_mount()
     drive = FingerDrive()
+    follower = next(tip for tip in prims.joints if tip != DRIVEN_TIP)
+    prim = stage.GetPrimAtPath(prims.joints[follower])
+    assert MIMIC_AXIS in ('rotX', 'rotY', 'rotZ')  # PhysX ignores any other instance name without a word
+    assert f'PhysxMimicJointAPI:{MIMIC_AXIS}' in prim.GetMetadata('apiSchemas').GetAddedOrExplicitItems()
+    assert [str(t) for t in prim.GetRelationship(f'physxMimicJoint:{MIMIC_AXIS}:referenceJoint').GetTargets()] == [
+        prims.joints[DRIVEN_TIP]]
+    axis = prim.GetAttribute(f'physxMimicJoint:{MIMIC_AXIS}:referenceJointAxis')
+    assert axis.Get() == MIMIC_AXIS and axis.GetTypeName() == Sdf.ValueTypeNames.Token
+    for name, value in (('gearing', -1.0), ('offset', 0.0)):  # the schema's types: PhysX reads floats
+        attribute = prim.GetAttribute(f'physxMimicJoint:{MIMIC_AXIS}:{name}')
+        assert attribute.Get() == value and attribute.GetTypeName() == Sdf.ValueTypeNames.Float
+    driven = stage.GetPrimAtPath(prims.joints[DRIVEN_TIP])
+    assert not [api for api in driven.GetMetadata('apiSchemas').GetAddedOrExplicitItems() if 'Mimic' in api]
     for tip, path in prims.joints.items():
         joint = UsdPhysics.PrismaticJoint(stage.GetPrimAtPath(path))
         assert joint.GetAxisAttr().Get() == 'Z'
@@ -137,11 +161,7 @@ def test_the_two_tips_never_collide_with_each_other(scene):
 
 
 def test_links_land_at_their_world_poses_under_a_moved_parent():
-    stage = Usd.Stage.CreateInMemory()
-    UsdGeom.Xform.Define(stage, '/World')
-    flange = UsdGeom.Xform.Define(stage, FLANGE)
-    flange.AddTransformOp().Set(Gf.Matrix4d(WORLD_T_FLANGE.T.tolist()))
-    UsdPhysics.RigidBodyAPI.Apply(flange.GetPrim())
+    stage = arm_stage()
     parent = UsdGeom.Xform.Define(stage, '/World/Grippers/Left')
     parent.AddTranslateOp().Set(Gf.Vec3d(1.0, -2.0, 0.5))
     prims = author_linear_4310(stage, ROOT, flange_path=FLANGE, flange_T_mount=yam_flange_T_mount(), gripper=GRIPPER)
@@ -382,3 +402,22 @@ def test_the_body_collider_is_its_hull_within_tolerance():
         planes = ConvexHull(vertices).equations
         inside |= (points[exact.vertices] @ planes[:, :3].T + planes[:, 3] <= HULL_TOLERANCE_M + 1e-9).all(axis=1)
     assert inside.all()
+
+
+def test_the_arm_solves_with_enough_position_iterations_for_the_coupled_fingers(scene):
+    """At the arm asset's 32 a pad stood 0.13-0.37 mm off a kinematic box, at 64 0.03 mm: the articulation the
+    gripper hangs on gets at least POSITION_ITERATIONS, a higher count stays, and a flange in no articulation is
+    refused."""
+    from tasks.dual_arm_crag_skull.sim.yam_usd import POSITION_ITERATIONS
+    stage, _ = scene
+    name = 'physxArticulation:solverPositionIterationCount'
+    assert stage.GetPrimAtPath(ARM).GetAttribute(name).Get() == POSITION_ITERATIONS == 64
+    assert 'PhysxArticulationAPI' in stage.GetPrimAtPath(ARM).GetMetadata('apiSchemas').GetAddedOrExplicitItems()
+    busier = arm_stage()
+    busier.GetPrimAtPath(ARM).CreateAttribute(name, Sdf.ValueTypeNames.Int).Set(128)
+    author_linear_4310(busier, ROOT, flange_path=FLANGE, flange_T_mount=yam_flange_T_mount(), gripper=GRIPPER)
+    assert busier.GetPrimAtPath(ARM).GetAttribute(name).Get() == 128
+    loose = Usd.Stage.CreateInMemory()
+    UsdPhysics.RigidBodyAPI.Apply(UsdGeom.Xform.Define(loose, FLANGE).GetPrim())
+    with pytest.raises(ValueError, match='articulation'):
+        author_linear_4310(loose, ROOT, flange_path=FLANGE, flange_T_mount=yam_flange_T_mount(), gripper=GRIPPER)
