@@ -323,6 +323,7 @@ def test_configured_values_come_from_jing_json(task):
     assert seeded.to_record() == initial_condition(task, 126, **CONFIG['baselines']['initial_condition']).to_record()
     assert canonical_protocol()['seed_splits'] == check_splits(CONFIG['baselines']['seed_splits'])
     assert canonical_protocol()['anchor'] == 'fixture'
+    assert canonical_protocol()['collider_inset_m'] == 0.0005  # every seam open by 1 mm (decided 2026-10-20)
 
 
 @pytest.mark.parametrize('path, value', [
@@ -333,6 +334,7 @@ def test_configured_values_come_from_jing_json(task):
     (('s2', 'completion_defaults', 'place', 'settle_s'), 0.1),
     (('baselines', 'success_tolerances_from'), 's2.completion_defaults.insert'),
     (('baselines', 'anchor'), 'free'),
+    (('baselines', 'collider_inset_m'), 0.0),
 ])
 def test_another_protocol_is_refused(task, path, value):
     config = copy.deepcopy(CONFIG)
@@ -476,6 +478,14 @@ def test_a_record_from_before_the_plan_loads_without_one(task):
 def test_a_malformed_plan_step_is_a_value_error(task):
     with pytest.raises(ValueError, match='fragment_id and insertion_direction'):
         replace(task, assembly_plan=({'fragment_id': 'frag_b'}, {'fragment_id': 'frag_c', 'insertion_direction': [1, 0, 0]}))
+
+
+@pytest.mark.parametrize('value', [-0.0005, float('nan'), '0.5 mm', None, True])
+def test_the_collider_inset_is_a_length_of_zero_or_more(value):
+    config = copy.deepcopy(CONFIG)
+    config['baselines']['collider_inset_m'] = value
+    with pytest.raises(ValueError, match='collider_inset_m must be'):
+        require_canonical(config)
 
 
 @pytest.mark.parametrize('value', ['withheld', 'Given', None])

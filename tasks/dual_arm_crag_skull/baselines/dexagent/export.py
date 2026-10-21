@@ -76,6 +76,12 @@ REQUIRED_CHECKS = ('source_video_identity_check', 'source_reference_provenance_c
                    'rigid_runtime_compile', 'hand_scene_from_recon')
 
 
+def _protocol_inset():
+    """The protocol's collider inset (configs/jing.json baselines.collider_inset_m): Isaac's colliders have it too."""
+    from ..task import canonical_protocol
+    return canonical_protocol()['collider_inset_m']
+
+
 def _workcell_physics():
     physics = json.loads((REPO_ROOT / 'core' / 'config' / 'workcell.json').read_text())['physics']
     return float(physics['fragment_density']), float(physics['static_friction'])
@@ -103,12 +109,16 @@ class ExportOptions:
     fallback_pitch_m: float = 0.004
     density_kg_m3: float = field(default_factory=lambda: _workcell_physics()[0])
     friction: tuple = field(default_factory=lambda: (_workcell_physics()[1], 0.02, 0.001))
+    collider_inset_m: float = field(default_factory=lambda: _protocol_inset())
 
     def __post_init__(self):
         for name in ('fps', 'fovy_deg', 'seconds_per_fragment', 'density_kg_m3', 'fallback_pitch_m', 'settle_s'):
             value = getattr(self, name)
             if isinstance(value, bool) or not isinstance(value, (int, float)) or not np.isfinite(value) or value <= 0:
                 raise ValueError(f'{name} must be a positive finite number')
+        inset = self.collider_inset_m
+        if isinstance(inset, bool) or not isinstance(inset, (int, float)) or not np.isfinite(inset) or inset < 0:
+            raise ValueError('collider_inset_m must be a length of 0 or more')
         if self.anchor_mode not in ANCHOR_MODES:
             raise ValueError(f'anchor_mode must be one of {ANCHOR_MODES}')
         if self.bench not in VARIANTS:
@@ -580,7 +590,8 @@ def write_assets(plan, out_dir):
         write_obj(folder / f'{fragment.object_id}.obj', *voxel_surface(fragment.decomposition))
         (folder / f'{fragment.object_id}.xml').write_text(asset_mjcf(
             fragment.object_id, f'{fragment.object_id}.obj', fragment.decomposition, (*fragment.rgb, 1.0),
-            plan.options.density_kg_m3, plan.options.friction, free=fragment.free))
+            plan.options.density_kg_m3, plan.options.friction, free=fragment.free,
+            inset_m=plan.options.collider_inset_m))
         x, y, z, *quat = pose_to_wxyz(fragment.initial_rig)
         assets.append({'name': fragment.object_id, 'xml': str((folder / f'{fragment.object_id}.xml').resolve()),
                        'x': x, 'y': y, 'z': z, 'quat': quat})

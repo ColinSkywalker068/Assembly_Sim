@@ -115,10 +115,42 @@ def test_asset_mjcf_follows_the_dexagent_asset_contract():
         asset_mjcf('Red-fragment', 'x.obj', decomposition, (1, 1, 1, 1), 650.0, (0.8, 0.02, 0.001))
 
 
+def test_the_collision_boxes_are_inset_as_the_protocol_says(tmp_path):
+    """Each box comes in by the inset on every face (its centre kept), so neighbouring fragments' seams open by twice
+    it, as in Isaac; the export takes the inset from the protocol."""
+    from tasks.dual_arm_crag_skull.baselines.task import canonical_protocol
+    vertices, faces = voxel_mesh(L_CELLS)
+    decomposition = box_decomposition(vertices.astype(float), faces.astype(np.int64))
+    exact = [half for _, half in decomposition.box_geometry()]
+    inset = [half for _, half in decomposition.box_geometry(inset_m=0.0005)]
+    for full, smaller in zip(exact, inset):
+        np.testing.assert_allclose(smaller, np.asarray(full) - 0.0005)
+    xml = asset_mjcf('red_fragment', 'red_fragment.obj', decomposition, (0.4, 0.0, 0.0, 1.0), 650.0,
+                     (0.8, 0.02, 0.001), inset_m=0.0005)
+    sizes = [np.array(chunk.split('"')[0].split(), dtype=float) for chunk in xml.split('type="box" size="')[1:]]
+    np.testing.assert_allclose(np.sort(np.concatenate(sizes)), np.sort(np.concatenate(inset)), atol=1e-9)
+    assert export.ExportOptions().collider_inset_m == canonical_protocol()['collider_inset_m']
+    with pytest.raises(ValueError, match='collider_inset_m'):
+        export.ExportOptions(collider_inset_m=-0.001)
+
+
 @pytest.fixture
 def cube_task(tmp_path):
     layout = write_layout(tmp_path / 'layout')
     return task_from_layout(layout, anchor_id='frag_a')
+
+
+def test_the_exported_assets_carry_the_protocols_inset(cube_task, tmp_path):
+    """Each 40 mm cube is one collision box; written out, its half size is 20 mm less the protocol's inset."""
+    from tasks.dual_arm_crag_skull.baselines.task import canonical_protocol
+    plan = export.plan_export(cube_task, export.ExportOptions())
+    assets = export.write_assets(plan, tmp_path / 'out')
+    inset = canonical_protocol()['collider_inset_m']
+    for asset in assets:
+        xml = Path(asset['xml']).read_text()
+        sizes = [np.array(chunk.split('"')[0].split(), dtype=float) for chunk in xml.split('type="box" size="')[1:]]
+        assert len(sizes) == 1
+        np.testing.assert_allclose(sizes[0], 0.02 - inset, atol=1e-9)
 
 
 def test_rig_transform_puts_the_pad_on_the_dexagent_tabletop():

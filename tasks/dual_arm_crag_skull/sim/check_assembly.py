@@ -18,8 +18,8 @@ speeds and the tracking error. They are the margins the S0 values must allow for
 --order ID,ID,... runs the plan's steps in another order the layout's straight insertions allow (reordered_plan), for
 an order the robot may manage where the plan's fails; the report records the order and whether it is the plan's.
 --no-video skips the cameras (about three fifths of a run's wall time) for quicker rounds; the telemetry, with every
-fragment's pose each control period, and the report are the same. --collider-inset-mm X is an experiment, not the
-task: every fragment's colliders X mm smaller on each face, opening the task's closed seams by 2X (recorded).
+fragment's pose each control period, and the report are the same. --collider-inset-mm X makes every fragment's
+colliders X mm smaller on each face instead of the protocol's baselines.collider_inset_m (an experiment; recorded).
 
 Writes DIR/assembly.json (last, before Kit shuts down), DIR/telemetry.npz, DIR/<camera>.mp4 and DIR/step_<k>.jpg (the
 close-up after each step's settle; fragments painted in the colours they are named by); exits 1 on any failure.
@@ -212,7 +212,7 @@ def judge(report):
     return failures
 
 
-def run(task_path, output, order=None, video=True, collider_inset_m=0.0):
+def run(task_path, output, order=None, video=True, collider_inset_m=None):
     from ..__main__ import DEFAULT_CONFIG
     from ..baselines.task import AssemblyTask, verify_task
     from ..experiments.assembly_replay_isaac import Recorder, display_colours, paint
@@ -277,7 +277,7 @@ def run(task_path, output, order=None, video=True, collider_inset_m=0.0):
                   'error': result['error'], 'ending_error': result['ending_error'],
                   'score': result['score'].to_record(), 'sim_s': float(backend.time_s), 'wall_s': time.time() - began,
                   'video': recorder is not None, 'frames': 0 if recorder is None else recorder.count,
-                  'collider_inset_m': collider_inset_m,
+                  'collider_inset_m': backend.collider_inset_m, 'collider_inset_is_protocol': collider_inset_m is None,
                   's0_margins': margins, 's0_margins_error': margins_error}
         report['failures'] = judge(report)
         report['pass'] = not report['failures']
@@ -312,10 +312,11 @@ def main(argv=None):
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--order', type=lambda text: text.split(','), help="fragment ids, comma separated")
     parser.add_argument('--no-video', action='store_true', help='no cameras: quicker, the same telemetry and report')
-    parser.add_argument('--collider-inset-mm', type=float, default=0.0,
-                        help='an experiment: fragment colliders this much smaller on each face (the task has 0)')
+    parser.add_argument('--collider-inset-mm', type=float, default=None,
+                        help="an experiment: fragment colliders this much smaller on each face, not the protocol's")
     args = parser.parse_args(argv)
-    run(args.task, args.output, args.order, video=not args.no_video, collider_inset_m=args.collider_inset_mm / 1000)
+    inset = None if args.collider_inset_mm is None else args.collider_inset_mm / 1000
+    run(args.task, args.output, args.order, video=not args.no_video, collider_inset_m=inset)
     return 0
 
 

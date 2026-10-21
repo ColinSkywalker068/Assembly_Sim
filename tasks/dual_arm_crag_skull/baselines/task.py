@@ -397,15 +397,20 @@ def success_criterion(config):
 def protocol(config):
     """What every compared trial is held to: seed bands, placement parameters, success criterion, how the anchor is
     held ('fixture': at its goal for the whole trial, so nothing can move it), whether every method is given the
-    task's assembly plan ('given'), claims directory."""
+    task's assembly plan ('given'), how much smaller than its voxel cells every fragment's collision geometry is on
+    each face (collider_inset_m: each seam open by twice it), claims directory."""
     baselines = config['baselines']
     if baselines.get('assembly_plan') != 'given':
         raise ValueError("baselines.assembly_plan must be 'given' (every method is given the task's assembly plan, the "
                          f"only protocol the runners implement), not {baselines.get('assembly_plan')!r}")
+    inset = baselines.get('collider_inset_m')
+    if isinstance(inset, bool) or not isinstance(inset, (int, float)) or not np.isfinite(inset) or inset < 0:
+        raise ValueError(f'baselines.collider_inset_m must be a length of 0 or more (m), not {inset!r}')
     return {'seed_splits': check_splits(baselines['seed_splits']),
             'initial_condition': dict(baselines['initial_condition']),
             'success': success_criterion(config), 'anchor': baselines['anchor'],
-            'assembly_plan': baselines.get('assembly_plan'), 'heldout_claims_dir': baselines['heldout_claims_dir']}
+            'assembly_plan': baselines.get('assembly_plan'), 'collider_inset_m': float(inset),
+            'heldout_claims_dir': baselines['heldout_claims_dir']}
 
 
 def canonical_protocol():
@@ -418,8 +423,8 @@ def require_canonical(config):
     passing another configuration."""
     if protocol(config) != canonical_protocol():
         raise ValueError('baselines.seed_splits, baselines.initial_condition, the success criterion, baselines.anchor, '
-                         f'baselines.assembly_plan and baselines.heldout_claims_dir must be the ones in '
-                         f'{DEFAULT_CONFIG.name}')
+                         'baselines.assembly_plan, baselines.collider_inset_m and baselines.heldout_claims_dir '
+                         f'must be the ones in {DEFAULT_CONFIG.name}')
 
 
 def canonical_split(seed):

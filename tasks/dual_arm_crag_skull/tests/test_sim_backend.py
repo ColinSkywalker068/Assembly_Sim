@@ -71,6 +71,18 @@ def test_a_collider_inset_takes_the_same_off_every_face():
         inset_box_scale((0.016, 0.008, 0.024), 0.0036)
 
 
+def test_the_fragment_colliders_are_inset_as_the_protocol_says_unless_an_experiment_asks_otherwise():
+    import json
+
+    from tasks.dual_arm_crag_skull.__main__ import DEFAULT_CONFIG
+    from tasks.dual_arm_crag_skull.sim.backend import fragment_collider_inset
+    config = json.loads(DEFAULT_CONFIG.read_text())
+    assert fragment_collider_inset(config) == config['baselines']['collider_inset_m'] == 0.0005
+    assert fragment_collider_inset(config, 0.0) == 0.0
+    with pytest.raises(ValueError, match='must not be negative'):
+        fragment_collider_inset(config, -0.001)
+
+
 def test_cameras_render_at_their_own_rate():
     assert camera_due(None, 0.0, 10)
     assert not camera_due(0.0, 0.05, 10)

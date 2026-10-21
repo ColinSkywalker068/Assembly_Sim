@@ -132,13 +132,16 @@ class BoxDecomposition:
     def cell_centres(self):
         return np.asarray(self.origin_m) + (self.cells + 0.5) * self.pitch_m
 
-    def box_geometry(self):
-        """[(centre (3,), half_size (3,))] in the fragment frame."""
+    def box_geometry(self, inset_m=0.0):
+        """[(centre (3,), half_size (3,))] in the fragment frame, each box `inset_m` smaller on every face."""
         origin, pitch, out = np.asarray(self.origin_m), self.pitch_m, []
         for i0, i1, j0, j1, k0, k1 in self.boxes:
             low = origin + np.array([i0, j0, k0]) * pitch
             high = origin + np.array([i1 + 1, j1 + 1, k1 + 1]) * pitch
-            out.append(((low + high) / 2, (high - low) / 2))
+            half = (high - low) / 2 - float(inset_m)
+            if (half <= 0).any():
+                raise ValueError(f'an inset of {inset_m} m leaves nothing of a {2 * half.min() + 2 * inset_m} m box')
+            out.append(((low + high) / 2, half))
         return out
 
 
@@ -219,15 +222,16 @@ def _vec(values):
     return ' '.join(f'{float(v):.9g}' for v in values)
 
 
-def asset_mjcf(name, mesh_file, decomposition, rgba, density_kg_m3, friction, free=True):
+def asset_mjcf(name, mesh_file, decomposition, rgba, density_kg_m3, friction, free=True, inset_m=0.0):
     """An MJCF asset with one root body named `name` (DexAgent's asset contract), with a free joint `name_free`
-    unless `free` is False (a fixed body). The visual mesh is massless and never collides; the disjoint boxes carry
-    the mass, the friction and explicit contact parameters."""
+    unless `free` is False (a fixed body). The visual mesh is massless and never collides; the disjoint boxes, each
+    `inset_m` smaller on every face (the protocol's collider_inset_m), carry the mass, the friction and explicit
+    contact parameters."""
     if not re.fullmatch(r'[a-z][a-z0-9_]*', name):
         raise ValueError(f'asset name {name!r} must be a DexAgent-safe identifier')
     geoms = [f'      <geom name="{name}_visual" type="mesh" mesh="{name}_visual" rgba="{_vec(rgba)}" contype="0" '
              f'conaffinity="0" group="2" density="0"/>']
-    for index, (centre, half) in enumerate(decomposition.box_geometry()):
+    for index, (centre, half) in enumerate(decomposition.box_geometry(inset_m)):
         geoms.append(f'      <geom name="{name}_c{index:03d}" type="box" size="{_vec(half)}" pos="{_vec(centre)}" '
                      f'rgba="0 0 0 0" density="{float(density_kg_m3):.9g}" friction="{_vec(friction)}" '
                      f'solref="{_vec(SOLREF)}" solimp="{_vec(SOLIMP)}"/>')

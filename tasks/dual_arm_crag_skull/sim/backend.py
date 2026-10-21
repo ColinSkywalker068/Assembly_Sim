@@ -168,6 +168,16 @@ def checked_start(start):
     return start
 
 
+def fragment_collider_inset(config, override=None):
+    """How much smaller than its voxel cells every fragment's colliders are on each face: the protocol's
+    (baselines.collider_inset_m), or `override` for an experiment."""
+    from ..baselines.task import protocol
+    inset = protocol(config)['collider_inset_m'] if override is None else float(override)
+    if not inset >= 0:
+        raise ValueError(f'the collider inset must not be negative, got {inset}')
+    return inset
+
+
 def inset_box_scale(scale, inset_m):
     """A box collider's size with `inset_m` taken off each face, about the same centre: a fragment made that much
     smaller all round, which opens a gap of twice it to each neighbour. ValueError if a side would be under 1 mm."""
@@ -206,9 +216,9 @@ class IsaacAssemblyBackend:
 
     def __init__(self, config, *, headless=True, cameras=True, start_settle_s=1.0, max_settle_s=3.0,
                  rest=RestTolerance(), drive=FingerDrive(), adapter_thickness_m=YAM_PROVISIONAL_ADAPTER_THICKNESS_M,
-                 collider_inset_m=0.0):
-        """collider_inset_m: an experiment, not the task: every fragment's box colliders made that much smaller on each
-        face (inset_box_scale), so that the seams, which the task has closed, open by twice it."""
+                 collider_inset_m=None):
+        """Every fragment's box colliders are made smaller on each face (inset_box_scale) by the protocol's
+        baselines.collider_inset_m, which opens each seam by twice it; a `collider_inset_m` given is an experiment."""
         from core.workcell.config import load_workcell_preset
         s0 = config['s0']
         self.physics_hz, self.control_hz, self.camera_hz = (float(s0[key]) for key in
@@ -228,9 +238,7 @@ class IsaacAssemblyBackend:
         self.model = yam_model(workcell=self.workcell, thickness_m=adapter_thickness_m)
         self.width_range = {arm: yam_width_range_m(self.gripper) for arm in ARMS}
         self.use_cameras = bool(cameras)
-        self.collider_inset_m = float(collider_inset_m)
-        if not 0 <= self.collider_inset_m:
-            raise ValueError('collider_inset_m must not be negative')
+        self.collider_inset_m = fragment_collider_inset(config, collider_inset_m)
         self.task, self.start, self._fragments, self._layout_key = None, None, None, None
         self._products, self._annotators, self._frames, self._frame_time = [], {}, None, None
         self._steps = 0
