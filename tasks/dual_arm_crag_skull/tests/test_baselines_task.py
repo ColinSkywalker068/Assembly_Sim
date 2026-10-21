@@ -323,7 +323,7 @@ def test_configured_values_come_from_jing_json(task):
     assert seeded.to_record() == initial_condition(task, 126, **CONFIG['baselines']['initial_condition']).to_record()
     assert canonical_protocol()['seed_splits'] == check_splits(CONFIG['baselines']['seed_splits'])
     assert canonical_protocol()['anchor'] == 'fixture'
-    assert canonical_protocol()['collider_inset_m'] == 0.0005  # every seam open by 1 mm (decided 2026-10-20)
+    assert canonical_protocol()['collider_inset_m'] == 0.00025  # every seam open by 0.5 mm (changed 2026-10-21)
 
 
 @pytest.mark.parametrize('path, value', [

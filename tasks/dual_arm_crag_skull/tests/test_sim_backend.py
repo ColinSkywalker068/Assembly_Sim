@@ -86,7 +86,7 @@ def test_the_fragment_colliders_are_inset_as_the_protocol_says_unless_an_experim
     from tasks.dual_arm_crag_skull.__main__ import DEFAULT_CONFIG
     from tasks.dual_arm_crag_skull.sim.backend import fragment_collider_inset
     config = json.loads(DEFAULT_CONFIG.read_text())
-    assert fragment_collider_inset(config) == config['baselines']['collider_inset_m'] == 0.0005
+    assert fragment_collider_inset(config) == config['baselines']['collider_inset_m'] == 0.00025
     assert fragment_collider_inset(config, 0.0) == 0.0
     with pytest.raises(ValueError, match='must not be negative'):
         fragment_collider_inset(config, -0.001)

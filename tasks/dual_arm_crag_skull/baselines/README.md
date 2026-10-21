@@ -63,7 +63,7 @@ review's surviving mutations and the new behaviour, 54 mutations are now caught.
     - placement parameters;
     - the success criterion (`s2.completion_defaults.place`, a `released_stable` predicate: 3 mm / 3° after `settle_s` = 1 s);
     - the anchor fixture and the assembly plan (`baselines.anchor = "fixture"`, `baselines.assembly_plan = "given"`);
-    - the seam clearance (`baselines.collider_inset_m` = 0.5 mm: every fragment's collision boxes are that much smaller on each face than its voxel cells, so each seam is open by 1 mm);
+    - the seam clearance (`baselines.collider_inset_m` = 0.25 mm: every fragment's collision boxes are that much smaller on each face than its voxel cells, so each seam is open by 0.5 mm);
     - the held-out claims directory.
   - `require_canonical(config)` refuses any other configuration.
   - `verify_task(task)` rebuilds the task from its layout and refuses one that differs in any way: tolerance, placement, split label, layout, meshes or plan; and, since the protocol gives every method the plan, a task without one.
@@ -163,7 +163,7 @@ review's surviving mutations and the new behaviour, 54 mutations are now caught.
   - The port (variant `crx_yam_stage3`) is listed separately. It removes the robot difference; MuJoCo planning and
     open-loop execution on Isaac remain (first paired probe: the carried fragment ends 0.49 mm / 0.08° from where
     MuJoCo put it; more to do).
-- **Every seam is open by 1 mm for every method** (`baselines.collider_inset_m = 0.0005`, part of the protocol; decided 2026-10-20). The layout's fragments meet face to face; with the seams closed, our scripted reference (`sim/assemble.py`) brought each fragment to the start of its insertion within 0.1 mm in Isaac and the insertion still jammed (orange turned 35°, blue stopped one voxel high). With 1 mm seams the same insertions end 0.1 mm off, 1.0 mm after the release. The Isaac backend insets each fragment's box colliders, and DexAgent's export its MJCF boxes, by the protocol's value; the meshes shown, the cells, the goals and the plan are unchanged.
+- **Every seam is open by 0.5 mm for every method** (`baselines.collider_inset_m = 0.00025`, part of the protocol; decided 2026-10-20 at 1 mm, changed 2026-10-21). The layout's fragments meet face to face; with the seams closed, our scripted reference (`sim/assemble.py`) brought each fragment to the start of its insertion within 0.1 mm in Isaac and the insertion still jammed (orange turned 35°, blue stopped one voxel high). With 1 mm seams the same insertions ended 0.1 mm off, but a fragment resting on fragments sank 1 mm a layer, and cyan (on blue and on red) tipped 3.8° by itself once in place, in the way of the next insertion (Isaac: every prefix of the plan put at its goals and settled). With 0.5 mm seams the worst of every prefix is 0.96 mm / 1.9°; insetting only the sideways faces kept them at 0.03° but jammed a sideways insertion. The Isaac backend insets each fragment's box colliders, and DexAgent's export its MJCF boxes, by the protocol's value; the meshes shown, the cells, the goals and the plan are unchanged.
 - **A fixture holds the anchor at its goal for every method** (`baselines.anchor = "fixture"` in `configs/jing.json`, part of the protocol `require_canonical` checks; decided 2026-10-18). Alone it is not statically stable (below).
   - `KinematicBackend` never lets a gripper take the anchor.
   - A DexAgent trial refuses `anchor_mode='free'`; `export` can still write a free anchor for diagnostics.
