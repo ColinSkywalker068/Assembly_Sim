@@ -268,6 +268,27 @@ def test_camera_observations_keep_the_frame_sample_time(task):
     assert observation.cameras['agent'].timestamp_s == 0.0
 
 
+class SkyCamera(KinematicBackend):
+    """Some rays hit nothing: Isaac reports them as infinite depth (and a renderer may give NaN or a negative)."""
+
+    def camera_frames(self):
+        frames = {}
+        for name, frame in super().camera_frames().items():
+            depth = np.array(frame.depth_m, dtype=np.float32)
+            depth[0, :3] = [np.inf, np.nan, -1.0]
+            frames[name] = replace(frame, depth_m=depth)
+        return frames
+
+
+def test_a_ray_that_hits_nothing_is_invalid_depth_not_a_failed_observation(task):
+    env = adapter(backend(SkyCamera))
+    observation = env.reset(task, 101)
+    depth = observation.cameras['agent'].depth_m
+    assert depth[0, :3].tolist() == [0.0, 0.0, 0.0] and np.isfinite(depth).all() and depth[1, 1] == 1.0
+    moved = env.step(command(HOME + 0.1 * NUDGE)).observation
+    assert moved.cameras['agent'].depth_m[0, 0] == 0.0
+
+
 SHIFT = np.eye(4)
 SHIFT[0, 3] = 0.01
 

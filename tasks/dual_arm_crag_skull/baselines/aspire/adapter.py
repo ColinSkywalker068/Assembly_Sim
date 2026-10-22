@@ -110,6 +110,14 @@ def as_pose(world_T):
     return Pose(position=values[:3], quaternion_wxyz=values[3:], frame=BASE_FRAME)
 
 
+def valid_depth(depth_m):
+    """A camera's depth as ASPIRE's CameraObservation takes it: finite and non-negative, 0 where a ray hit nothing (its
+    point clouds keep only finite depths above 0). Isaac reports such a ray as infinite, and one such pixel made the
+    whole observation, and the motion that asked for it, fail (2026-10-22 campaign: 11 of 30 development trials)."""
+    depth = np.asarray(depth_m, dtype=np.float32)
+    return np.where(np.isfinite(depth) & (depth > 0.0), depth, np.float32(0.0))
+
+
 def pose_mapping(world_T):
     """ASPIRE's mapping pose (position, quaternion_wxyz, frame) of a 4x4 in robot_base, accepted by move_to_pose."""
     values = pose_to_wxyz(world_T)
@@ -410,9 +418,9 @@ class SkullAssemblyAdapter:
         snapshot = self.backend.robot_state()
         if fresh or self._frames is None:
             self._frames = self.backend.camera_frames()
-        cameras = {name: CameraObservation(rgb=frame.rgb, depth_m=frame.depth_m, intrinsics=frame.intrinsics,
-                                           frame=f'camera/{name}', camera_pose=as_pose(frame.world_T_camera),
-                                           timestamp_s=frame.time_s)
+        cameras = {name: CameraObservation(rgb=frame.rgb, depth_m=valid_depth(frame.depth_m),
+                                           intrinsics=frame.intrinsics, frame=f'camera/{name}',
+                                           camera_pose=as_pose(frame.world_T_camera), timestamp_s=frame.time_s)
                    for name, frame in self._frames.items()}
         return Observation(cameras=cameras, robot_state=self._robot_state(snapshot),
                            task_context=self.get_task_context(), timestamp_s=snapshot.time_s)
