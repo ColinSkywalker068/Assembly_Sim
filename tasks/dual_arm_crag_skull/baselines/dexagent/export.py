@@ -27,13 +27,14 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 import numpy as np
 from scipy.spatial.transform import Rotation, Slerp
 
-from ..task import file_sha256, pose_to_wxyz
+from ..task import INSET_PARTS, box_axis_insets, collider_inset, file_sha256, pose_to_wxyz
 from . import dexenv
 from .geometry import asset_mjcf, box_decomposition, goal_neighbours, load_mesh, voxel_surface, write_obj
 
@@ -77,7 +78,8 @@ REQUIRED_CHECKS = ('source_video_identity_check', 'source_reference_provenance_c
 
 
 def _protocol_inset():
-    """The protocol's collider inset (configs/jing.json baselines.collider_inset_m): Isaac's colliders have it too."""
+    """The protocol's collider inset, {'horizontal', 'vertical'} (configs/jing.json baselines.collider_inset_m):
+    Isaac's colliders have it too."""
     from ..task import canonical_protocol
     return canonical_protocol()['collider_inset_m']
 
@@ -109,7 +111,7 @@ class ExportOptions:
     fallback_pitch_m: float = 0.004
     density_kg_m3: float = field(default_factory=lambda: _workcell_physics()[0])
     friction: tuple = field(default_factory=lambda: (_workcell_physics()[1], 0.02, 0.001))
-    collider_inset_m: float = field(default_factory=lambda: _protocol_inset())
+    collider_inset_m: dict = field(default_factory=lambda: _protocol_inset())  # or a length for every face
 
     def __post_init__(self):
         for name in ('fps', 'fovy_deg', 'seconds_per_fragment', 'density_kg_m3', 'fallback_pitch_m', 'settle_s'):
@@ -117,8 +119,8 @@ class ExportOptions:
             if isinstance(value, bool) or not isinstance(value, (int, float)) or not np.isfinite(value) or value <= 0:
                 raise ValueError(f'{name} must be a positive finite number')
         inset = self.collider_inset_m
-        if isinstance(inset, bool) or not isinstance(inset, (int, float)) or not np.isfinite(inset) or inset < 0:
-            raise ValueError('collider_inset_m must be a length of 0 or more')
+        object.__setattr__(self, 'collider_inset_m', collider_inset(
+            dict(inset) if isinstance(inset, Mapping) else dict.fromkeys(INSET_PARTS, inset), 'collider_inset_m'))
         if self.anchor_mode not in ANCHOR_MODES:
             raise ValueError(f'anchor_mode must be one of {ANCHOR_MODES}')
         if self.bench not in VARIANTS:
@@ -131,7 +133,8 @@ class ExportOptions:
         object.__setattr__(self, 'friction', tuple(map(float, self.friction)))
 
     def to_record(self):
-        return {name: getattr(self, name) for name in self.__dataclass_fields__}
+        return {name: dict(value) if isinstance(value, Mapping) else value
+                for name, value in ((name, getattr(self, name)) for name in self.__dataclass_fields__)}
 
 
 def rig_transform(task, pad_xy, yaw_deg):
@@ -581,6 +584,14 @@ def scene_recon(plan, staged, media):
             'source': 'assembly_sim export (stand-in inputs)'}
 
 
+def _fragment_insets(inset, fragment):
+    """Per axis of the fragment frame (its boxes' axes): the vertical part across the one vertical at its goal."""
+    try:
+        return box_axis_insets(inset, fragment.goal_rig[:3, :3])
+    except ValueError as error:
+        raise ValueError(f'{fragment.object_id}: {error}') from None
+
+
 def write_assets(plan, out_dir):
     """Meshes and MJCF assets under out_dir/stage2/assets/<id>/; returns the stage_on_bench asset list."""
     assets = []
@@ -591,8 +602,8 @@ def write_assets(plan, out_dir):
         (folder / f'{fragment.object_id}.xml').write_text(asset_mjcf(
             fragment.object_id, f'{fragment.object_id}.obj', fragment.decomposition, (*fragment.rgb, 1.0),
             plan.options.density_kg_m3, plan.options.friction, free=fragment.free,
-            inset_m=plan.options.collider_inset_m))
-        x, y, z, *quat = pose_to_wxyz(fragment.initial_rig)
+            inset_m=_fragment_insets(plan.options.collider_inset_m, fragment)))
+        x, y, z, *quat = pose_to_wxyz(fragment.initial_rig)  # the box insets above follow the goal, not the start
         assets.append({'name': fragment.object_id, 'xml': str((folder / f'{fragment.object_id}.xml').resolve()),
                        'x': x, 'y': y, 'z': z, 'quat': quat})
     return assets

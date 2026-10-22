@@ -88,6 +88,7 @@ def main(argv=None):
         report = {'task_id': task.task_id, 'layout': task.layout, 'layout_sha256': task.layout_sha256,
                   'orders_from': 'layout plan directions, every order' if args.all_orders else 'the task plan',
                   'settle_s': args.settle_s, 'max_settle_s': args.max_settle_s, 'physics_hz': backend.physics_hz,
+                  'collider_inset_m': backend.collider_inset_m,
                   'orders': sorted(judged, key=lambda row: (row['worst_over_tolerance'], row['order'])),
                   'sets': list(rows.values())}
         args.out.write_text(json.dumps(report, indent=1) + '\n')  # before shutdown: Kit ends the process there

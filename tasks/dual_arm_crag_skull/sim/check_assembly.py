@@ -19,7 +19,8 @@ speeds and the tracking error. They are the margins the S0 values must allow for
 an order the robot may manage where the plan's fails; the report records the order and whether it is the plan's.
 --no-video skips the cameras (about three fifths of a run's wall time) for quicker rounds; the telemetry, with every
 fragment's pose each control period, and the report are the same. --collider-inset-mm X makes every fragment's
-colliders X mm smaller on each face instead of the protocol's baselines.collider_inset_m (an experiment; recorded).
+colliders X mm smaller on each face instead of the protocol's baselines.collider_inset_m, and
+--collider-inset-vertical-mm Y makes it Y on the top and bottom where the fragment ends (an experiment; recorded).
 --from-step K starts at the plan's K-th step, the fragments of the steps before it put at their goals at reset (to
 work on one step without running those before it; recorded).
 
@@ -234,6 +235,20 @@ def judge(report):
     return failures
 
 
+def experiment_inset(every_mm=None, vertical_mm=None):
+    """The collider inset an experiment asks for, {'horizontal', 'vertical'} in m, or None for the protocol's.
+    `every_mm` alone is every face; with `vertical_mm` it is the sideways faces and `vertical_mm` the top and bottom
+    where a fragment ends; `vertical_mm` alone keeps the protocol's horizontal part."""
+    if every_mm is None and vertical_mm is None:
+        return None
+    from ..baselines.task import canonical_protocol
+    protocol = canonical_protocol()['collider_inset_m']
+    horizontal = protocol['horizontal'] if every_mm is None else every_mm / 1000
+    if vertical_mm is not None:
+        return {'horizontal': horizontal, 'vertical': vertical_mm / 1000}
+    return {'horizontal': horizontal, 'vertical': horizontal}
+
+
 def run(task_path, output, order=None, video=True, collider_inset_m=None, from_step=1):
     from ..__main__ import DEFAULT_CONFIG
     from ..baselines.task import AssemblyTask, verify_task
@@ -343,8 +358,10 @@ def main(argv=None):
     parser.add_argument('--from-step', type=int, default=1, help="the plan's step to start at (the ones before put)")
     parser.add_argument('--collider-inset-mm', type=float, default=None,
                         help="an experiment: fragment colliders this much smaller on each face, not the protocol's")
+    parser.add_argument('--collider-inset-vertical-mm', type=float, default=None,
+                        help='an experiment: this much instead on the top and bottom where a fragment ends')
     args = parser.parse_args(argv)
-    inset = None if args.collider_inset_mm is None else args.collider_inset_mm / 1000
+    inset = experiment_inset(args.collider_inset_mm, args.collider_inset_vertical_mm)
     run(args.task, args.output, args.order, video=not args.no_video, collider_inset_m=inset, from_step=args.from_step)
     return 0
 

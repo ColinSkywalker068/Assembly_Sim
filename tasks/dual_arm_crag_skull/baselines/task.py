@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from pathlib import Path
 
@@ -394,22 +395,55 @@ def success_criterion(config):
     return {key: float(predicate[key]) for key in ('position_tolerance_m', 'rotation_tolerance_deg', 'settle_s')}
 
 
+INSET_PARTS = ('horizontal', 'vertical')
+AXIS_TOLERANCE = 1e-5  # rad: well above a float32 quaternion's rounding, far below a turn worth insetting differently
+
+
+def collider_inset(value, name='baselines.collider_inset_m'):
+    """{'horizontal': m, 'vertical': m}, checked: how much smaller than its voxel cells a fragment's collision boxes
+    are on each face that is sideways where the fragment ends (each side seam opens by twice it) and on each face that
+    is its top or bottom there (twice the vertical part between layers)."""
+    if not isinstance(value, Mapping) or set(value) != set(INSET_PARTS):
+        raise ValueError(f'{name} must be {{"horizontal": m, "vertical": m}}, not {value!r}')
+    for part in INSET_PARTS:
+        length = value[part]
+        if isinstance(length, bool) or not isinstance(length, (int, float)) or not np.isfinite(length) or length < 0:
+            raise ValueError(f'{name}.{part} must be a length of 0 or more (m), not {length!r}')
+    return {part: float(value[part]) for part in INSET_PARTS}
+
+
+def box_axis_insets(inset, world_R_box):
+    """(3,) what an inset takes off a box's two faces across each of its own axes: the vertical part across the axis
+    that is vertical where its fragment ends (`world_R_box`: the box's axes in the world at the fragment's goal), the
+    horizontal part across the other two; with equal parts, either on every face whatever the goal. ValueError for a box
+    with an axis neither vertical nor horizontal there, within AXIS_TOLERANCE."""
+    if inset['horizontal'] == inset['vertical']:
+        return np.full(3, inset['vertical'])
+    axes = np.asarray(world_R_box, dtype=float)
+    up = np.abs(axes[2])  # each axis's sine of its angle to the horizontal
+    vertical = np.hypot(axes[0], axes[1]) <= AXIS_TOLERANCE  # its sine to the vertical, small
+    if np.count_nonzero(vertical) != 1 or not np.all(vertical | (up <= AXIS_TOLERANCE)):
+        degrees = np.round(np.degrees(np.arcsin(np.clip(up, 0.0, 1.0))), 4).tolist()
+        raise ValueError('an inset with different horizontal and vertical parts needs each box axis vertical or '
+                         f'horizontal at the goal; the box axes are {degrees} deg from horizontal')
+    return np.where(vertical, inset['vertical'], inset['horizontal'])
+
+
 def protocol(config):
     """What every compared trial is held to: seed bands, placement parameters, success criterion, how the anchor is
     held ('fixture': at its goal for the whole trial, so nothing can move it), whether every method is given the
     task's assembly plan ('given'), how much smaller than its voxel cells every fragment's collision geometry is on
-    each face (collider_inset_m: each seam open by twice it), claims directory."""
+    its faces sideways and on its top and bottom where it ends (collider_inset_m, collider_inset: each seam open by
+    twice that), claims directory."""
     baselines = config['baselines']
     if baselines.get('assembly_plan') != 'given':
         raise ValueError("baselines.assembly_plan must be 'given' (every method is given the task's assembly plan, the "
                          f"only protocol the runners implement), not {baselines.get('assembly_plan')!r}")
-    inset = baselines.get('collider_inset_m')
-    if isinstance(inset, bool) or not isinstance(inset, (int, float)) or not np.isfinite(inset) or inset < 0:
-        raise ValueError(f'baselines.collider_inset_m must be a length of 0 or more (m), not {inset!r}')
     return {'seed_splits': check_splits(baselines['seed_splits']),
             'initial_condition': dict(baselines['initial_condition']),
             'success': success_criterion(config), 'anchor': baselines['anchor'],
-            'assembly_plan': baselines.get('assembly_plan'), 'collider_inset_m': float(inset),
+            'assembly_plan': baselines.get('assembly_plan'),
+            'collider_inset_m': collider_inset(baselines.get('collider_inset_m')),
             'heldout_claims_dir': baselines['heldout_claims_dir']}
 
 

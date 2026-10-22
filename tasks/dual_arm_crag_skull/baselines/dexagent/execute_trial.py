@@ -27,7 +27,7 @@ from core.robots.linear_4310 import load_linear_4310
 from ...contracts.actions import ARMS
 from ..backend import KinematicBackend
 from ..scoring import RunRecord, append_records, refuse_repeats
-from ..task import AssemblyTask, verify_task
+from ..task import INSET_PARTS, AssemblyTask, collider_inset, verify_task
 from .executor import Execution, execute, read_delivery, servo_commands
 from .export import VARIANTS, load_manifest, pose_matrix
 from .s0_check import SPEC_SCHEMA, contact_objects, limits_from_record
@@ -90,6 +90,13 @@ def execute_trial(trial_dir, backend, model, *, test_only, records=None):
     if manifest.get('variant') != VARIANT:
         raise ValueError(f'{trial} was not exported for the shared hardware ({VARIANT})')
     task = verify_task(AssemblyTask.from_record(manifest['task']))
+    recorded = manifest.get('options', {}).get('collider_inset_m', 0.0)  # exports before the protocol's inset had none
+    planned_inset = collider_inset(recorded if isinstance(recorded, dict) else dict.fromkeys(INSET_PARTS, recorded),
+                                   "the export's collider_inset_m")
+    built = getattr(backend, 'collider_inset_m', None)  # None: a backend without colliders (the kinematic double)
+    if built is not None and planned_inset != dict(built):
+        raise ValueError(f'{trial} was planned with fragment colliders inset {planned_inset} (an export from before the '
+                         f"protocol's inset has none); this backend insets them {dict(built)}")
     if task.split == 'heldout':
         if records is None:
             raise ValueError(f'seed {task.seed} is held out: its execution must be recorded (pass records)')

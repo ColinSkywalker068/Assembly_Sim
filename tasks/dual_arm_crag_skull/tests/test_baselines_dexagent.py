@@ -86,7 +86,7 @@ def test_the_visual_mesh_is_the_closed_exterior_of_the_solid_where_cells_touch_a
     out = tmp_path / 'assets'
     plan = SimpleNamespace(fragments=[SimpleNamespace(object_id='red_fragment', vertices=vertices, faces=faces,
                                                       decomposition=decomposition, rgb=(1.0, 0.0, 0.0), free=True,
-                                                      initial_rig=np.eye(4))],
+                                                      initial_rig=np.eye(4), goal_rig=np.eye(4))],
                            options=export.ExportOptions())
     export.write_assets(plan, out)
     obj = trimesh.load(out / 'stage2' / 'assets' / 'red_fragment' / 'red_fragment.obj', process=True)
@@ -129,9 +129,14 @@ def test_the_collision_boxes_are_inset_as_the_protocol_says(tmp_path):
                      (0.8, 0.02, 0.001), inset_m=0.0005)
     sizes = [np.array(chunk.split('"')[0].split(), dtype=float) for chunk in xml.split('type="box" size="')[1:]]
     np.testing.assert_allclose(np.sort(np.concatenate(sizes)), np.sort(np.concatenate(inset)), atol=1e-9)
+    along = decomposition.box_geometry(inset_m=(0.00025, 0.00025, 0.0001))
+    for full, (_, smaller) in zip(exact, along):
+        np.testing.assert_allclose(smaller, np.asarray(full) - [0.00025, 0.00025, 0.0001])
     assert export.ExportOptions().collider_inset_m == canonical_protocol()['collider_inset_m']
-    with pytest.raises(ValueError, match='collider_inset_m'):
-        export.ExportOptions(collider_inset_m=-0.001)
+    assert export.ExportOptions(collider_inset_m=0.0005).collider_inset_m == {'horizontal': 0.0005, 'vertical': 0.0005}
+    for bad in (-0.001, {'horizontal': 0.0005}, {'horizontal': 0.0005, 'vertical': float('nan')}):
+        with pytest.raises(ValueError, match='collider_inset_m'):
+            export.ExportOptions(collider_inset_m=bad)
 
 
 @pytest.fixture
@@ -140,17 +145,37 @@ def cube_task(tmp_path):
     return task_from_layout(layout, anchor_id='frag_a')
 
 
+def _exported_half_sizes(plan, out):
+    sizes = []
+    for asset in export.write_assets(plan, out):
+        xml = Path(asset['xml']).read_text()
+        chunks = xml.split('type="box" size="')[1:]
+        sizes.append([np.array(chunk.split('"')[0].split(), dtype=float) for chunk in chunks])
+    return sizes
+
+
 def test_the_exported_assets_carry_the_protocols_inset(cube_task, tmp_path):
-    """Each 40 mm cube is one collision box; written out, its half size is 20 mm less the protocol's inset."""
+    """Each 40 mm cube is one collision box; written out, its half size is 20 mm less the protocol's inset: its
+    horizontal part across the sides, its vertical part across the top and bottom (the cubes end unturned)."""
     from tasks.dual_arm_crag_skull.baselines.task import canonical_protocol
     plan = export.plan_export(cube_task, export.ExportOptions())
-    assets = export.write_assets(plan, tmp_path / 'out')
     inset = canonical_protocol()['collider_inset_m']
-    for asset in assets:
-        xml = Path(asset['xml']).read_text()
-        sizes = [np.array(chunk.split('"')[0].split(), dtype=float) for chunk in xml.split('type="box" size="')[1:]]
+    for sizes in _exported_half_sizes(plan, tmp_path / 'out'):
         assert len(sizes) == 1
-        np.testing.assert_allclose(sizes[0], 0.02 - inset, atol=1e-9)
+        np.testing.assert_allclose(sizes[0], 0.02 - np.array([inset['horizontal'], inset['horizontal'], inset['vertical']]),
+                                   atol=1e-9)
+
+
+def test_the_exported_inset_follows_the_axis_that_is_vertical_at_the_goal(cube_task, tmp_path):
+    """A fragment whose goal turns it about x and then about z has its own y axis vertical there: the vertical part
+    of the inset comes off across y (a transposed rotation would pick x)."""
+    from dataclasses import replace
+    turned = np.eye(4)
+    turned[:3, :3] = Rotation.from_euler('xz', [90, 90], degrees=True).as_matrix()
+    plan = export.plan_export(cube_task, export.ExportOptions(collider_inset_m={'horizontal': 0.0005, 'vertical': 0.0}))
+    plan = replace(plan, fragments=tuple(replace(f, goal_rig=f.goal_rig @ turned) for f in plan.fragments))
+    for sizes in _exported_half_sizes(plan, tmp_path / 'out'):
+        np.testing.assert_allclose(sizes[0], [0.0195, 0.02, 0.0195], atol=1e-9)
 
 
 def test_rig_transform_puts_the_pad_on_the_dexagent_tabletop():
@@ -926,6 +951,15 @@ def test_trial_paths_are_absolute_even_from_a_relative_trial(tmp_path, monkeypat
         runner.TrialConfig(tmp_path, llm='mock:x.json', max_wall_minutes=float('nan'))
     with pytest.raises(FileNotFoundError, match='budget pool'):
         runner.TrialConfig(tmp_path, llm='claude', budget_pool=tmp_path / 'no_pool_here')
+
+
+def test_a_trial_insets_the_fragment_colliders_as_the_protocol_says(tmp_path):
+    with pytest.raises(ValueError, match='inset'):
+        runner.TrialConfig(tmp_path / 't', llm='mock:x.json', export=export.ExportOptions(collider_inset_m=0.0005))
+    options = export.ExportOptions()
+    record = options.to_record()
+    record['collider_inset_m']['vertical'] = 1.0  # a record is a copy: the options keep the protocol's inset
+    assert options.collider_inset_m['vertical'] == 0.0001
 
 
 def test_a_trial_holds_the_anchor_by_a_fixture_as_the_protocol_says(tmp_path):

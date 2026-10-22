@@ -7,7 +7,7 @@ import pytest
 from scipy.spatial.transform import Rotation
 
 from tasks.dual_arm_crag_skull.__main__ import DEFAULT_CONFIG
-from tasks.dual_arm_crag_skull.baselines.task import (AssemblyTask, canonical_protocol, check_splits,
+from tasks.dual_arm_crag_skull.baselines.task import (AssemblyTask, box_axis_insets, canonical_protocol, check_splits,
                                                       configured_initial_condition, file_sha256, initial_condition,
                                                       pose_from_layout, pose_to_wxyz, require_canonical, split_of,
                                                       success_criterion, task_from_layout, verify_task)
@@ -323,7 +323,8 @@ def test_configured_values_come_from_jing_json(task):
     assert seeded.to_record() == initial_condition(task, 126, **CONFIG['baselines']['initial_condition']).to_record()
     assert canonical_protocol()['seed_splits'] == check_splits(CONFIG['baselines']['seed_splits'])
     assert canonical_protocol()['anchor'] == 'fixture'
-    assert canonical_protocol()['collider_inset_m'] == 0.00025  # every seam open by 0.5 mm (changed 2026-10-21)
+    # side seams open by 0.5 mm, top and bottom ones by 0.2 mm (changed 2026-10-22)
+    assert canonical_protocol()['collider_inset_m'] == {'horizontal': 0.00025, 'vertical': 0.0001}
 
 
 @pytest.mark.parametrize('path, value', [
@@ -334,7 +335,8 @@ def test_configured_values_come_from_jing_json(task):
     (('s2', 'completion_defaults', 'place', 'settle_s'), 0.1),
     (('baselines', 'success_tolerances_from'), 's2.completion_defaults.insert'),
     (('baselines', 'anchor'), 'free'),
-    (('baselines', 'collider_inset_m'), 0.0),
+    (('baselines', 'collider_inset_m', 'horizontal'), 0.0001),
+    (('baselines', 'collider_inset_m', 'vertical'), 0.00025),
 ])
 def test_another_protocol_is_refused(task, path, value):
     config = copy.deepcopy(CONFIG)
@@ -480,12 +482,50 @@ def test_a_malformed_plan_step_is_a_value_error(task):
         replace(task, assembly_plan=({'fragment_id': 'frag_b'}, {'fragment_id': 'frag_c', 'insertion_direction': [1, 0, 0]}))
 
 
+@pytest.mark.parametrize('key', ['horizontal', 'vertical'])
 @pytest.mark.parametrize('value', [-0.0005, float('nan'), '0.5 mm', None, True])
-def test_the_collider_inset_is_a_length_of_zero_or_more(value):
+def test_each_part_of_the_collider_inset_is_a_length_of_zero_or_more(key, value):
+    config = copy.deepcopy(CONFIG)
+    config['baselines']['collider_inset_m'][key] = value
+    with pytest.raises(ValueError, match=f'collider_inset_m.{key} must be'):
+        require_canonical(config)
+
+
+@pytest.mark.parametrize('value', [0.00025, None, {'horizontal': 0.00025},
+                                   {'horizontal': 0.00025, 'vertical': 0.0001, 'depth': 0.0}])
+def test_the_collider_inset_names_its_horizontal_and_vertical_parts_and_nothing_else(value):
     config = copy.deepcopy(CONFIG)
     config['baselines']['collider_inset_m'] = value
     with pytest.raises(ValueError, match='collider_inset_m must be'):
         require_canonical(config)
+
+
+def test_each_box_is_inset_by_the_part_along_its_axis_where_the_fragment_ends():
+    """A box takes the vertical part off the faces across its axis that is vertical at the fragment's goal and the
+    horizontal part off the other four; a box with an axis neither vertical nor horizontal there is refused."""
+    inset = {'horizontal': 0.00025, 'vertical': 0.0001}
+    np.testing.assert_allclose(box_axis_insets(inset, np.eye(3)), [0.00025, 0.00025, 0.0001])
+    np.testing.assert_allclose(box_axis_insets(inset, Rotation.from_euler('z', 30, degrees=True).as_matrix()),
+                               [0.00025, 0.00025, 0.0001])
+    np.testing.assert_allclose(box_axis_insets(inset, Rotation.from_euler('x', 90, degrees=True).as_matrix()),
+                               [0.00025, 0.0001, 0.00025])
+    np.testing.assert_allclose(box_axis_insets(inset, Rotation.from_euler('y', -90, degrees=True).as_matrix()),
+                               [0.0001, 0.00025, 0.00025])
+    # a compound turn: the box's y axis ends vertical (its transpose would say x)
+    cyclic = Rotation.from_euler('xz', [90, 90], degrees=True).as_matrix()
+    np.testing.assert_allclose(box_axis_insets(inset, cyclic), [0.00025, 0.0001, 0.00025])
+    np.testing.assert_allclose(box_axis_insets(inset, Rotation.from_euler('x', -90, degrees=True).as_matrix()),
+                               [0.00025, 0.0001, 0.00025])
+    np.testing.assert_allclose(box_axis_insets(inset, Rotation.from_euler('x', 180, degrees=True).as_matrix()),
+                               [0.00025, 0.00025, 0.0001])
+    rounded = Rotation.from_quat(np.float32(Rotation.from_euler('x', 90, degrees=True).as_quat())).as_matrix()
+    np.testing.assert_allclose(box_axis_insets(inset, rounded), [0.00025, 0.0001, 0.00025])  # float32 orients pass
+    for tilt in (Rotation.from_euler('x', 20, degrees=True), Rotation.from_euler('x', 1e-4)):
+        with pytest.raises(ValueError, match='vertical or horizontal'):
+            box_axis_insets(inset, tilt.as_matrix())
+    # equal parts come off every face, whatever the goal
+    np.testing.assert_allclose(box_axis_insets({'horizontal': 0.0005, 'vertical': 0.0005},
+                                               Rotation.from_euler('x', 20, degrees=True).as_matrix()), [0.0005] * 3)
 
 
 @pytest.mark.parametrize('value', ['withheld', 'Given', None])

@@ -133,14 +133,17 @@ class BoxDecomposition:
         return np.asarray(self.origin_m) + (self.cells + 0.5) * self.pitch_m
 
     def box_geometry(self, inset_m=0.0):
-        """[(centre (3,), half_size (3,))] in the fragment frame, each box `inset_m` smaller on every face."""
+        """[(centre (3,), half_size (3,))] in the fragment frame, each box `inset_m` smaller on each face: a length for
+        every face, or one per axis of the fragment frame."""
         origin, pitch, out = np.asarray(self.origin_m), self.pitch_m, []
+        inset = np.asarray(inset_m, dtype=float)
         for i0, i1, j0, j1, k0, k1 in self.boxes:
             low = origin + np.array([i0, j0, k0]) * pitch
             high = origin + np.array([i1 + 1, j1 + 1, k1 + 1]) * pitch
-            half = (high - low) / 2 - float(inset_m)
+            half = (high - low) / 2 - inset
             if (half <= 0).any():
-                raise ValueError(f'an inset of {inset_m} m leaves nothing of a {2 * half.min() + 2 * inset_m} m box')
+                raise ValueError(f'an inset of {np.round(inset, 6).tolist()} m leaves nothing of a '
+                                 f'{np.round(high - low, 6).tolist()} m box')
             out.append(((low + high) / 2, half))
         return out
 
@@ -225,8 +228,8 @@ def _vec(values):
 def asset_mjcf(name, mesh_file, decomposition, rgba, density_kg_m3, friction, free=True, inset_m=0.0):
     """An MJCF asset with one root body named `name` (DexAgent's asset contract), with a free joint `name_free`
     unless `free` is False (a fixed body). The visual mesh is massless and never collides; the disjoint boxes, each
-    `inset_m` smaller on every face (the protocol's collider_inset_m), carry the mass, the friction and explicit
-    contact parameters."""
+    `inset_m` smaller on each face (a length, or one per axis: the protocol's collider_inset_m through
+    box_axis_insets), carry the mass, the friction and explicit contact parameters."""
     if not re.fullmatch(r'[a-z][a-z0-9_]*', name):
         raise ValueError(f'asset name {name!r} must be a DexAgent-safe identifier')
     geoms = [f'      <geom name="{name}_visual" type="mesh" mesh="{name}_visual" rgba="{_vec(rgba)}" contype="0" '

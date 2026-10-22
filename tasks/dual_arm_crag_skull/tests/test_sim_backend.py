@@ -80,16 +80,108 @@ def test_a_collider_inset_takes_the_same_off_every_face():
         inset_box_scale((0.016, 0.008, 0.024), 0.0036)
 
 
+def test_a_collider_inset_can_differ_along_each_box_axis():
+    """0.25 mm off the four side faces and 0.1 mm off the top and bottom of a 16 x 8 x 24 mm box."""
+    assert inset_box_scale((0.016, 0.008, 0.024), (0.00025, 0.00025, 0.0001)) == pytest.approx((0.0155, 0.0075, 0.0238))
+    with pytest.raises(ValueError, match='under 1 mm'):
+        inset_box_scale((0.016, 0.0014, 0.024), (0.00025, 0.00025, 0.0001))
+
+
+def _fragment_stage(boxes):
+    """A USD stage with one fragment root holding author_fragment's Colliders/Box_<k> prims (translate, orient,
+    scale ops; `boxes` are (centre, size, wxyz)), and an IsaacAssemblyBackend stand-in carrying it and the protocol's
+    inset."""
+    import json
+    from types import SimpleNamespace
+
+    from pxr import Usd, UsdGeom
+
+    from core.workcell.environment import set_transform
+    from tasks.dual_arm_crag_skull.__main__ import DEFAULT_CONFIG
+    from tasks.dual_arm_crag_skull.sim.backend import fragment_collider_inset
+    stage = Usd.Stage.CreateInMemory()
+    UsdGeom.Xform.Define(stage, '/World/Fragments/frag/Colliders')
+    for index, (centre, size, wxyz) in enumerate(boxes):
+        set_transform(UsdGeom.Cube.Define(stage, f'/World/Fragments/frag/Colliders/Box_{index:03d}'), centre, wxyz,
+                      scale=size)
+    config = json.loads(DEFAULT_CONFIG.read_text())
+    return stage, SimpleNamespace(stage=stage, collider_inset_m=fragment_collider_inset(config))
+
+
+def _box_ops(stage):
+    from pxr import UsdGeom
+    found = []
+    for prim in stage.GetPrimAtPath('/World/Fragments/frag/Colliders').GetChildren():
+        ops = {op.GetOpType(): op.Get() for op in UsdGeom.Xformable(prim).GetOrderedXformOps()}
+        orient = ops[UsdGeom.XformOp.TypeOrient]
+        found.append((tuple(ops[UsdGeom.XformOp.TypeScale]), (orient.GetReal(), *orient.GetImaginary())))
+    return found
+
+
+QUARTER_Z = (np.cos(np.pi / 4), 0.0, 0.0, np.sin(np.pi / 4))  # wxyz: a box turned 90 deg about z in its fragment
+
+
+@pytest.mark.parametrize('goal, orient, expected', [
+    ('none', (1.0, 0.0, 0.0, 0.0), (0.0155, 0.0075, 0.0238)),
+    ('x90', (1.0, 0.0, 0.0, 0.0), (0.0155, 0.0078, 0.0235)),  # the box's y axis ends vertical
+    ('cyclic', (1.0, 0.0, 0.0, 0.0), (0.0155, 0.0078, 0.0235)),  # y again (a transpose would pick x)
+    ('cyclic', QUARTER_Z, (0.0158, 0.0075, 0.0235)),  # the box's own turn makes its x axis the vertical one
+])
+def test_the_backend_insets_each_box_along_the_axis_vertical_at_the_fragments_goal(goal, orient, expected):
+    """The protocol's 0.25 mm comes off the faces that are sideways where the fragment ends and 0.1 mm off its top
+    and bottom there, through the fragment's goal rotation and the box's own orient; the orient itself is kept."""
+    from scipy.spatial.transform import Rotation
+
+    from tasks.dual_arm_crag_skull.sim.backend import IsaacAssemblyBackend
+    rotations = {'none': np.eye(3), 'x90': Rotation.from_euler('x', 90, degrees=True).as_matrix(),
+                 'cyclic': Rotation.from_euler('xz', [90, 90], degrees=True).as_matrix()}
+    stage, backend = _fragment_stage([((0.0, 0.0, 0.0), (0.016, 0.008, 0.024), orient)])
+    IsaacAssemblyBackend._inset_colliders(backend, {'/World/Fragments/frag': rotations[goal]})
+    [(scale, kept)] = _box_ops(stage)
+    assert scale == pytest.approx(expected)
+    np.testing.assert_allclose(kept, orient, atol=1e-7)
+
+
+def test_a_box_neither_vertical_nor_horizontal_at_its_goal_is_named():
+    from scipy.spatial.transform import Rotation
+
+    from tasks.dual_arm_crag_skull.sim.backend import IsaacAssemblyBackend
+    stage, backend = _fragment_stage([((0.0, 0.0, 0.0), (0.016, 0.008, 0.024), (1.0, 0.0, 0.0, 0.0))])
+    with pytest.raises(ValueError, match='Box_000'):
+        IsaacAssemblyBackend._inset_colliders(backend, {'/World/Fragments/frag': Rotation.from_euler('x', 20, degrees=True).as_matrix()})
+
+
+def test_a_backend_is_built_for_its_tasks_goal_orientations_too(tmp_path):
+    """The colliders' insets follow the goals, so a task whose goals turn differently needs another backend."""
+    from dataclasses import replace
+
+    from scipy.spatial.transform import Rotation
+
+    from tasks.dual_arm_crag_skull.baselines.task import task_from_layout
+    from tasks.dual_arm_crag_skull.sim.backend import built_for
+    from tasks.dual_arm_crag_skull.tests.baselines_fixtures import write_layout
+    task = task_from_layout(write_layout(tmp_path / 'layout'), anchor_id='frag_a')
+    goal = task.fragments[1].goal_world_T_fragment.copy()
+    goal[:3, :3] = Rotation.from_euler('x', 90, degrees=True).as_matrix()
+    turned = replace(task, fragments=(task.fragments[0], replace(task.fragments[1], goal_world_T_fragment=goal),
+                                      *task.fragments[2:]))
+    assert built_for(task) == built_for(replace(task)) and built_for(turned) != built_for(task)
+
+
 def test_the_fragment_colliders_are_inset_as_the_protocol_says_unless_an_experiment_asks_otherwise():
     import json
 
     from tasks.dual_arm_crag_skull.__main__ import DEFAULT_CONFIG
     from tasks.dual_arm_crag_skull.sim.backend import fragment_collider_inset
     config = json.loads(DEFAULT_CONFIG.read_text())
-    assert fragment_collider_inset(config) == config['baselines']['collider_inset_m'] == 0.00025
-    assert fragment_collider_inset(config, 0.0) == 0.0
-    with pytest.raises(ValueError, match='must not be negative'):
-        fragment_collider_inset(config, -0.001)
+    assert fragment_collider_inset(config) == config['baselines']['collider_inset_m'] == {'horizontal': 0.00025,
+                                                                                         'vertical': 0.0001}
+    assert fragment_collider_inset(config, 0.0005) == {'horizontal': 0.0005, 'vertical': 0.0005}  # every face
+    assert fragment_collider_inset(config, {'horizontal': 0.0005, 'vertical': 0.0}) == {'horizontal': 0.0005,
+                                                                                       'vertical': 0.0}
+    for bad in (-0.001, {'horizontal': 0.0005}, {'horizontal': 0.0005, 'vertical': -0.001}):
+        with pytest.raises(ValueError, match='inset'):
+            fragment_collider_inset(config, bad)
 
 
 def test_cameras_render_at_their_own_rate():

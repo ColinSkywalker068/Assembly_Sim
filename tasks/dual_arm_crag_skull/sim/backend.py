@@ -181,21 +181,31 @@ def checked_start(start):
 
 
 def fragment_collider_inset(config, override=None):
-    """How much smaller than its voxel cells every fragment's colliders are on each face: the protocol's
-    (baselines.collider_inset_m), or `override` for an experiment."""
-    from ..baselines.task import protocol
-    inset = protocol(config)['collider_inset_m'] if override is None else float(override)
-    if not inset >= 0:
-        raise ValueError(f'the collider inset must not be negative, got {inset}')
-    return inset
+    """{'horizontal', 'vertical'}: how much smaller than its voxel cells every fragment's colliders are on the faces
+    that are sideways where it ends and on its top and bottom there (baselines.task.collider_inset): the protocol's
+    (baselines.collider_inset_m), or `override` for an experiment, a length for every face or such a mapping."""
+    from ..baselines.task import INSET_PARTS, collider_inset, protocol
+    if override is None:
+        return protocol(config)['collider_inset_m']
+    return collider_inset(override if isinstance(override, Mapping) else dict.fromkeys(INSET_PARTS, override),
+                          'the collider inset')
+
+
+def built_for(task):
+    """What a backend's fragments are built from: the layout, the fragment set, the anchor and the goal rotations (they
+    decide which axis of each collider gets the vertical part of the inset)."""
+    goals = task.goal_poses()
+    return (task.layout_sha256, tuple(task.fragment_ids), task.anchor_id,
+            tuple(np.round(goals[key][:3, :3], 9).tobytes() for key in task.fragment_ids))
 
 
 def inset_box_scale(scale, inset_m):
-    """A box collider's size with `inset_m` taken off each face, about the same centre: a fragment made that much
-    smaller all round, which opens a gap of twice it to each neighbour. ValueError if a side would be under 1 mm."""
-    size = np.asarray(scale, dtype=float) - 2 * float(inset_m)
+    """A box collider's size with `inset_m` taken off each face, about the same centre: a length for every face or one
+    per box axis (box_axis_insets); a fragment made that much smaller, which opens a gap of twice it to each neighbour.
+    ValueError if a side would be under 1 mm."""
+    size = np.asarray(scale, dtype=float) - 2 * np.asarray(inset_m, dtype=float)
     if (size < 1e-3).any():
-        raise ValueError(f'an inset of {inset_m} m leaves a side under 1 mm ({size.min():.4f} m)')
+        raise ValueError(f'an inset of {np.round(inset_m, 6).tolist()} m leaves a side under 1 mm ({size.min():.4f} m)')
     return tuple(float(value) for value in size)
 
 
@@ -229,8 +239,9 @@ class IsaacAssemblyBackend:
     def __init__(self, config, *, headless=True, cameras=True, start_settle_s=1.0, max_settle_s=3.0,
                  rest=RestTolerance(), drive=FingerDrive(), adapter_thickness_m=YAM_PROVISIONAL_ADAPTER_THICKNESS_M,
                  collider_inset_m=None):
-        """Every fragment's box colliders are made smaller on each face (inset_box_scale) by the protocol's
-        baselines.collider_inset_m, which opens each seam by twice it; a `collider_inset_m` given is an experiment."""
+        """Every fragment's box colliders are made smaller (inset_box_scale) by the protocol's baselines.collider_inset_m,
+        its horizontal part on the faces sideways where the fragment ends and its vertical part on the top and bottom
+        there, which opens each seam by twice that; a `collider_inset_m` given is an experiment."""
         from core.workcell.config import load_workcell_preset
         s0 = config['s0']
         self.physics_hz, self.control_hz, self.camera_hz = (float(s0[key]) for key in
@@ -314,8 +325,9 @@ class IsaacAssemblyBackend:
             raise ValueError('the task fragments differ from its layout')
         UsdGeom.Xform.Define(self.stage, '/World/Fragments')
         handles = {key: author_fragment(self.stage, self.workcell, layout, key) for key in task.fragment_ids}
-        if self.collider_inset_m:
-            self._inset_colliders([handle.root_path for handle in handles.values()])
+        if any(self.collider_inset_m.values()):
+            goals = task.goal_poses()
+            self._inset_colliders({handles[key].root_path: goals[key][:3, :3] for key in task.fragment_ids})
         for key, handle in handles.items():
             body = UsdPhysics.RigidBodyAPI(self.stage.GetPrimAtPath(handle.root_path))
             body.GetStartsAsleepAttr().Set(False)
@@ -324,20 +336,29 @@ class IsaacAssemblyBackend:
         self._fragment_ids = tuple(task.fragment_ids)
         self._fragment_view = self.world.scene.add(RigidPrim(
             prim_paths_expr=[self._fragments[key] for key in self._fragment_ids], name='skull_fragments'))
-        self._layout_key = (task.layout_sha256, self._fragment_ids, task.anchor_id)
+        self._layout_key = built_for(task)
 
-    def _inset_colliders(self, roots):
-        """Each fragment's box colliders (author_fragment's root/Colliders/Box_*) inset_box_scale'd in place."""
+    def _inset_colliders(self, goal_rotations):
+        """Each fragment's box colliders (author_fragment's root/Colliders/Box_*) inset_box_scale'd in place: the
+        inset's vertical part across the box axis that is vertical at the fragment's goal (`goal_rotations`: root path
+        to its world_R_fragment there), its horizontal part across the other two (box_axis_insets)."""
+        from core.robots.kinematics import quat_to_R
         from core.workcell.environment import set_transform
         from pxr import UsdGeom
-        for root in roots:
+
+        from ..baselines.task import box_axis_insets
+        for root, goal in goal_rotations.items():
             for prim in self.stage.GetPrimAtPath(f'{root}/Colliders').GetChildren():
                 xformable = UsdGeom.Xformable(prim)
                 ops = {op.GetOpType(): op.Get() for op in xformable.GetOrderedXformOps()}
                 orient = ops[UsdGeom.XformOp.TypeOrient]
-                set_transform(xformable, tuple(ops[UsdGeom.XformOp.TypeTranslate]),
-                              (orient.GetReal(), *orient.GetImaginary()),
-                              inset_box_scale(tuple(ops[UsdGeom.XformOp.TypeScale]), self.collider_inset_m))
+                wxyz = (orient.GetReal(), *orient.GetImaginary())
+                try:
+                    insets = box_axis_insets(self.collider_inset_m, np.asarray(goal, dtype=float) @ quat_to_R(wxyz))
+                except ValueError as error:
+                    raise ValueError(f'{prim.GetPath()}: {error}') from None
+                set_transform(xformable, tuple(ops[UsdGeom.XformOp.TypeTranslate]), wxyz,
+                              inset_box_scale(tuple(ops[UsdGeom.XformOp.TypeScale]), insets))
 
     def _place_fragments(self, task):
         from core.workcell.environment import set_transform
@@ -358,11 +379,10 @@ class IsaacAssemblyBackend:
     # -- AssemblyBackend -----------------------------------------------------------------------------------------
     def reset(self, task):
         check_fixture(task)
-        key = (task.layout_sha256, tuple(task.fragment_ids), task.anchor_id)
         if self._fragments is None:
             self._build_fragments(task)
-        elif key != self._layout_key:
-            raise ValueError('this backend was built for another layout, fragment set or anchor')
+        elif built_for(task) != self._layout_key:
+            raise ValueError('this backend was built for another layout, fragment set, anchor or goal orientation')
         else:
             self.world.stop()
         self._place_fragments(task)

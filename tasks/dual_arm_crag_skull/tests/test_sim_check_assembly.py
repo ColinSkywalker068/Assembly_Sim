@@ -121,3 +121,13 @@ def test_judge_names_every_failure():
     assert any('frag_b 3.50 mm' in failure for failure in failures)
     assert any(failure.startswith('frag_c: Rejected') for failure in failures)
     assert '1 of 2 steps done' in failures and 'the assembly is not scored a success' in failures
+
+
+def test_an_inset_experiment_names_both_parts_and_keeps_the_protocols_horizontal_one_only_when_asked():
+    from tasks.dual_arm_crag_skull.baselines.task import canonical_protocol
+    from tasks.dual_arm_crag_skull.sim.check_assembly import experiment_inset
+    horizontal = canonical_protocol()['collider_inset_m']['horizontal']
+    assert experiment_inset() is None
+    assert experiment_inset(0.5) == {'horizontal': 0.0005, 'vertical': 0.0005}
+    assert experiment_inset(0.5, 0.0) == {'horizontal': 0.0005, 'vertical': 0.0}
+    assert experiment_inset(vertical_mm=0.15) == {'horizontal': horizontal, 'vertical': 0.00015}

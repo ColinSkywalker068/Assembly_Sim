@@ -31,7 +31,7 @@ from ... import workspace
 from .. import sandbox as box
 from ..budget import BudgetPool
 from ..scoring import RunRecord, append_records, claim_heldout, refuse_repeats
-from ..task import AssemblyTask, verify_task
+from ..task import AssemblyTask, canonical_protocol, verify_task
 from . import dexenv
 from .export import (DEXAGENT_COMMIT, TASK_PROMPT, VARIANT, VARIANTS, ExportOptions, export_task, insertion_text,
                      load_manifest)
@@ -125,6 +125,9 @@ class TrialConfig:
         if self.export.anchor_mode != 'fixed':
             raise ValueError("a trial holds the anchor by a fixture (baselines.anchor in jing.json); anchor_mode "
                              "'free' is for diagnostic exports only")
+        if self.export.collider_inset_m != canonical_protocol()['collider_inset_m']:
+            raise ValueError("a trial's fragment colliders are inset as the protocol says (baselines.collider_inset_m "
+                             f"in jing.json), not {self.export.collider_inset_m}")
         if self.export.bench == 'crx_yam' and self.s0_limits is None:
             raise ValueError("the shared-hardware bench needs the S0 limits its deliveries will be executed under")
         if self.stage4_draws < 1 or not self.strict_quality:
@@ -477,7 +480,8 @@ def rescore(trial_dir, *, python=None, records=None):
         refuse_repeats(records, 'dexagent', manifest.get('variant', VARIANT), task.task_id, [task.seed])
     previous = json.loads((trial / 'result.json').read_text()) if (trial / 'result.json').exists() else {}
     llm = 'claude' if (trial / 'llm_ledger.jsonl').exists() else 'mock:none'
-    options = ExportOptions(**{k: tuple(v) if isinstance(v, list) else v for k, v in manifest['options'].items()})
+    recorded = {'collider_inset_m': 0.0, **manifest['options']}  # exports from before the protocol's inset had none
+    options = ExportOptions(**{k: tuple(v) if isinstance(v, list) else v for k, v in recorded.items()})
     limits = None
     if options.bench == 'crx_yam':  # the S0 limits the trial was prepared, and its bench generated, for
         from .s0_check import limits_from_record

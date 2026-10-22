@@ -171,6 +171,27 @@ def test_rescore_keeps_the_s0_limits_a_shared_hardware_trial_was_prepared_for(ta
     assert runner._test_only(config)  # S0's TEST values: no shared-hardware result counts yet
 
 
+def test_rescore_refuses_an_export_from_before_the_protocols_inset(task, tmp_path, monkeypatch):
+    folder = trial(tmp_path, task, np.repeat(HOME[None], 3, axis=0), ['left: wait'] * 3)
+    path = folder / 'inputs' / 'export_manifest.json'
+    options = {k: v for k, v in ExportOptions(bench='crx_yam').to_record().items() if k != 'collider_inset_m'}
+    path.write_text(json.dumps({**json.loads(path.read_text()), 'options': options}))
+    monkeypatch.setattr(runner, 'score_trial', lambda task, config, **_: config)
+    with pytest.raises(ValueError, match='inset'):
+        runner.rescore(folder, python=sys.executable)
+
+
+def test_a_delivery_planned_with_another_inset_is_not_executed(task, tmp_path):
+    """A delivery is executed only on colliders inset as it was planned: an export without an inset (from before the
+    protocol had one) is refused by a backend that insets them."""
+    left = np.repeat(HOME[None], 3, axis=0)
+    folder = trial(tmp_path, task, left, ['left: wait'] * len(left))
+    inset = backend()
+    inset.collider_inset_m = {'horizontal': 0.00025, 'vertical': 0.0001}
+    with pytest.raises(ValueError, match='inset'):
+        execute_trial.execute_trial(folder, inset, MODEL, test_only=True)
+
+
 def test_cli_executes_a_trial_on_the_kinematic_double(task, tmp_path, capsys):
     left = np.vstack([ramp(HOME, HOME + 0.1, 1.0), ramp(HOME + 0.1, HOME, 1.0)[1:]])
     folder = trial(tmp_path, task, left, ['left: wait'] * len(left))
