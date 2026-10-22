@@ -93,11 +93,12 @@ def sandbox_check(args):
     out.mkdir(parents=True, exist_ok=False)
     home = Path.home()
     readonly = [*sandbox.python_paths(python), REPO_ROOT / 'core', REPO_ROOT / 'tasks']
-    bound = [inside for _, inside in readonly[:-2]] + [REPO_ROOT / 'core', REPO_ROOT / 'tasks']
+    bound = [inside for _, inside in readonly[:-2]] + [REPO_ROOT / 'core', REPO_ROOT / 'tasks', out]
     # what must not exist inside; a bound path, or a directory above one (the home directory above a venv's
-    # interpreter), exists by construction: the home directory is checked by its listing instead
-    hidden = [path for path in (home / '.config', home / '.ssh', home, REPO_ROOT / 'runs', REPO_ROOT / 'third_party',
-                                REPO_ROOT / 'envs' / 'asm', REPO_ROOT / 'envs' / 'aspire')
+    # interpreter, runs/ above the writable trial directory), exists by construction: the home directory is checked
+    # by its listing instead, and the runs beside this one by the budget pool's directory
+    hidden = [path for path in (home / '.config', home / '.ssh', home, REPO_ROOT / 'runs', RUNS / 'llm_budget',
+                                REPO_ROOT / 'third_party', REPO_ROOT / 'envs' / 'asm', REPO_ROOT / 'envs' / 'aspire')
               if not any(path == b or path in b.parents for b in bound)]
     prefix = sandbox.bwrap_prefix(writable=[out], readonly=readonly, cwd=out)
     found = sandbox.probe(python, prefix, hidden=hidden, home=home, writable=[out], readonly=[REPO_ROOT / 'tasks'],
