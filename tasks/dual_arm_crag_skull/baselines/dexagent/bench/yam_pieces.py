@@ -1,15 +1,15 @@
 """Convex collision pieces of the YAM linear_4310's fingers for MuJoCo (yam.py builds the hand from them).
 
-DexAgent pairs every hand collision geom with every object geom near it, and the fragments are hundreds of boxes, so
-Isaac's 2 mm slabs (sim/yam_usd.py, about 160 pieces a tip) are merged along the approach axis (tip_pieces): a slab's
-surface splits into its connected pieces (the pad, the two rails beside the window), consecutive pieces of one chain
-are merged while the merged hull stands out of the mesh by at most MERGE_TOLERANCE_M in every axis direction
-(Silhouettes: how far a shape reaches along +-approach, +-closing and +-lateral over a grid of the two other
-coordinates; a convex hull's exactly, where each grid line through a cell's centre meets it), and never where the
-mesh has no material (the window). Above ROOT_FROM_TIP_M the finger's root (an L-shaped plate with bolt holes, then
-the carriage) is one hull per ROOT_BAND_M band: it bridges the L's corner and the holes, as Isaac's slabs bridge the
-corner; nothing held here is that tall. Each piece records how far it stands out (TipPiece.bulge_m). The body
-collides through its mesh's convex hull, as in Isaac.
+DexAgent pairs every hand collision geom with every object geom near it, and the fragments are hundreds of boxes, so the
+tip's 2 mm slabs (as sim/yam_usd.py cut the whole tip until it made the solid pad one hull, 2026-10-22) are merged along
+the approach axis (tip_pieces): a slab's surface splits into its connected pieces (the pad, the two rails beside the
+window), consecutive pieces of one chain are merged while the merged hull stands out of the mesh by at most
+MERGE_TOLERANCE_M in every axis direction (Silhouettes: how far a shape reaches along +-approach, +-closing and
++-lateral over a grid of the two other coordinates; a convex hull's exactly, where each grid line through a cell's
+centre meets it), and never where the mesh has no material (the window). Above ROOT_FROM_TIP_M the finger's root (an
+L-shaped plate with bolt holes, then the carriage) is one hull per ROOT_BAND_M band: it bridges the L's corner and the
+holes, as Isaac's slabs bridge the corner; nothing held here is that tall. Each piece records how far it stands out
+(TipPiece.bulge_m). The body collides through its mesh's convex hull, as in Isaac.
 """
 from __future__ import annotations
 

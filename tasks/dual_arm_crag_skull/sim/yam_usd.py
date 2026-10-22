@@ -1,29 +1,32 @@
 """USD for the I2RT linear_4310 gripper on a CRX flange, from core.robots.linear_4310. pxr (UsdPhysics) only.
 
-Three rigid bodies (the body and the two tips) at their world poses for the flange's current pose, each with one
-visual mesh and invisible convex colliders. Each tip collides through SLAB_M thick slabs cut across the approach axis
-(tip_slab_hulls): a single hull would fill the space between pad and carriage, and PhysX's own decomposition stood
-1.8 mm proud of the pads by default and, shrink-wrapped, let one finger sink 2.3 mm into a box of known width on one
-arm only. Each finger is solid only over its last 15 mm; above, two rails run either side of a window with no
-material at all along the closing axis (+-2 mm wide 16 mm up, +-9.5 mm at 35 mm, wider than +-15 mm at 50 mm), so a
-slab is split where its surface is (the rails), never bridged. Every collider has at most HULL_VERTEX_LIMIT vertices
-and HULL_FACE_LIMIT faces, PhysX's GPU limits (the vertex limit authored too): above them PhysX cooks a smaller hull
-of its own, and while cooking it drops points within 0.7 mm of a plane, so colliders are authored at COOKING_SCALE
-(check_yam reads the cooked shapes back). A slab
-piece with more is thinned or cut exactly (hull_pieces), inside its hull by at most HULL_TOLERANCE_M; the body's
-hull the same (body_hulls). Up to ROOT_FROM_TIP_M from the fingertip the colliders reach inward exactly as far as the
-mesh; above, the finger's root is L-shaped across a slab and its hull bridges the corner (up to 48 mm further inward
-74-80 mm up): nothing that tall is held here. The tips are authored fully open and never
-collide with each other (a filtered pair, as the MJCF excludes them: the pads overlap 1 mm at q = 0). Each tip
-hangs on a prismatic joint along its slide axis, limited from pad contact (contact_joint_m) to travel_m, with a
-linear position drive; the joint prim's name is the DOF name. The other tip follows DRIVEN_TIP through a PhysX mimic
-joint (gearing -1: the same joint value), as the real gripper's fingers and the MJCF's 1:1 equality constraint move
-together: when one pad touches first both stop, and a held fragment pushed sideways cannot move one finger out and
-the other in (uncoupled, insertions in Isaac pushed one finger 2-3.5 mm out at the same gap, 2026-10-21). The follower
-keeps its own drive: with the drive on the driven tip alone (twice as strong), two pads on a kinematic box stood
-1.1 mm a side off it (the two contacts and the mimic joint over-constrain the pair), with both 0.37 mm. A fixed joint
-holds the body on the flange at flange_T_mount. The articulation the flange belongs to solves with at least
-POSITION_ITERATIONS position iterations.
+Three rigid bodies (the body and the two tips) at their world poses for the flange's current pose, each with one visual
+mesh and invisible convex colliders. Each finger is solid only over its last PAD_M (15 mm), which collides as one convex
+hull (tip_slab_hulls): its flat face toward the other finger exact, at most PAD_TOLERANCE_M short of the mesh at the
+rounded edges. Above it, two rails run either side of a window with no material at all along the closing axis (+-2 mm
+wide 16 mm up, +-9.5 mm at 35 mm, wider than +-15 mm at 50 mm), so the tip there is cut into SLAB_M thick slabs across
+the approach axis, each split where its surface is (the rails), never bridged: a single hull would fill the window, and
+PhysX's own decomposition stood 1.8 mm proud of the pads by default and, shrink-wrapped, let one finger sink 2.3 mm into
+a box of known width on one arm only. The pad was slabs too until 2026-10-22: a slab's top 0.2 mm under a seam between
+two stacked boxes of a held fragment let PhysX report a vertical penetration of slab thickness plus gap (2.2 mm) and
+push 390 N through that internal face in one step, turning the fragment 35 deg in the grasp; slabs turned a fragment in
+10 of 12 runs below 0.25 mm vertical seams, the one pad hull in none of 7 (contact reports, telemetry). Every collider
+has at most HULL_VERTEX_LIMIT vertices and HULL_FACE_LIMIT faces, PhysX's GPU limits (the vertex limit authored too):
+above them PhysX cooks a smaller hull of its own, and while cooking it drops points within 0.7 mm of a plane, so
+colliders are authored at COOKING_SCALE (check_yam reads the cooked shapes back). A slab piece with more is thinned or
+cut exactly (hull_pieces), inside its hull by at most HULL_TOLERANCE_M; the body's hull the same (body_hulls). Up to
+ROOT_FROM_TIP_M from the fingertip the colliders reach inward exactly as far as the mesh; above, the finger's root is
+L-shaped across a slab and its hull bridges the corner (up to 48 mm further inward 74-80 mm up): nothing that tall is
+held here. The tips are authored fully open and never collide with each other (a filtered pair, as the MJCF excludes
+them: the pads overlap 1 mm at q = 0). Each tip hangs on a prismatic joint along its slide axis, limited from pad
+contact (contact_joint_m) to travel_m, with a linear position drive; the joint prim's name is the DOF name. The other
+tip follows DRIVEN_TIP through a PhysX mimic joint (gearing -1: the same joint value), as the real gripper's fingers and
+the MJCF's 1:1 equality constraint move together: when one pad touches first both stop, and a held fragment pushed
+sideways cannot move one finger out and the other in (uncoupled, insertions in Isaac pushed one finger 2-3.5 mm out at
+the same gap, 2026-10-21). The follower keeps its own drive: with the drive on the driven tip alone (twice as strong),
+two pads on a kinematic box stood 1.1 mm a side off it (the two contacts and the mimic joint over-constrain the pair),
+with both 0.37 mm. A fixed joint holds the body on the flange at flange_T_mount. The articulation the flange belongs to
+solves with at least POSITION_ITERATIONS position iterations.
 
 The drive values are PROVISIONAL: the real gripper's force and servo gains are not measured.
 """
@@ -52,6 +55,13 @@ HULL_VERTEX_LIMIT = 64  # PhysX's GPU convex limit, physxConvexHullCollision:hul
 # PhysX's GPU hulls also have at most 64 faces: in Isaac a 60-point sphere (116 faces) was cooked down to 34 points
 HULL_FACE_LIMIT = 64
 HULL_TOLERANCE_M = 5e-5  # how far inside the exact hull a collider with at most HULL_VERTEX_LIMIT vertices may fall
+# Each tip's solid end, one convex collider (the pad), and how far that hull, thinned to HULL_VERTEX_LIMIT vertices, may
+# fall short of the exact one (0.43 / 0.47 mm on the left / right tip, at the rounded edges; the pad face is exact)
+PAD_M = 0.015
+PAD_TOLERANCE_M = 5e-4
+# PhysX runs a GPU hull's contacts on the CPU when a face has more than this many vertices (PhysX 5 docs, GPU rigid
+# bodies); the pad stays within it (11), many rail slabs do not yet
+HULL_FACE_VERTEX_LIMIT = 32
 HULL_MIN_THICKNESS_M = 1e-4  # authored physxConvexHullCollision:minThickness (default 1 mm; some walls are 0.4 mm)
 # PhysX drops hull points within planeTolerance (0.7 mm) of a plane while cooking, in the mesh's own units; colliders
 # are authored this many times larger under the inverse scale, which makes that 7 um
@@ -210,6 +220,15 @@ def hull_faces(vertices):
     return len(np.unique(np.round(ConvexHull(vertices).equations, 7), axis=0))
 
 
+def face_vertices(vertices):
+    """The most vertices on one face of the hull of `vertices`, coplanar triangles counted as one face."""
+    from scipy.spatial import ConvexHull
+    hull, faces = ConvexHull(vertices), {}
+    for simplex, plane in zip(hull.simplices, np.round(hull.equations, 7)):
+        faces.setdefault(tuple(plane), set()).update(int(index) for index in simplex)
+    return max(len(face) for face in faces.values())
+
+
 def _thinned(points, limit, face_limit=HULL_FACE_LIMIT):
     """(vertices, error): at most `limit` of the hull vertices of `points`, with at most `face_limit` faces, dropping
     first those where the hull is flattest (distance from the plane through a vertex's hull neighbours, a tenth of the
@@ -280,25 +299,36 @@ def _hull_mesh(vertices):
 _HULLS = {}
 
 
-def tip_slab_hulls(gripper, tip, slab_m=SLAB_M):
-    """[(vertices, triangles)] of the convex colliders of a tip cut into `slab_m` thick slabs across the approach
-    axis, in its link frame. A slab's surface is split into its connected pieces (_slab_groups: the rails either side
-    of the window), and each piece's hull is that of its triangles clipped to the slab (a slab's solid has its extreme
-    points on its clipped surface), fitted by hull_pieces of at most HULL_VERTEX_LIMIT vertices so that PhysX cooks
-    them as they are, each inside it by at most HULL_TOLERANCE_M. Neighbouring slabs share their cut plane, so
-    together they cover the tip to within that tolerance."""
+def tip_slab_hulls(gripper, tip, slab_m=SLAB_M, pad_m=PAD_M):
+    """[(vertices, triangles)] of the convex colliders of a tip, in its link frame, the pad first. The tip's solid last
+    `pad_m` is one hull, its exact hull thinned to at most HULL_VERTEX_LIMIT vertices (a subset, so inside it, short by
+    at most PAD_TOLERANCE_M) with at most HULL_FACE_VERTEX_LIMIT on a face. Above it the tip is cut into `slab_m` thick
+    slabs across the approach axis, counted from the pad (the slab at the root takes what is left). A slab's surface is
+    split into its connected pieces (_slab_groups: the rails either side of the window), and each piece's hull is that
+    of its triangles clipped to the slab (a slab's solid has its extreme points on its clipped surface), fitted by
+    hull_pieces of at most HULL_VERTEX_LIMIT vertices so that PhysX cooks them as they are, each inside it by at most
+    HULL_TOLERANCE_M. Neighbouring colliders share their cut plane, so together they cover the tip to within those
+    tolerances."""
     from scipy.spatial import QhullError
     key = (str(gripper.mesh_files[tip]), np.asarray(gripper.mesh_poses[tip]).tobytes(),
-           np.asarray(gripper.link_frames[tip]).tobytes(), np.asarray(gripper.mount_T_tcp).tobytes(), slab_m)
+           np.asarray(gripper.link_frames[tip]).tobytes(), np.asarray(gripper.mount_T_tcp).tobytes(), slab_m, pad_m)
     if key in _HULLS:
         return list(_HULLS[key])
     triangles = tip_triangles_in_link(gripper, tip)
     approach = gripper.link_frames[tip][:3, :3].T @ gripper.mount_T_tcp[:3, 2]
     along = triangles @ approach
     low, high = float(along.min()), float(along.max())
-    hulls = []
-    for k in range(max(1, math.ceil((high - low) / slab_m - 1e-9))):
-        start, stop = low + k * slab_m, min(high, low + (k + 1) * slab_m)
+    base = high - pad_m
+    pad = _slab_groups(triangles, along, base, high)
+    if len(pad) != 1:
+        raise ValueError(f'{tip}: its last {pad_m * 1000:g} mm is {len(pad)} pieces, not one solid pad')
+    vertices, short = _thinned(_clipped_points(triangles[pad[0]], along[pad[0]], base, high), HULL_VERTEX_LIMIT)
+    if short > PAD_TOLERANCE_M or face_vertices(vertices) > HULL_FACE_VERTEX_LIMIT:
+        raise ValueError(f'{tip}: the pad hull falls {short * 1000:.3f} mm short of the mesh and has '
+                         f'{face_vertices(vertices)} vertices on a face')
+    hulls = [_hull_mesh(vertices)]
+    for k in range(max(1, math.ceil((base - low) / slab_m - 1e-9))):
+        start, stop = max(low, base - (k + 1) * slab_m), base - k * slab_m
         for group in _slab_groups(triangles, along, start, stop):
             try:
                 pieces = hull_pieces(_clipped_points(triangles[group], along[group], start, stop))

@@ -236,11 +236,11 @@ def test_the_tips_have_a_through_window_above_the_pad():
 
 
 def test_tip_colliders_cover_the_mesh_never_bridge_the_window_and_fit_physx_hulls():
-    """Each 2 mm slab of a tip is split where the slab's own surface is disconnected (the window between the rails)
-    and cut exactly into convex pieces of at most HULL_VERTEX_LIMIT vertices: together they cover the mesh, and no
-    piece holds a point where the mesh has no material along the closing axis."""
+    """Above the one-hull pad, each 2 mm slab of a tip is split where the slab's own surface is disconnected (the
+    window between the rails) and cut exactly into convex pieces of at most HULL_VERTEX_LIMIT vertices: together they
+    cover the mesh above the pad, and no piece holds a point where the mesh has no material along the closing axis."""
     from scipy.spatial import ConvexHull
-    from tasks.dual_arm_crag_skull.sim.yam_usd import (HULL_TOLERANCE_M, HULL_VERTEX_LIMIT, tip_points_in_link,
+    from tasks.dual_arm_crag_skull.sim.yam_usd import (HULL_TOLERANCE_M, HULL_VERTEX_LIMIT, PAD_M, tip_points_in_link,
                                                        tip_slab_hulls)
     heights, laterals = np.arange(0.0, 0.094, 0.001), np.arange(-0.03, 0.0301, 0.001)
     for tip in ('tip_left', 'tip_right'):
@@ -254,7 +254,9 @@ def test_tip_colliders_cover_the_mesh_never_bridge_the_window_and_fit_physx_hull
             assert len(ConvexHull(vertices).vertices) == len(vertices)
             assert faces.min() == 0 and faces.max() == len(vertices) - 1
         mesh = tip_points_in_link(GRIPPER, tip, spacing_m=0.0015)
-        assert inside_some_hull(hulls, mesh, mesh @ approach_link, approach_link, HULL_TOLERANCE_M + 1e-7).all()
+        along = mesh @ approach_link
+        above = along < along.max() - PAD_M  # the pad has its own test (test_each_tips_solid_end_is_one_hull...)
+        assert inside_some_hull(hulls, mesh[above], along[above], approach_link, HULL_TOLERANCE_M + 1e-7).all()
         hit, approach, lateral = material_along_closing(tip, heights, laterals)
         # Points across the finger's thickness where the mesh has no material along the closing axis within 2 mm up
         # or down and 1 mm across (the slabs are 2 mm thick, the window's edges slope): a collider holding any of
@@ -276,6 +278,37 @@ def test_tip_colliders_cover_the_mesh_never_bridge_the_window_and_fit_physx_hull
         probes = probes + np.array([(end - h) * approach + u * lateral for h, u in empty])
         to_link = (probes + GRIPPER.mount_T_tcp[:3, 3] - frame[:3, 3]) @ frame[:3, :3]
         assert not inside_some_hull(hulls, to_link, to_link @ approach_link, approach_link, -1e-4).any(), tip
+
+
+def test_each_tips_solid_end_is_one_hull_with_its_pad_face_exact():
+    """The last PAD_M of each tip, solid, collides as one hull (a slab's face just under a seam between two of a held
+    fragment's stacked boxes let PhysX push 390 N through it, 2026-10-22): a subset of the mesh's own hull points,
+    short of the mesh by at most PAD_TOLERANCE_M at the rounded edges, its face toward the other finger exactly where
+    the mesh's is, within PhysX's GPU limits (HULL_VERTEX_LIMIT vertices, HULL_FACE_VERTEX_LIMIT on a face). The slabs
+    above start where it ends, each a full SLAB_M there."""
+    from scipy.spatial import ConvexHull
+    from tasks.dual_arm_crag_skull.sim.yam_usd import (HULL_FACE_VERTEX_LIMIT, HULL_VERTEX_LIMIT, PAD_M,
+                                                       PAD_TOLERANCE_M, SLAB_M, face_vertices, tip_points_in_link,
+                                                       tip_slab_hulls)
+    for tip in ('tip_left', 'tip_right'):
+        frame = GRIPPER.link_frames[tip]
+        approach = frame[:3, :3].T @ GRIPPER.mount_T_tcp[:3, 2]
+        inward = -frame[:3, :3].T @ (GRIPPER.slide_axes[tip] / np.linalg.norm(GRIPPER.slide_axes[tip]))
+        hulls = tip_slab_hulls(GRIPPER, tip)
+        pad = hulls[0][0]
+        end = max(float((vertices @ approach).max()) for vertices, _ in hulls)
+        # thinning may round off the corners at the cut too: a groove of microns where the first slab begins
+        assert end - PAD_M - 1e-9 <= (pad @ approach).min() <= end - PAD_M + PAD_TOLERANCE_M
+        assert (pad @ approach).max() == pytest.approx(end, abs=1e-9)
+        assert len(pad) <= HULL_VERTEX_LIMIT and face_vertices(pad) <= HULL_FACE_VERTEX_LIMIT
+        mesh = tip_points_in_link(GRIPPER, tip, spacing_m=0.0005)
+        solid = mesh[end - mesh @ approach <= PAD_M]
+        planes = ConvexHull(pad).equations
+        short = (solid @ planes[:, :3].T + planes[:, 3]).max(axis=1)
+        assert 1e-4 < short.max() <= PAD_TOLERANCE_M, (tip, short.max())  # short only at the rounded edges
+        assert (pad @ inward).max() == pytest.approx((solid @ inward).max(), abs=1e-6), tip  # the pad face is exact
+        near = [vertices @ approach for vertices, _ in hulls[1:] if end - (vertices @ approach).max() < 0.03]
+        assert len(near) > 10 and all(span.max() - span.min() == pytest.approx(SLAB_M, abs=1e-6) for span in near)
 
 
 def test_tip_colliders_reach_inward_exactly_as_far_as_the_mesh():
