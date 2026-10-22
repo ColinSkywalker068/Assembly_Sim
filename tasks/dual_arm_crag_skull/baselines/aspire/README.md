@@ -240,7 +240,14 @@ agent sandbox (bwrap: no GPU, no network, no home)        this process (holds th
   in the campaign's `debug/`, which the agent sees read-only at /workspace/debug, so no link the agent plants can
   redirect a write.
 - The relay (`../relay.py`) adds the key, refuses other models and paths, reserves each call's worst case in the
-  budget pool (`../budget.py`) and settles it at the metered usage.
+  budget pool (`../budget.py`) and settles it at the metered usage. The worst case stops at the model's context window
+  (1M tokens, at most $10.56 a call): Claude Code's requests carry base64 images and escaped JSON, about nine bytes a
+  token, and on 2026-10-22 counting every byte as a token had the live campaign reserving $25 a call at 2.8 MB.
+- A stopped campaign continues with `campaign run --root R --live --resume`: the service's ledger, the workspace and
+  the agent's Claude Code session (`--resume`, with a note that the harness restarted) carry over; a request the stop
+  cut off was never recorded and its output directory moves to `debug/interrupted/`, so it can be sent again. Each
+  resume is logged in `resumes.jsonl` and as a `harness` line in the transcript. The 2026-10-22 campaign was resumed
+  once, at 20:00 UTC, to apply the cap above, at a moment with no model call in flight and no trial running.
 - `summarize` (also at the end of `run`) writes `summary.json`: sim trials, versions, probes, refusals, passes per
   request, the selected version, calls and cost, and freezes `fix_code.py` in `frozen/`.
 

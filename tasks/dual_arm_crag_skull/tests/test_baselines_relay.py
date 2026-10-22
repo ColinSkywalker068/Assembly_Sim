@@ -459,6 +459,21 @@ def test_custom_tools_and_inline_images_and_documents_are_forwarded_with_their_b
     assert line['outcome'] == 'call' and line['reserved_usd'] == pytest.approx(reserved)
 
 
+def test_a_body_larger_than_the_context_window_reserves_only_the_window(start, upstream, tmp_path):
+    """A coding agent's conversation outgrows its token count in bytes (base64 images, escaped JSON): the bound stops
+    at the model's context window, the most input one call can read."""
+    upstream.reply = stream_reply(EVENTS)
+    server = start(upstream.url)
+    filler = 'x' * (relay.CONTEXT_TOKENS + 200_000)
+    body = message(messages=[{'role': 'user', 'content': f'{MARKER}: {filler}'}])
+    assert len(body) > relay.CONTEXT_TOKENS
+    status, _, _, whole = post(server.address, body)
+    assert status == 200 and whole
+    [line] = ledger(tmp_path)
+    assert line['reserved_usd'] == pytest.approx((relay.CONTEXT_TOKENS * 8 + 4096 * 20) / 1e6)
+    assert line['reserved_usd'] < worst_usd(body)
+
+
 def test_a_target_that_is_not_printable_ascii_is_a_400_and_never_reserved(start, upstream, tmp_path):
     server = start(upstream.url)
     body = message()

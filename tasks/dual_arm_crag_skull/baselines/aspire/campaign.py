@@ -34,7 +34,6 @@ import os
 import shutil
 import subprocess
 import sys
-import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -192,16 +191,47 @@ def agent_environment():
             'ASPIRE_TRIAL_SOCKET': INSIDE['trials_socket'], 'ASPIRE_WORKSPACE': INSIDE['workspace']}
 
 
-def claude_arguments(campaign):
+RESUME_PROMPT = ('The campaign harness restarted your session to fix its model relay; the task, the rules and the '
+                 'budget are unchanged. If an aspire-trial request was running, the restart cut it off: a request that '
+                 'had not finished was not recorded (aspire-trial status lists what was), so send it again; a recorded '
+                 'one whose seeds lack an outcome can be rerun with aspire-trial rerun <label> at no cost. Continue '
+                 'from where you were.')
+
+
+def claude_arguments(campaign, resume_session=None):
     executable = Path(INSIDE['claude']) / campaign['agent']['claude_executable']
     return [str(executable), '--print', '--output-format', 'stream-json', '--verbose', '--model', MODEL,
             '--tools', ','.join(AGENT_TOOLS), '--allowedTools', *AGENT_TOOLS, '--disallowedTools', *DENIED,
-            '--permission-mode', 'dontAsk', '--strict-mcp-config']
+            '--permission-mode', 'dontAsk', '--strict-mcp-config',
+            *(['--resume', resume_session] if resume_session else [])]
 
 
-def agent_command(root, campaign, *, agent=None):
+def session_id(root):
+    """The agent's Claude Code session, from the init event of its transcript."""
+    for line in (Path(root) / 'transcript.jsonl').read_text().splitlines():
+        if line.startswith('{'):
+            event = json.loads(line)
+            if event.get('type') == 'system' and event.get('subtype') == 'init':
+                return event['session_id']
+    raise ValueError(f'{root}/transcript.jsonl has no session to resume')
+
+
+def _listening(path):
+    import socket
+    if not Path(path).exists():
+        return False
+    with socket.socket(socket.AF_UNIX) as probe:
+        try:
+            probe.connect(str(path))
+            return True
+        except OSError:
+            return False
+
+
+def agent_command(root, campaign, *, agent=None, resume_session=None, resumed=False):
     """argv of the agent's sandbox. `agent` replaces Claude Code with another command (a scripted fake agent for a
-    smoke test); the prompt arrives on standard input either way."""
+    smoke test); the prompt arrives on standard input either way, the resume note instead when the campaign is
+    `resumed` (Claude Code then continues `resume_session`)."""
     root = Path(root).absolute()
     checkout = REPO_ROOT / campaign['trials']['checkout']
     readonly = [(checkout, Path(INSIDE['aspire'])), (root / 'reference' / 'embodiment', Path(INSIDE['embodiment'])),
@@ -215,45 +245,37 @@ def agent_command(root, campaign, *, agent=None):
     shadows = [(root / 'debug', Path(INSIDE['workspace']) / 'debug')]  # the service's: never a path the agent made
     prefix = sandbox.bwrap_prefix(writable=writable, readonly=readonly, cwd=INSIDE['workspace'], sockets=sockets,
                                   shadows=shadows)
-    inner = agent or claude_arguments(campaign)
+    inner = agent or claude_arguments(campaign, resume_session)
     forwarder = (f"import sys; sys.path.insert(0, '{INSIDE['tools']}'); "
                  'from tasks.dual_arm_crag_skull.baselines.relay import main; '
                  f"main(['forward', '--port', '{FORWARD_PORT}', '--socket', '{INSIDE['relay_socket']}'])")
     forward = (f'/usr/bin/python3 -I -c "{forwarder}" > {INSIDE["home"]}/forward.log 2>&1 & '
                f'for attempt in $(seq 100); do (exec 3<>/dev/tcp/127.0.0.1/{FORWARD_PORT}) 2>/dev/null && break; '
                'sleep 0.1; done; ') if len(sockets) == 2 else ''
-    script = forward + f'exec "$@" < {INSIDE["prompt"]}'
+    prompt = f'{INSIDE["home"]}/resume_prompt.txt' if resumed or resume_session else INSIDE['prompt']
+    script = forward + f'exec "$@" < {prompt}'
     return [*prefix, '/bin/bash', '-c', script, 'agent', *inner]
 
 
-def _start_thread(target, *args, **kwargs):
-    """Run the server `target` in a daemon thread; return once it is ready, or raise what stopped it."""
-    ready, failed = threading.Event(), []
-
-    def body():
-        try:
-            target(*args, **kwargs, ready=ready)
-        except BaseException as exc:
-            failed.append(exc)
-            ready.set()
-
-    thread = threading.Thread(target=body, daemon=True)
-    thread.start()
-    if not ready.wait(30):
-        raise RuntimeError(f'{getattr(target, "__name__", target)} did not start within 30 s')
-    if failed:
-        raise RuntimeError(f'{getattr(target, "__name__", target)} failed to start') from failed[0]
-    return thread
-
-
-def run(root, *, live, agent=None, launch=None, pool_dir=None, upstream=None):
+def run(root, *, live, agent=None, launch=None, pool_dir=None, upstream=None, resume=False):
     """Run the campaign at `root` (prepared): the trial service, the relay when `live` (it takes the API key out of
     this process's ANTHROPIC_API_KEY; `pool_dir` defaults to configs/jing.json's pool, `upstream` to the API), and the
     agent in its sandbox until it exits or campaign.json's max_wall_s passes. Returns summarize(root)."""
     root = Path(root).absolute()
     campaign = json.loads((root / 'campaign.json').read_text())
-    if (root / 'transcript.jsonl').exists():
-        raise FileExistsError(f'{root} has run; a campaign runs once')
+    resume_session = None
+    if resume:  # the same campaign, continued: its service ledger, workspace and agent session carry over
+        if any(_listening(root / 'sockets' / name) for name in ('relay.sock', 'trials.sock')):
+            raise RuntimeError(f'{root} is still running; stop it before resuming')
+        resume_session = session_id(root) if agent is None else None
+        for name in ('relay.sock', 'trials.sock'):
+            (root / 'sockets' / name).unlink(missing_ok=True)
+        (root / 'agent_home' / 'resume_prompt.txt').write_text(RESUME_PROMPT + '\n')
+        previous = json.loads((root / 'agent_exit.json').read_text()) if (root / 'agent_exit.json').exists() else None
+        with open(root / 'resumes.jsonl', 'a') as handle:
+            handle.write(json.dumps({'time': _now(), 'session': resume_session, 'previous_exit': previous}) + '\n')
+    elif (root / 'transcript.jsonl').exists():
+        raise FileExistsError(f'{root} has run; a campaign runs once (resume continues it)')
     if agent is None and not live:
         raise ValueError('Claude Code needs the relay: run it live, or give a scripted agent')
     relay_server = None
@@ -268,15 +290,21 @@ def run(root, *, live, agent=None, launch=None, pool_dir=None, upstream=None):
     elif os.environ.get('ANTHROPIC_API_KEY'):
         raise ValueError('ANTHROPIC_API_KEY is set but the campaign is not live; unset it')
     service = trials.TrialService(root, campaign['trials'], launch=launch)
-    _start_thread(trials.serve, root / 'sockets' / 'trials.sock', service)
-    command = agent_command(root, campaign, agent=agent)
+    trial_server = trials.start(root / 'sockets' / 'trials.sock', service)
+    command = agent_command(root, campaign, agent=agent, resume_session=resume_session, resumed=resume)
     started = time.monotonic()
-    with open(root / 'transcript.jsonl', 'wb') as transcript, open(root / 'agent.stderr.log', 'wb') as errors:
+    mode = 'ab' if resume else 'wb'
+    with open(root / 'transcript.jsonl', mode) as transcript, open(root / 'agent.stderr.log', mode) as errors:
+        if resume:
+            transcript.write((json.dumps({'type': 'harness', 'event': 'resumed', 'time': _now(),
+                                          'set_aside': service.set_aside or None}) + '\n').encode())
+            transcript.flush()
         process = subprocess.Popen(command, stdout=transcript, stderr=errors, stdin=subprocess.DEVNULL,
                                    env=agent_environment(), start_new_session=True)
         try:
             code, _, killed = trials.watch(process, timeout_s=float(campaign['agent']['max_wall_s']))
         finally:
+            trials.stop(trial_server)
             if relay_server is not None:
                 relay_server.close()
     (root / 'agent_exit.json').write_text(json.dumps({'exit_code': code, 'killed': killed,
@@ -335,6 +363,7 @@ def main(argv=None):
     go = commands.add_parser('run', help='run a prepared campaign')
     go.add_argument('--root', type=Path, required=True)
     go.add_argument('--live', action='store_true', help='Claude Code through the relay (needs ANTHROPIC_API_KEY)')
+    go.add_argument('--resume', action='store_true', help="continue a stopped campaign and its agent's session")
     go.add_argument('--agent', nargs=argparse.REMAINDER, help='a scripted agent command instead (no model calls)')
     show = commands.add_parser('summarize', help="recount a campaign's use")
     show.add_argument('--root', type=Path, required=True)
@@ -348,7 +377,7 @@ def main(argv=None):
                           'prompt_sha256': campaign['prompt']['sha256']}))
         return 0
     if args.command == 'run':
-        summary = run(args.root, live=args.live, agent=args.agent or None)
+        summary = run(args.root, live=args.live, agent=args.agent or None, resume=args.resume)
     else:
         summary = summarize(args.root)
     print(json.dumps(summary, indent=1))

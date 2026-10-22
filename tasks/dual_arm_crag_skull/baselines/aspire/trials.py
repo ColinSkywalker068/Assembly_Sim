@@ -380,6 +380,22 @@ class TrialService:
         self.running = None
         (self.service_dir / 'programs').mkdir(parents=True, exist_ok=True)
         self.debug.mkdir(parents=True, exist_ok=True)
+        self.set_aside = self.set_aside_interrupted()
+
+    def set_aside_interrupted(self):
+        """Move the output directories of requests a stopped service never recorded (it records a request when its
+        last seed ends) to debug/interrupted/, so the same request can run again; returns what was moved."""
+        recorded = {row['output'] for row in ledger_rows(self.ledger) if row['status'] == 'ran'}
+        found = [self.debug / 'initial', self.debug / 'holdout', *(self.debug / 'attempts').glob('v*'),
+                 *(self.debug / 'explore').glob('probe*')]
+        moved = []
+        for path in found:
+            if path.is_dir() and f'debug/{path.relative_to(self.debug)}' not in recorded:
+                target = self.debug / 'interrupted' / f'{path.relative_to(self.debug)}_{_now().replace(":", "")}'
+                target.parent.mkdir(parents=True, exist_ok=True)
+                path.rename(target)
+                moved.append(str(target.relative_to(self.debug)))
+        return moved
 
     def host(self, inside):
         """The service's path of `inside`, a path under /workspace/debug (or debug/ relative to /workspace)."""
@@ -504,19 +520,37 @@ class _Server(socketserver.ThreadingUnixStreamServer):
     daemon_threads = True
 
 
-def serve(socket_path, service, *, ready=None):
-    """Serve `service` on the Unix socket `socket_path` until interrupted."""
+def start(socket_path, service):
+    """Serve `service` on the Unix socket `socket_path` (mode 0600) in a daemon thread; returns the server, which
+    `stop` ends."""
     socket_path = Path(socket_path)
     if len(os.fsencode(socket_path.absolute())) > SOCKET_PATH_MAX:
         raise ValueError(f'{socket_path} is longer than a Unix socket path may be ({SOCKET_PATH_MAX} bytes)')
     if socket_path.exists():
         socket_path.unlink()
-    with _Server(str(socket_path), _Handler) as server:
-        server.service = service
-        os.chmod(socket_path, 0o600)
-        if ready is not None:
-            ready.set()
-        server.serve_forever()
+    server = _Server(str(socket_path), _Handler)
+    server.service = service
+    os.chmod(socket_path, 0o600)
+    threading.Thread(target=server.serve_forever, kwargs={'poll_interval': 0.2}, daemon=True).start()
+    return server
+
+
+def stop(server):
+    """End a server from `start` (a request in progress finishes in its own thread) and remove its socket."""
+    server.shutdown()
+    server.server_close()
+    Path(server.server_address).unlink(missing_ok=True)
+
+
+def serve(socket_path, service, *, ready=None):
+    """Serve `service` on the Unix socket `socket_path` until interrupted."""
+    server = start(socket_path, service)
+    if ready is not None:
+        ready.set()
+    try:
+        threading.Event().wait()
+    finally:
+        stop(server)
 
 
 def main(argv=None):

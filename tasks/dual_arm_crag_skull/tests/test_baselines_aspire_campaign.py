@@ -271,3 +271,52 @@ def test_the_campaign_protocol_comes_from_the_config_and_stays_out_of_held_out_s
         config['baselines']['aspire']['campaign'][change[0]] = change[1]
         with pytest.raises(ValueError, match=words):
             camp.campaign_protocol(config)
+
+
+@needs_inputs
+@needs_bwrap
+def test_a_stopped_campaign_resumes_with_its_ledger_and_session(tmp_path):
+    root = prepared(tmp_path)
+    workspace = root / 'workspace'
+    (workspace / 'first.sh').write_text('mkdir -p code && echo \'result = "win"\' > code/v00_initial.py && '
+                                        'aspire-trial sweep code/v00_initial.py > /dev/null && echo first done\n')
+    (workspace / 'second.sh').write_text('cat; aspire-trial status | tail -1\n')
+    camp.run(root, live=False, agent=['/bin/bash', '/workspace/first.sh'], launch=FakeLauncher())
+    (root / 'debug' / 'attempts' / 'v01').mkdir(parents=True)  # what a sweep cut off by a stop leaves
+    summary = camp.run(root, live=False, agent=['/bin/bash', '/workspace/second.sh'], launch=FakeLauncher(),
+                       resume=True)
+    lines = (root / 'transcript.jsonl').read_text().splitlines()
+    marker = json.loads(next(line for line in lines if '"resumed"' in line))
+    assert lines[0] == 'first done' and marker['set_aside'][0].startswith('interrupted/attempts/v01')
+    assert camp.RESUME_PROMPT in (root / 'transcript.jsonl').read_text()  # the second agent read the resume note
+    assert json.loads(lines[-1])['versions_swept'] == ['v00'] and summary['versions'] == ['v00']
+    assert len(trials_rows(root)) == 1 and (root / 'resumes.jsonl').read_text().count('previous_exit') == 1
+    with pytest.raises(FileExistsError):
+        camp.run(root, live=False, agent=['/bin/true'], launch=FakeLauncher())
+
+
+def trials_rows(root):
+    return [json.loads(line) for line in (root / 'service' / 'ledger.jsonl').read_text().splitlines()]
+
+
+@needs_inputs
+def test_resuming_claude_code_continues_its_session_and_refuses_a_running_campaign(tmp_path):
+    import socket
+    root = prepared(tmp_path)
+    campaign = json.loads((root / 'campaign.json').read_text())
+    assert camp.claude_arguments(campaign, 'abc')[-2:] == ['--resume', 'abc']
+    assert '--resume' not in camp.claude_arguments(campaign)
+    (root / 'transcript.jsonl').write_text(json.dumps({'type': 'system', 'subtype': 'init', 'session_id': 's-1'})
+                                           + '\n')
+    assert camp.session_id(root) == 's-1'
+    listener = socket.socket(socket.AF_UNIX)
+    listener.bind(str(root / 'sockets' / 'trials.sock'))
+    listener.listen(1)
+    try:
+        with pytest.raises(RuntimeError, match='still running'):
+            camp.run(root, live=False, agent=['/bin/true'], launch=FakeLauncher(), resume=True)
+    finally:
+        listener.close()
+    command = camp.agent_command(root, campaign, resume_session='s-1')
+    script = command[command.index('-c') + 1]
+    assert script.endswith('< /home/agent/resume_prompt.txt') and command[-2:] == ['--resume', 's-1']

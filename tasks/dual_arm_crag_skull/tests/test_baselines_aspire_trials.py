@@ -374,3 +374,19 @@ def test_read_regular_reads_through_real_directories_only(tmp_path):
         trials.read_regular(tmp_path, ('link', 'b', 'c.py'))
     with pytest.raises(Refused, match='larger than'):
         trials.read_regular(tmp_path, ('a', 'b', 'c.py'), limit=3)
+
+
+def test_a_restarted_service_sets_aside_what_it_never_recorded(tmp_path):
+    svc = service(tmp_path)
+    write(svc.workspace, 'code/v00_initial.py', 'result = 0\n')
+    write(svc.workspace, 'code/v01_fix.py', 'result = "win"\n')
+    ask(svc, {'kind': 'sweep', 'program': 'code/v00_initial.py'})
+    (svc.debug / 'attempts' / 'v01' / 'partial').mkdir(parents=True)  # a sweep cut off before it was recorded
+    (svc.debug / 'explore' / 'probe01_scene').mkdir(parents=True)
+    again = service(tmp_path)
+    assert sorted(path.split('_20')[0] for path in again.set_aside) == ['interrupted/attempts/v01',
+                                                                       'interrupted/explore/probe01_scene']
+    assert (again.debug / 'initial' / 'results.jsonl').is_file() and not (again.debug / 'attempts' / 'v01').exists()
+    final = ask(again, {'kind': 'sweep', 'program': 'code/v01_fix.py'})[0]
+    assert final['event'] == 'done' and final['passed'] == 5
+    assert service(tmp_path).set_aside == []

@@ -105,8 +105,11 @@ def _unique(pairs):
 
 def _input_bound(request, body_bytes):
     """(the most input tokens the call can be billed for, None), or (None, what in it the relay cannot bound). Every
-    body byte counts as a token, plus OVERHEAD_TOKENS, plus IMAGE_TOKENS per image; a PDF (its pages are read as text
-    and images) raises the bound to a whole context window. Refused: what the API fetches or runs itself (an image or
+    body byte counts as a token, plus OVERHEAD_TOKENS, plus IMAGE_TOKENS per image, but never more than the model's
+    context window (CONTEXT_TOKENS), the most input one call can read: a coding agent's conversation carries base64
+    images and escaped JSON, about nine bytes a token, so its bytes alone soon overstate the bound several times over and
+    the pool would refuse calls it can pay for. A PDF (its pages are read as text and images) takes the whole window.
+    Refused: what the API fetches or runs itself (an image or
     document from a url or a file, a container upload, server or Anthropic-defined tools, MCP servers, a container),
     fallback models, and fast or regional inference, which are priced higher."""
     for key, standard in (('speed', 'standard'), ('inference_geo', 'global')):
@@ -131,7 +134,7 @@ def _input_bound(request, body_bytes):
             images, pdf = images + (kind == 'image'), pdf or (kind == 'document' and source == 'base64')
             pending.extend(item.values())
     tokens = body_bytes + OVERHEAD_TOKENS + IMAGE_TOKENS * images
-    return (max(tokens, CONTEXT_TOKENS) if pdf else tokens), None
+    return (CONTEXT_TOKENS if pdf else min(tokens, CONTEXT_TOKENS)), None
 
 
 def _cache_ttl(request):
