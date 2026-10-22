@@ -111,6 +111,10 @@
     "contact_region_radius_m": null,
     "contact_max_speed_m_s": null,
     "finger_opening_margin_m": null,
+    "rejected_command_hold": {
+      "periods": 1,
+      "status": "decided 2026-10-22 (user): after S0 refuses a command, the arms hold their last targets for one control period, checked by S0 like any command, so that time passes as it does on the robot while a program decides (a refused command used to leave the simulation frozen, and an arm left chattering in contact had every later command refused forever); if S0 refuses the hold too, a protective stop ends the trial. Applied by the ASPIRE adapter, whose programs keep running after a refusal; DexAgent's executor plays a fixed delivery, ends it at a refusal and goes straight to the release-and-settle hold every method gets, so nothing is left waiting there"
+    },
     "protective_stop": {
       "tracking_error_rad": 0.01,
       "periods": 3,

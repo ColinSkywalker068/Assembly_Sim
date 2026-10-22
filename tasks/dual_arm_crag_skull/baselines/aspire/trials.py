@@ -292,14 +292,16 @@ def inside_path(settings, host):
 
 
 def isaac_trial_command(settings, *, program, seed, output, record, kit_logs, home):
-    """argv of one Isaac trial of `program` (a frozen copy) on `seed`, in a GPU sandbox that sees the code (less
-    TRIAL_HIDDEN), the task's inputs and the Isaac environment read-only, and writes only the trial's output root
-    (`output`, at its /workspace path), its record directory, Kit's cache and logs and its home."""
+    """argv of one Isaac trial of `program` (a frozen copy) on `seed`, in a GPU sandbox that sees the code (the
+    campaign's frozen copy, settings['code'], at the live code's paths; less TRIAL_HIDDEN), the task's inputs and the
+    Isaac environment read-only, and writes only the trial's output root (`output`, at its /workspace path), its
+    record directory, Kit's cache and logs and its home."""
     environment, kit_cache, kit_log_dir = kit_paths(settings['isaac_python'])
     checkout = REPO_ROOT / settings['checkout']
     inside_output = inside_path(settings, output)
-    readonly = [REPO_ROOT / 'tasks', REPO_ROOT / 'core', checkout, environment, *task_inputs(settings['task']),
-                (Path(program), Path('/program/program.py'))]
+    code = Path(settings['code']) if settings.get('code') else REPO_ROOT  # a campaign's frozen copy (prepare)
+    readonly = [(code / 'tasks', REPO_ROOT / 'tasks'), (code / 'core', REPO_ROOT / 'core'), checkout, environment,
+                *task_inputs(settings['task']), (Path(program), Path('/program/program.py'))]
     writable = [(Path(output), inside_output), (Path(record), Path('/record')),
                 (Path(settings['kit_cache']), kit_cache), (Path(kit_logs), kit_log_dir),
                 (Path(home), Path('/home/isaac'))]

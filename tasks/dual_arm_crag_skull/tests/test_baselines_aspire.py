@@ -35,6 +35,7 @@ from tasks.dual_arm_crag_skull.baselines.backend import KinematicBackend, Observ
 from tasks.dual_arm_crag_skull.baselines.task import task_from_layout  # noqa: E402
 from tasks.dual_arm_crag_skull.contracts.actions import ARMS  # noqa: E402
 from tasks.dual_arm_crag_skull.s0.ik import IK_FAILURES  # noqa: E402
+from tasks.dual_arm_crag_skull.s0.adapter import Rejected  # noqa: E402
 from tasks.dual_arm_crag_skull.s0.kinematics import ROBOTIQ_PROXY_MAX_WIDTH_M  # noqa: E402
 from tasks.dual_arm_crag_skull.tests.test_s0_adapter import HOME, MODEL, limits  # noqa: E402
 from tasks.dual_arm_crag_skull.workspace import THIRD_PARTY  # noqa: E402
@@ -43,6 +44,9 @@ ASPIRE_SOURCE = Path(os.environ.get('ASPIRE_SOURCE', THIRD_PARTY / 'ASPIRE'))
 needs_source = pytest.mark.skipif(not (ASPIRE_SOURCE / '.git').is_dir(), reason='reference ASPIRE clone is absent')
 REFERENCE = Path(checkout.__file__).with_name('reference_program.py')
 CONFIG = json.loads(DEFAULT_CONFIG.read_text())
+# The S0 checks themselves, without the hold after a refusal (s0.rejected_command_hold): a refused command moves nothing
+# and no time passes.
+NO_HOLD = {**CONFIG, 's0': {**CONFIG['s0'], 'rejected_command_hold': {'periods': 0}}}
 WIDTHS = {arm: (0.0, ROBOTIQ_PROXY_MAX_WIDTH_M) for arm in ARMS}
 # A top-down grasp at the box centre must keep the tool box 1 cm above the table (S0 has no contact phase), which a
 # 4 cm cube's 2 cm centre height cannot; 12 cm boxes put the centre at 6 cm.
@@ -81,9 +85,9 @@ def backend(cls=KinematicBackend, widths=WIDTHS):
     return cls(MODEL, home_joints={arm: HOME for arm in ARMS}, width_range_m=widths, control_hz=20)
 
 
-def adapter(sim=None, mode='practice', widths=WIDTHS, **kwargs):
+def adapter(sim=None, mode='practice', widths=WIDTHS, config=CONFIG, **kwargs):
     return SkullAssemblyAdapter(sim or backend(widths=widths), MODEL, limits(gripper_width_range_m=widths),
-                                config=CONFIG, mode=mode, **kwargs)
+                                config=config, mode=mode, **kwargs)
 
 
 def api_for(env, recorder=None):
@@ -365,7 +369,7 @@ class Observer:
 
 def test_rejected_commands_move_nothing_and_return_typed_failures(task):
     sim, observer = backend(), Observer()
-    env = adapter(sim, run_observer=observer)
+    env = adapter(sim, run_observer=observer, config=NO_HOLD)
     env.reset(task, 101)
     api = api_for(env)
     before = sim.robot_state()
@@ -390,10 +394,79 @@ def test_rejected_commands_move_nothing_and_return_typed_failures(task):
     assert observer.calls[1:] == [('before', ARMS), ('after', True)]
     reverse = api.step(command(HOME - SHOULDER))  # 0.45 rad/s now; -0.9 in one period: -1.35 / 0.05 = -27 rad/s^2
     assert not reverse.ok and 'acceleration exceeded' in reverse.error.message
-    low = SkullAssemblyAdapter(backend(), MODEL, limits(tcp_min_height_m=0.5), config=CONFIG, mode='practice')
+    low = SkullAssemblyAdapter(backend(), MODEL, limits(tcp_min_height_m=0.5), config=NO_HOLD, mode='practice')
     low.reset(task, 101)  # the TCPs at home are 0.40 m above the table: S0's geometry checks refuse even a small step
     refused = low.step(command(HOME + 0.5 * NUDGE))
     assert not refused.ok and 'TCP' in refused.error.message and low.backend.robot_state().time_s == 0.0
+
+
+def test_a_refused_command_holds_the_last_targets_for_one_period_so_time_passes(task):
+    sim, observer = backend(), Observer()
+    env = adapter(sim, run_observer=observer)
+    env.reset(task, 101)
+    api = api_for(env)
+    refused = api.step(command(HOME + np.array([0.5, 0, 0, 0, 0, 0]), 0.0))
+    assert not refused.ok and refused.error.code is ErrorCode.SAFETY_INTERLOCK
+    assert 'velocity exceeded' in refused.error.message and 'held their last targets for 1 control period' in \
+        refused.error.message
+    state = sim.robot_state()
+    assert state.time_s == pytest.approx(env.control_period_s) and env.rejected_commands == 1
+    for arm in ARMS:
+        np.testing.assert_array_equal(state.joints[arm], HOME)
+    assert observer.calls == [('reset', 101), ('before', ARMS), ('after', True)] and env.protective_stop is None
+    assert api.step(command(HOME + SHOULDER)).ok
+
+
+def test_an_arm_stuck_with_speed_recovers_once_the_hold_lets_it_slow(task):
+    """Moving at 0.45 rad/s, a reversal needs 27 rad/s^2 and is refused; holding decelerates at 9 rad/s^2, which S0
+    takes, so time passes and the arm comes to rest; then the command S0 refused before goes through in steps."""
+    sim = backend()
+    env = adapter(sim)
+    env.reset(task, 101)
+    api = api_for(env)
+    assert api.step(command(HOME + SHOULDER)).ok
+    reverse = api.step(command(HOME - SHOULDER))
+    assert not reverse.ok and 'acceleration exceeded' in reverse.error.message and env.protective_stop is None
+    assert sim.robot_state().time_s == pytest.approx(2 * env.control_period_s)
+    assert api.step(command(HOME)).ok and env.protective_stop is None
+
+
+def test_a_refused_command_whose_hold_is_refused_too_is_a_protective_stop(task):
+    sim = backend()
+    env = adapter(sim)
+    env.reset(task, 101)
+    api = api_for(env)
+    for k in (1, 3, 6):  # 0.45, 0.9, 1.35 rad/s: holding still would decelerate at 1.35 / 0.05 = 27 rad/s^2
+        assert api.step(command(HOME + k * SHOULDER)).ok
+    refused = api.step(command(HOME - SHOULDER))
+    assert not refused.ok and 'holding the last targets was refused too' in refused.error.message
+    assert env.protective_stop is not None and 'holding the last targets' in env.protective_stop.reason
+    later = api.step(command(HOME + 6 * SHOULDER))
+    assert not later.ok and 'the trial is over' in later.error.message
+
+
+def test_a_refused_gripper_command_is_not_latched_although_its_hold_period_stepped(task, monkeypatch):
+    """CapApi keeps a gripper target as the opening of later motions unless the call raises; the hold after a refusal
+    steps a period, and the refused opening must still not come back."""
+    sim = backend()
+    env = adapter(sim)
+    env.reset(task, 101)
+    api = api_for(env)
+    check = env._check
+
+    def refuse_openings(snapshot, times, path, samples):  # S0 refusing an opening, say for the fingers' boxes
+        if any(widths != env._widths for _, widths in samples):
+            raise Rejected('the opening puts a finger box below the table')
+        return check(snapshot, times, path, samples)
+
+    monkeypatch.setattr(env, '_check', refuse_openings)
+    for refused in (api.set_gripper(0.0, arm='left'), api.set_grippers({'left': 0.0, 'right': 0.0})):
+        assert not refused.ok and 'held their last targets' in refused.error.message
+    assert sim.robot_state().time_s == pytest.approx(2 * env.control_period_s) and env.rejected_commands == 2
+    assert all(width == ROBOTIQ_PROXY_MAX_WIDTH_M for width in sim.robot_state().widths.values())
+    monkeypatch.setattr(env, '_check', check)
+    plan = api.plan_motion(HOME + SHOULDER, arm='left')
+    assert plan.ok and np.all(plan.trajectory.gripper_positions == 1.0)  # neither refused close was latched
 
 
 def test_geometry_is_also_checked_between_control_periods(task):
@@ -407,7 +480,7 @@ def test_geometry_is_also_checked_between_control_periods(task):
     loose = limits(max_joint_velocity_rad_s=np.full(6, 10.0), max_joint_acceleration_rad_s2=np.full(6, 500.0),
                    tcp_min_height_m=floor)
     sim = KinematicBackend(MODEL, home_joints={arm: start for arm in ARMS}, width_range_m=WIDTHS, control_hz=20)
-    env = SkullAssemblyAdapter(sim, MODEL, loose, config=CONFIG, mode='practice')
+    env = SkullAssemblyAdapter(sim, MODEL, loose, config=NO_HOLD, mode='practice')
     env.reset(task, 101)
     refused = env.step(command(end))
     assert not refused.ok and 'TCP' in refused.error.message and sim.robot_state().time_s == 0.0
@@ -415,7 +488,7 @@ def test_geometry_is_also_checked_between_control_periods(task):
 
 def test_refused_gripper_commands_are_not_replayed_by_later_motions(task):
     sim = backend()
-    env = adapter(sim)
+    env = adapter(sim, config=NO_HOLD)
     env.reset(task, 101)
     api = api_for(env)
     for k in (1, 3, 6):  # 0.45, 0.9, 1.35 rad/s: 9 rad/s^2 a period
@@ -718,6 +791,31 @@ def test_a_protective_stop_ends_the_trial_where_the_robot_stopped(task):
     later = api.step(command(HOME + 2 * SHOULDER))
     assert not later.ok and 'trial is over' in later.error.message and sim.count == 2
     assert env.check_success() is False and env.last_score is None and sim.count == 2  # no release, no settle
+
+
+def test_a_protective_stop_while_holding_after_a_refusal_ends_the_trial(task):
+    sim = Stopping(at=2)
+    env = adapter(sim)
+    env.reset(task, 101)
+    api = api_for(env)
+    assert api.step(command(HOME + SHOULDER)).ok
+    stopped = api.step(command(HOME - SHOULDER))  # refused (27 rad/s^2); the robot stops during the hold
+    assert not stopped.ok and stopped.terminated and sim.count == 2
+    assert 'acceleration exceeded' in stopped.error.message and 'protective stop' in stopped.error.message
+    assert env.protective_stop is not None and env.rejected_commands == 1
+
+
+def test_a_refused_hold_is_recorded_as_a_protective_stop(task, tmp_path):
+    reversing = ("state = get_robot_state()\nq = [float(v) for v in state.joint_positions['left']]\n"
+                 "for k in (1, 3, 6, -1):\n    target = list(q)\n    target[1] += 0.0225 * k\n"
+                 "    step(RobotAction({'left': ArmCommand('joint_position', target, None, embodiment='fanuc_crx')}))\n"
+                 "result = {}\n")
+    record = trial(task, tmp_path, reversing, capture_videos=False)
+    assert record.status == 'protective_stop' and record.score is None and not record.success
+    assert 'protective_stop=S0 refused a command and then holding the last targets' in record.notes
+    assert 'steps=3/' in record.notes and 's0_rejections=1' in record.notes
+    written = json.loads((Path(record.artifacts['run_dir']) / 'protective_stop.json').read_text())
+    assert written['log'] == []  # no control period led to it: S0 refused the hold before it was stepped
 
 
 def test_a_protective_stop_is_recorded_as_one_with_its_log(task, tmp_path):

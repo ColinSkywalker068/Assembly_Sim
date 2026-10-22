@@ -12,7 +12,9 @@ fix-loop subagent for this one task, in a sandbox.
   lib/                     what the agent's sandbox runs of ours, copied: the trial client, and relay.py with
                            budget.py in an empty package skeleton (the forwarder imports only those), /opt/aspire/lib
   agent_home/              the agent's HOME and Claude Code configuration (transcripts land here too)
-  service/                 the trial service's ledger, frozen programs, trial records and Isaac caches
+  service/                 the trial service's ledger, frozen programs, trial records and Isaac caches, and in
+                           service/code/ the tracked files of CODE_PATHS as they were (campaign.json `code`: the
+                           commit, any uncommitted change, a sha256), which every trial runs in place of the live ones
 
 `run` starts the trial service (trials.py) and, for a live campaign, the billing relay (baselines/relay.py) on Unix
 sockets in sockets/, then runs the agent in its sandbox (`agent_command`): no GPU, no network (a forwarder inside
@@ -56,6 +58,7 @@ FORWARD_PORT = 8787
 PLACEHOLDER_KEY = 'sandbox-placeholder-the-relay-adds-the-key'
 BASH_TIMEOUT_MS = 7_200_000
 HELDOUT_COUNT = 100
+CODE_PATHS = ('tasks', 'core')  # what a trial runs of ours: frozen by `prepare`, so one campaign runs one commit
 INSIDE = {'workspace': '/workspace', 'home': '/home/agent', 'aspire': '/aspire', 'embodiment': '/aspire-embodiment',
           'claude': '/opt/claude-code', 'bin': '/opt/aspire/bin', 'tools': '/opt/aspire/lib',
           'prompt': '/opt/aspire/prompt.md',
@@ -68,6 +71,31 @@ def _now():
 
 def _sha256(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def code_state(repo=REPO_ROOT, paths=CODE_PATHS):
+    """(HEAD's commit, the tracked files under `paths` that differ from it) of the repository."""
+    git = ['git', '-C', str(repo)]
+    commit = subprocess.run([*git, 'rev-parse', 'HEAD'], capture_output=True, text=True, check=True).stdout.strip()
+    status = subprocess.run([*git, 'status', '--porcelain', '--untracked-files=no', '--', *paths],
+                            capture_output=True, text=True, check=True).stdout
+    return commit, sorted(line[3:] for line in status.splitlines())
+
+
+def freeze_code(target, repo=REPO_ROOT, paths=CODE_PATHS):
+    """Copy the tracked files under `paths`, as they are in the working tree, into `target`; return a sha256 over
+    their names and contents."""
+    listed = subprocess.run(['git', '-C', str(repo), 'ls-files', '-z', '--', *paths], capture_output=True,
+                            check=True).stdout.decode().split('\0')
+    digest = hashlib.sha256()
+    for name in sorted(filter(None, listed)):
+        source, copy = Path(repo) / name, Path(target) / name
+        if not source.is_file():  # deleted in the working tree
+            continue
+        copy.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, copy)
+        digest.update(name.encode() + b'\0' + bytes.fromhex(_sha256(copy)))
+    return digest.hexdigest()
 
 
 def embodiment_notes(readme):
@@ -119,12 +147,16 @@ def campaign_protocol(config):
 
 
 def prepare(root, *, task, gpus, isaac_python, claude, config, max_steps=18000, trial_timeout_s=3600,
-            max_wall_s=16 * 3600, home=Path.home()):
-    """Lay out a new campaign under `root` (which must not exist) and return its campaign.json content."""
+            max_wall_s=16 * 3600, home=Path.home(), require_clean=True):
+    """Lay out a new campaign under `root` (which must not exist) and return its campaign.json content. The trials
+    run a copy of CODE_PATHS made here; with `require_clean` they must hold no uncommitted change."""
     from ..task import AssemblyTask
     root = Path(root).absolute()
     if root.exists():
         raise FileExistsError(f'{root} exists; a campaign directory is made once')
+    commit, modified = code_state()
+    if modified and require_clean:
+        raise ValueError(f'commit these first, a campaign runs one commit of {", ".join(CODE_PATHS)}: {modified}')
     if len(os.fsencode(root / 'sockets' / 'trials.sock')) > trials.SOCKET_PATH_MAX:
         raise ValueError(f'{root} is too long a path for the Unix sockets in its sockets/ directory')
     if AssemblyTask.from_record(json.loads(Path(task).read_text())).seed is not None:
@@ -143,7 +175,9 @@ def prepare(root, *, task, gpus, isaac_python, claude, config, max_steps=18000, 
                 'task': str(Path(task).absolute()), 'dev_seeds': dev, 'unseen_seeds': unseen, **budget,
                 'gpus': [int(gpu) for gpu in gpus], 'isaac_python': str(isaac_python),
                 'checkout': aspire['checkout_path'], 'max_steps': max_steps, 'trial_timeout_s': trial_timeout_s,
-                'kit_cache': str(root / 'service' / 'kit_cache')}
+                'kit_cache': str(root / 'service' / 'kit_cache'), 'code': str(root / 'service' / 'code')}
+    code = {'commit': commit, 'modified': modified, 'paths': list(CODE_PATHS),
+            'sha256': freeze_code(settings['code'])}
     shutil.copytree(kit_cache, settings['kit_cache'], symlinks=True)
     for cache in ('.cache/ov', '.nv/ComputeCache'):  # warm Isaac caches, copied: a trial never writes the originals
         if (Path(home) / cache).is_dir():
@@ -173,7 +207,7 @@ def prepare(root, *, task, gpus, isaac_python, claude, config, max_steps=18000, 
                 'prompt': {'template': str(PROMPT.relative_to(REPO_ROOT)), 'sha256': hashlib.sha256(
                     prompt.encode()).hexdigest(), 'upstream': str(UPSTREAM_PROMPT),
                     'upstream_sha256': UPSTREAM_PROMPT_SHA256, 'upstream_commit': aspire['upstream_commit']},
-                'isaac_environment': str(environment),
+                'isaac_environment': str(environment), 'code': code,
                 'sandbox_copies': {name: _sha256(copy) for name, (_, copy) in copies.items()}}
     (root / 'campaign.json').write_text(json.dumps(campaign, indent=1) + '\n')
     return campaign
@@ -284,7 +318,7 @@ def run(root, *, live, agent=None, launch=None, pool_dir=None, upstream=None, re
         from ..budget import configured_pool_dir
         from ...__main__ import DEFAULT_CONFIG
         pool_dir = pool_dir or configured_pool_dir(json.loads(DEFAULT_CONFIG.read_text()))
-        relay_server = relay.serve(pool_dir, 'aspire', socket_path=root / 'sockets' / 'relay.sock',
+        relay_server = relay.serve(pool_dir, f'aspire:{root.name}', socket_path=root / 'sockets' / 'relay.sock',
                                    ledger_path=root / 'relay' / 'ledger.jsonl', models=(MODEL,),
                                    **({'upstream': upstream} if upstream else {}))
     elif os.environ.get('ANTHROPIC_API_KEY'):

@@ -320,6 +320,12 @@ def test_the_trial_command_sandboxes_isaac_with_the_gpu_and_no_home(tmp_path):
     assert {str(REPO_ROOT / 'tasks/dual_arm_crag_skull/experiments'),
             str(REPO_ROOT / 'tasks/dual_arm_crag_skull/baselines/dexagent')} <= set(hidden)
     assert str(REPO_ROOT / 'tasks/dual_arm_crag_skull/sim/check_assembly.py') in masked
+    frozen = trials.isaac_trial_command({**config, 'code': str(tmp_path / 'code')}, program=tmp_path / 'frozen.py',
+                                        seed=101, output=output, record=paths['record'], kit_logs=paths['kit_logs'],
+                                        home=paths['home'])
+    sources = {frozen[i + 2]: frozen[i + 1] for i in range(len(frozen) - 2) if frozen[i] == '--ro-bind'}
+    assert sources[str(REPO_ROOT / 'tasks')] == str(tmp_path / 'code' / 'tasks')  # the campaign's frozen copy
+    assert sources[str(REPO_ROOT / 'core')] == str(tmp_path / 'code' / 'core')
     assert environment_has_no_hash_randomness(config)
     environment = trials.trial_environment(config, 4)
     assert environment['CUDA_VISIBLE_DEVICES'] == '4' and environment['HOME'] == '/home/isaac'

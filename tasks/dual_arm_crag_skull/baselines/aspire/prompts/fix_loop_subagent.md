@@ -109,7 +109,9 @@ to 1 over the configured width range (`metadata["controller"]`).
 **Every command passes the robot's safety checks before anything moves.** Joint position, velocity
 and acceleration limits, arm-arm clearance, clearance of the links and grippers above the table and
 the TCP height are checked over the whole commanded motion; a violating command is rejected (typed
-failure `safety_interlock` with the reason) and nothing moves. Close to the table an arm may only
+failure `safety_interlock` with the reason) and none of it is applied: the arms hold their last
+targets for one control period instead, and if even that is refused the robot stops and the trial
+ends. Close to the table an arm may only
 work inside a contact window it declared with `fanuc_crx.declare_contact` (`'grasp'` around a
 fragment's observed pose, `'place'` around its goal) and cleared with `fanuc_crx.clear_contact`
 after leaving; neither call is allowed while the arm is inside the band. The rules are in the task

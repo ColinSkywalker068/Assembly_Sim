@@ -12,8 +12,10 @@ observable, with their source, plus RGB-D frames and the robot state. Privileged
 
 Every joint command passes S0's check_joint_path (joint position, velocity and acceleration limits from the measured
 state, braking inside the joint limits, arm-arm clearance, table clearance, TCP height) before the backend steps, with
-the geometry also checked between control periods at S0's servo rate. A rejected command moves nothing and returns
-ASPIRE's typed failure (`safety_interlock`); nothing is clipped or re-timed. A trajectory, like the interpolated move of
+the geometry also checked between control periods at S0's servo rate. None of a rejected command is applied: it
+returns ASPIRE's typed failure (`safety_interlock`) after the arms held their last targets for s0.rejected_command_hold
+control periods, checked the same way, so that time passes as on the robot (if S0 refuses the hold too, a protective
+stop ends the trial); nothing is clipped or re-timed. A trajectory, like the interpolated move of
 the `go_home` hook, is checked as a whole, including one hold period at its last waypoint that ends the commanded
 motion at rest, before its first step.
 
@@ -39,7 +41,7 @@ fragment comes to rest.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from types import MappingProxyType
 from typing import Mapping
@@ -146,6 +148,7 @@ class Executed:
     steps: int
     observation: Observation | None
     error: ApiError | None = None
+    refused: bool = False  # S0 refused the command itself: none of it was applied (any steps are the hold after it)
 
 
 class SkullAssemblyAdapter:
@@ -180,6 +183,10 @@ class SkullAssemblyAdapter:
         self._contacts = {}
         self._closed = False
         self.protective_stop = None  # backend.ProtectiveStop that ended the trial, if one did
+        hold = config['s0'].get('rejected_command_hold', {}).get('periods', 0)
+        if isinstance(hold, bool) or not isinstance(hold, int) or hold < 0:
+            raise ValueError('s0.rejected_command_hold.periods must be a whole number of control periods')
+        self.rejection_hold_periods = hold
         self.step_frames = bool(step_frames)
         self._frames = None  # the cameras' frames the last observation carried
 
@@ -338,9 +345,11 @@ class SkullAssemblyAdapter:
                 'table_clearance_m': self.limits.table_clearance_m, 'tcp_min_height_m': self.limits.tcp_min_height_m,
                 'command_checks': 'every joint command is checked from the measured state against these limits, '
                                   'arm-arm clearance, tool and link clearance above the table and TCP height; a '
-                                  'violating command is rejected (safety_interlock) and nothing moves; joint targets '
-                                  'are reached in one control period, so large moves need plan_motion, move_to_pose '
-                                  'or go_home',
+                                  'violating command is rejected (safety_interlock) and none of it is applied; the '
+                                  f'arms hold their last targets for {self.rejection_hold_periods} control period(s) '
+                                  'instead, checked the same way (if that is refused too, a protective stop ends the '
+                                  'trial); joint targets are reached in one control period, so large moves need '
+                                  'plan_motion, move_to_pose or go_home',
             },
         }
 
@@ -473,8 +482,39 @@ class SkullAssemblyAdapter:
             self._check(snapshot, times, path, samples)
         except Rejected as exc:
             self.rejected_commands += 1
+            if self.rejection_hold_periods:
+                return self._hold_after_rejection(snapshot, exc)
             return Executed(False, 0, None, _failure(ErrorCode.SAFETY_INTERLOCK,
                                                      f'S0 rejected the command, nothing moved: {exc}', reason=str(exc)))
+        return self._step_through(samples)
+
+    def _hold_after_rejection(self, snapshot, rejection):
+        """After S0 refused a command: the arms hold their last targets for s0.rejected_command_hold periods, checked
+        by S0 like any command, so that time passes as it does on the robot while a program decides; if S0 refuses the
+        hold too, the robot stops (a protective stop ends the trial)."""
+        count = self.rejection_hold_periods
+        hold = [({arm: np.array(self._targets[arm], dtype=float) for arm in ARMS}, dict(self._widths))] * count
+        times = snapshot.time_s + self.control_period_s * np.arange(1, count + 1)
+        path = {arm: np.array([self._targets[arm]] * count, dtype=float) for arm in ARMS}
+        refused = f'S0 rejected the command: {rejection}'
+        try:
+            self._check(snapshot, times, path, hold)
+        except Rejected as exc:
+            self.protective_stop = ProtectiveStop(f'S0 refused a command and then holding the last targets ({exc})', ())
+            return Executed(False, 0, self.get_observation(), _failure(
+                ErrorCode.SAFETY_INTERLOCK, f'{refused}; holding the last targets was refused too ({exc}): protective '
+                'stop, the trial is over', reason=str(rejection)), refused=True)
+        executed = self._step_through(hold)
+        if not executed.ok:  # a protective stop or a backend failure while holding
+            return replace(executed, refused=True, error=_failure(
+                executed.error.code, f'{refused}; then, holding the last targets: {executed.error.message}',
+                reason=str(rejection)))
+        return Executed(False, executed.steps, executed.observation, _failure(
+            ErrorCode.SAFETY_INTERLOCK, f'{refused}; the arms held their last targets for {count} control period'
+            f'{"s" if count > 1 else ""}', reason=str(rejection)), refused=True)
+
+    def _step_through(self, samples):
+        """Step through checked (joints, widths) samples, one per control period."""
         observation = None
         for index, (joints, widths) in enumerate(samples):
             action = self._action(joints, widths)
@@ -585,7 +625,8 @@ class SkullAssemblyAdapter:
 
         A command refused before anything moved raises its ApiError instead of returning it: CapApi keeps a
         set_gripper/set_grippers target as the commanded opening of later motions even when the call failed, unless
-        the call raises, and reports the raise as a failed ExecutionResult."""
+        the call raises, and reports the raise as a failed ExecutionResult. The hold period after a refusal
+        (s0.rejected_command_hold) applies none of the command, so it still raises."""
         self._require_task()
         arm = self.resolve_arm(arm)
         if arm not in ARMS:
@@ -604,8 +645,8 @@ class SkullAssemblyAdapter:
             if not executed.ok:
                 if steps == 0:
                     raise executed.error
-                return ExecutionResult(ok=False, steps_executed=steps, final_observation=observation,
-                                       error=executed.error)
+                return ExecutionResult(ok=False, steps_executed=steps + executed.steps,
+                                       final_observation=executed.observation or observation, error=executed.error)
             steps, observation = steps + 1, executed.observation
             width = self.backend.robot_state().widths[arm]
             reached, stalled = abs(width - target) <= GRIPPER_TOLERANCE_M, abs(width - before) <= GRIPPER_TOLERANCE_M
@@ -632,7 +673,7 @@ class SkullAssemblyAdapter:
                     ErrorCode.INVALID_REQUEST, f'gripper position for {arm!r} must be finite and in [0, 1]'))
             widths[arm] = self._width(arm, numeric)
         executed = self._run([(dict(self._targets), widths)])
-        if not executed.ok and executed.steps == 0:
+        if not executed.ok and (executed.steps == 0 or executed.refused):
             raise executed.error
         return ExecutionResult(ok=executed.ok, steps_executed=executed.steps, final_observation=executed.observation,
                                error=executed.error)

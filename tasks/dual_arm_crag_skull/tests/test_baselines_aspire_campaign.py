@@ -2,6 +2,7 @@
 trial service (a fake launcher stands in for Isaac Sim; no model is called)."""
 import json
 import os
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -41,6 +42,7 @@ def fake_installs(tmp_path):
 def prepared(tmp_path, **options):
     python, claude, home = fake_installs(tmp_path)
     root = tmp_path / 'campaign'
+    options.setdefault('require_clean', False)  # the working tree may carry the change under test
     camp.prepare(root, task=TASK, gpus=['3', '5'], isaac_python=python, claude=claude, config=CONFIG, home=home,
                  **options)
     return root
@@ -64,6 +66,31 @@ def test_prepare_lays_out_the_campaign_once(tmp_path):
 
 
 @needs_inputs
+def test_prepare_freezes_the_code_the_trials_run(tmp_path):
+    root = prepared(tmp_path)
+    found = json.loads((root / 'campaign.json').read_text())
+    code = Path(found['trials']['code'])
+    head = subprocess.run(['git', '-C', str(REPO_ROOT), 'rev-parse', 'HEAD'], capture_output=True, text=True,
+                          check=True).stdout.strip()
+    assert code == root / 'service' / 'code' and found['code']['paths'] == ['tasks', 'core']
+    assert found['code']['commit'] == head and len(found['code']['sha256']) == 64
+    for name in ('tasks/dual_arm_crag_skull/baselines/aspire/adapter.py', 'tasks/dual_arm_crag_skull/configs/jing.json',
+                 'core/assets/robots/fanuc_crx10ial/crx10ial.usd'):
+        assert (code / name).read_bytes() == (REPO_ROOT / name).read_bytes()
+    assert not list(code.rglob('__pycache__')) and not (code / 'runs').exists()
+
+
+@needs_inputs
+def test_a_live_campaign_runs_one_commit(tmp_path, monkeypatch):
+    changed = ['tasks/dual_arm_crag_skull/s0/adapter.py']
+    monkeypatch.setattr(camp, 'code_state', lambda *args, **kwargs: ('0' * 40, changed))
+    with pytest.raises(ValueError, match='commit'):
+        prepared(tmp_path / 'live', require_clean=True)
+    assert not (tmp_path / 'live' / 'campaign').exists()
+    assert json.loads((prepared(tmp_path / 'test') / 'campaign.json').read_text())['code']['modified'] == changed
+
+
+@needs_inputs
 def test_the_prompt_is_filled_and_keeps_upstreams_protocol(tmp_path):
     prompt = (prepared(tmp_path) / 'prompt.md').read_text()
     assert '<<' not in prompt and 'DEV_SEEDS: 101 102 103 104 105' in prompt
@@ -83,6 +110,27 @@ def test_the_embodiment_notes_are_the_readme_sections_verbatim():
     body = notes.split('\n', 2)[2]
     assert all(part.strip() in readme for part in body.split('\n## ')[1:])
     assert '## Setup' not in notes and '## Information parity' not in notes
+
+
+def test_the_tool_frame_the_agent_reads_is_the_models():
+    """The README's tool frame (Conventions, in embodiment.md) is that of yam_model, the trials' model."""
+    import numpy as np
+    from tasks.dual_arm_crag_skull.s0.kinematics import yam_tool_geometry
+    flange_T_tcp, _, box = yam_tool_geometry()
+    notes = ' '.join(camp.embodiment_notes(camp.HERE / 'README.md').split())
+    tcp = flange_T_tcp[:3, 3]
+    assert np.allclose(flange_T_tcp[:3, :3], np.eye(3)) and np.allclose(tcp[1:], 0.0, atol=2e-4)
+    assert f"{tcp[0] * 1000:.1f} mm out along the flange's +x" in notes
+    fingers, body = box['parts']['fingers'], box['parts']['body']
+    assert abs(fingers['max'][0] - tcp[0]) < 2e-4  # the TCP is on the fingertips' end faces
+    assert f"front face is {round((tcp[0] - body['max'][0]) * 1000)} mm behind the TCP" in notes
+    tips = fingers['stroke']['tips'].values()
+    assert all(np.allclose(np.abs(tip['slide_axis']), [0.0, 1.0, 0.0], atol=1e-5) for tip in tips)  # close along y
+    size = lambda slab: [round((slab['max'][k] - slab['min'][k]) * 1000) for k in (2, 1)]  # noqa: E731  (z, y) mm
+    for tip in tips:
+        root = [slab for slab in tip['slabs'] if abs(tcp[0] - slab['min'][0] - 0.070) < 5e-4]
+        assert len(root) == 1 and size(root[0]) == [68, 21] and size(tip['slabs'][-1]) == [18, 4]
+    assert "fingers' last 70 mm taper from 68 mm (tool z) by 21 mm (tool y) to 18 mm by 4 mm at the tips" in notes
 
 
 @needs_inputs

@@ -56,6 +56,13 @@ instead of the verified sources; always use `-B`).
 - Arms: native `left`/`right` (`contracts.actions.ARMS`). `resolve_arm` maps ASPIRE's default `primary` to `left`
   and `secondary` to `right` for the calls that take an arm name; `RobotAction`, trajectories and `set_grippers`
   must use `left`/`right`.
+- Tool frame: `end_effector_poses`, and the poses `solve_ik`, `plan_motion` and `move_to_pose` take, are the TCP with
+  the flange's orientation. The TCP sits on the fingertips' end faces, midway between them, 159.7 mm out along the
+  flange's +x. Tool +x is the approach axis (out of the flange, through the fingers), the fingers close along tool y,
+  and tool z completes the right-handed frame: a top-down grasp points tool x at world -z. ASPIRE's +z approach
+  convention for its other robots does not hold here. The gripper body's front face is 81 mm behind the TCP; the
+  fingers' last 70 mm taper from 68 mm (tool z) by 21 mm (tool y) to 18 mm by 4 mm at the tips (`s0/kinematics.py`
+  `yam_tool_geometry`).
 - Grippers: 0 is the minimum and 1 the maximum of S0's configured width range, linear in width; intermediate widths
   are held. `set_gripper` steps until the width is reached or stops changing (`completion` in diagnostics). A
   measured opening up to 5 % of the stroke outside the range reads as 0 or 1; further out the adapter raises.
@@ -71,12 +78,17 @@ joint position, velocity and acceleration limits, arm-arm clearance, link and to
 commanded width and the command's widths: S0's `finger_opening_margin_m`, 4 mm in the TEST limits),
 TCP height, plus the width range; the geometry is also checked between periods at S0's `servo_hz` (joints
 interpolated linearly). `set_gripper` checks each of its hold periods the same way, `set_grippers` its one period.
-Any violation rejects the command before the backend steps: nothing moves, the program gets a typed failure with
-S0's reason, and `rejected_commands` counts it. Nothing is clipped or re-timed. `step`, trajectories and `go_home`
-return `error.code == 'safety_interlock'`; a refused `set_gripper`/`set_grippers` raises inside the adapter, which
-CapApi reports as `execution_failed`/`controller_failed` with the `safety_interlock` message, because CapApi keeps a
-returned-but-failed gripper target as the opening of later motions. Consequences a program author must know (also in
-the task context):
+Any violation rejects the command before the backend steps: none of it is applied, the program gets a typed failure
+with S0's reason, and `rejected_commands` counts it. Nothing is clipped or re-timed. Meanwhile the arms hold their last
+targets for `s0.rejected_command_hold.periods` control periods (1, `configs/jing.json`, decided 2026-10-22), checked
+the same way, so that time passes while the program decides, as it does on the robot; if S0 refuses that hold too, the
+robot stops: a protective stop ends the trial (with an empty log: no period led to it). The hold periods are steps of
+the episode and count against its step budget. Until 2026-10-22 a refused command took no time, so an arm that S0
+would not let stop had every later command refused. `step`, trajectories and `go_home` return
+`error.code == 'safety_interlock'`; a refused `set_gripper`/`set_grippers` raises inside the adapter (the hold applies
+none of it), which CapApi reports as `execution_failed`/`controller_failed` with the `safety_interlock` message,
+because CapApi keeps a returned-but-failed gripper target as the opening of later motions. Consequences a program
+author must know (also in the task context):
 
 - a joint target is reached in one control period, so `step()`/`move_to_joints()` only work for small moves; large
   moves go through `plan_motion`/`move_to_pose`, whose joint interpolation is sized by the adapter's
@@ -103,6 +115,8 @@ the task context):
   next to a contact, so it refuses targets there more than one servo period apart: contact motions need a backend
   stepping at S0's servo rate (both rigs do). The rule and the calls are in the task context
   (`metadata['contact_rule']` and the language);
+- a refused command is not free: a control period passes with the arms holding their last targets, and if the arm
+  cannot hold them either (it is moving too fast to stop in one period, say) the trial ends;
 - `move_synchronized` needs a `curobo-integrated` planner and returns ASPIRE's typed `unsupported` failure.
 
 The limits are passed explicitly (`S0Limits`) because the S0 values in `configs/jing.json` are still null; the CLI
@@ -233,12 +247,14 @@ agent sandbox (bwrap: no GPU, no network, no home)        this process (holds th
   checkout and the embodiment notes (README sections and the adapter's source), and reaches nothing but the two
   sockets. Its stream-json transcript is `transcript.jsonl`.
 - The trial service (`trials.py`) is its only simulator: it enforces the seeds and the budget above, reads a program
-  without following symbolic links (the agent could swap one in for a link to a credential between a check and a
-  read) and freezes it, runs each seed as one Isaac trial in a GPU sandbox (code and task inputs read-only, our
-  scripted solution, DexAgent and the tests hidden, Kit's cache a copy, nothing inherited from the environment) at
-  most one per GPU, writes upstream's `results.jsonl` rows, and keeps the ledger the agent cannot see. It writes only
-  in the campaign's `debug/`, which the agent sees read-only at /workspace/debug, so no link the agent plants can
-  redirect a write.
+  without following symbolic links (the agent could swap one in for a link to a credential between a check and a read)
+  and freezes it, runs each seed as one Isaac trial in a GPU sandbox (code and task inputs read-only, our scripted
+  solution, DexAgent and the tests hidden, Kit's cache a copy, nothing inherited from the environment) at most one per
+  GPU, on the code `prepare` froze (since 2026-10-22: the tracked files of `tasks/` and `core/` copied to
+  `service/code/` and bound at their usual paths; `prepare` refuses uncommitted changes there, and campaign.json
+  `code` names the commit, so edits made while a campaign runs cannot reach its trials), writes upstream's
+  `results.jsonl` rows, and keeps the ledger the agent cannot see. It writes only in the campaign's `debug/`, which
+  the agent sees read-only at /workspace/debug, so no link the agent plants can redirect a write.
 - The relay (`../relay.py`) adds the key, refuses other models and paths, reserves each call's worst case in the
   budget pool (`../budget.py`) and settles it at the metered usage. The worst case stops at the model's context window
   (1M tokens, at most $10.56 a call): Claude Code's requests carry base64 images and escaped JSON, about nine bytes a
@@ -281,17 +297,24 @@ key never enters either.
   adapter turns a `ProtectiveStop` into a terminated episode (ASPIRE records `environment_terminated`), refuses every
   later command, does not release, settle or score, and the runner records `protective_stop` with the stop's log in
   the run directory (`protective_stop.json`). `reference_program_physics.py` jammed on the fixed anchor before
-  (`runs/aspire_isaac_ref_20261019_005140`), because the fragments interlock (`../README.md`).
+  (`runs/aspire_isaac_ref_20261019_005140`), because the fragments interlock (`../README.md`). A stop because S0
+  refused the hold after a refused command (2026-10-22) steps nothing, so ASPIRE's own record ends with the program
+  (`termination=program_completed`) while the run record says `protective_stop`, with an empty log.
 - The planner slows both arms while either has a contact declared (ASPIRE reads one joint bound for all arms).
 - (Done 2026-10-22) cameras only on request: without videos (`--no-videos`, every campaign trial) a motion's steps
   carry the cameras' last frames and the adapter renders anew when the program asks for an observation, at a
   motion's last step and for ASPIRE's keyframes (`SkullAssemblyAdapter(step_frames=False)`). On Isaac, the same
   program, seed and GPU: 3243 steps in 175 s instead of 901 s (0.049 instead of 0.251 s a step), identical steps
   and outcome (`runs/aspire_timing_{noframes,frames}_20261022_130332`). With videos every step still renders.
-- A wall-clock limit per trial outside a campaign: refused commands use no steps and no simulated time, so a program
-  that retries a refused command forever never ends (ASPIRE has no wall-clock limit either). In a campaign the trial
-  service ends a trial after `trial_timeout_s` and counts it as the program's failure.
+- A wall-clock limit per trial outside a campaign: since 2026-10-22 a refused command uses a control period of the
+  step budget (the hold), but a call that fails before S0 checks anything (an invalid request, an IK or planning
+  failure, a refused contact declaration) uses none, so a program that retries one forever never ends (ASPIRE has no
+  wall-clock limit either). In a campaign the trial service ends a trial after `trial_timeout_s` and counts it as the
+  program's failure.
 - (Done 2026-10-22) the coding-agent loop, its trial counting and its cost metering: see Campaign.
+- (Done 2026-10-22) the tool frame in Conventions (TCP, approach and closing axes, finger size), which the
+  agent reads in `embodiment.md`: the first campaign's agent had to measure the closing axis from depth, after
+  its first version closed the fingers across the first fragment's insertion axis on all five seeds.
 
 ## Shared S2 program runtime
 
