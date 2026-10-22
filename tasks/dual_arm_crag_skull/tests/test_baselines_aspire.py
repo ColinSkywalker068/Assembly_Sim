@@ -231,6 +231,35 @@ class StaleCamera(KinematicBackend):
                 for name, frame in super().camera_frames().items()}
 
 
+class CountingCamera(KinematicBackend):
+    """Counts the frames the adapter asks for."""
+
+    renders = 0
+
+    def camera_frames(self):
+        self.renders += 1
+        return super().camera_frames()
+
+
+@pytest.mark.parametrize('step_frames', [True, False])
+def test_a_motion_asks_for_fresh_frames_each_step_only_when_the_recording_needs_them(task, step_frames):
+    """With step_frames the backend is asked for frames at every step of a motion (per-step video needs it), without
+    only for the motion's final observation, which is what the program gets back: fresh either way."""
+    sim = backend(CountingCamera)
+    env = adapter(sim, step_frames=step_frames)
+    env.reset(task, 101)
+    state = api_for(env).get_robot_state()
+    before = sim.renders
+    path = Trajectory(joint_positions=[HOME + 0.1 * NUDGE, HOME + 0.2 * NUDGE, HOME + 0.3 * NUDGE], dt_s=0.05,
+                      joint_names=state.joint_names['left'], planner='test', collision_aware=False,
+                      expected_start=state, arm='left', embodiment=EMBODIMENT)
+    executed = api_for(env).execute_trajectory(path)
+    assert executed.ok and executed.steps_executed >= 3
+    assert sim.renders - before == (executed.steps_executed if step_frames else 1)
+    final = executed.final_observation.cameras['agent']
+    assert final.timestamp_s == pytest.approx(sim.robot_state().time_s)
+
+
 def test_camera_observations_keep_the_frame_sample_time(task):
     env = adapter(backend(StaleCamera))
     env.reset(task, 101)

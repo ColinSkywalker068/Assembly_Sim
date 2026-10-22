@@ -143,7 +143,12 @@ class Executed:
 class SkullAssemblyAdapter:
     """ASPIRE EnvironmentAdapter for the skull task (see module docstring)."""
 
-    def __init__(self, backend, model, limits, *, config, mode, run_observer=None, gripper_max_steps=30):
+    def __init__(self, backend, model, limits, *, config, mode, run_observer=None, gripper_max_steps=30,
+                 step_frames=True):
+        """`step_frames` False: inside one motion the steps' observations carry the cameras' last frames and only its
+        final observation (what the program gets back) asks the backend for fresh ones; nothing but the run recorder
+        sees the steps', so the program sees the same either way, and Isaac renders once a motion instead of at its
+        camera rate. A recording with per-step video needs it True."""
         if mode not in MODE_SPLITS:
             raise ValueError(f'mode must be one of {tuple(MODE_SPLITS)}')
         missing = [arm for arm in ARMS if not model.arms[arm].has_tool_box]
@@ -167,6 +172,8 @@ class SkullAssemblyAdapter:
         self._contacts = {}
         self._closed = False
         self.protective_stop = None  # backend.ProtectiveStop that ended the trial, if one did
+        self.step_frames = bool(step_frames)
+        self._frames = None  # the cameras' frames the last observation carried
 
     @property
     def embodiment(self):
@@ -277,6 +284,7 @@ class SkullAssemblyAdapter:
         self._widths = {arm: float(np.clip(snapshot.widths[arm], *self.limits.gripper_width_range_m[arm]))
                         for arm in ARMS}
         self._static = self._static_metadata(task)
+        self._frames = None
         observation = self.get_observation()
         if self._run_observer is not None:
             self._run_observer.on_reset(observation, {
@@ -393,12 +401,19 @@ class SkullAssemblyAdapter:
         return self._robot_state(self.backend.robot_state())
 
     def get_observation(self):
+        return self._observation(fresh=True)
+
+    def _observation(self, *, fresh):
+        """The observation now; its camera frames are the backend's (it renders at most at its camera rate) when
+        `fresh`, else the ones the last observation carried (step_frames)."""
         self._require_task()
         snapshot = self.backend.robot_state()
+        if fresh or self._frames is None:
+            self._frames = self.backend.camera_frames()
         cameras = {name: CameraObservation(rgb=frame.rgb, depth_m=frame.depth_m, intrinsics=frame.intrinsics,
                                            frame=f'camera/{name}', camera_pose=as_pose(frame.world_T_camera),
                                            timestamp_s=frame.time_s)
-                   for name, frame in self.backend.camera_frames().items()}
+                   for name, frame in self._frames.items()}
         return Observation(cameras=cameras, robot_state=self._robot_state(snapshot),
                            task_context=self.get_task_context(), timestamp_s=snapshot.time_s)
 
@@ -476,7 +491,7 @@ class SkullAssemblyAdapter:
                 return Executed(False, index, observation, result.error)
             self._targets = {arm: np.array(joints[arm], dtype=float) for arm in ARMS}
             self._widths = dict(widths)
-            observation = self.get_observation()
+            observation = self._observation(fresh=self.step_frames or index == len(samples) - 1)
             if self._run_observer is not None:
                 self._run_observer.after_step(action, StepResult(ok=True, observation=observation))
         return Executed(True, len(samples), observation)

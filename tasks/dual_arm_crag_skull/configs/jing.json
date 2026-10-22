@@ -179,7 +179,15 @@
       "coding_agent": "claude_code",
       "model": "claude-opus-5-5",
       "budget_usd": null,
-      "live_run_verified": false
+      "live_run_verified": false,
+      "campaign": {
+        "dev_seeds": [101, 105],
+        "unseen_split": "selection",
+        "max_fix_versions": 8,
+        "max_probes": 12,
+        "max_reruns": 2,
+        "status": "decided 2026-10-22 (user): upstream's iterative-debugging fix loop scaled down: every version runs on development seeds 101-105 (upstream Robosuite: 101-125), v00 plus at most 8 fix versions (upstream's 8 in total), at most 12 probes, the selected version once on the selection seeds 126-130; no per-step video, cameras render when a program asks; enforced by baselines/aspire/trials.py, an adaptation recorded in baselines/aspire/README.md"
+      }
     }
   }
 }

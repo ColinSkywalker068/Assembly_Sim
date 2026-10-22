@@ -8,7 +8,12 @@ network namespace has only its own loopback: neither the internet nor anything l
 no home directory and no other project; a venv whose base interpreter lives under the home directory gets that
 interpreter's directory alone, read-only, at the path the venv names. The model is called from outside (the relays)
 through files in the output directory, so the API key never enters. `probe` checks these properties from inside a
-sandbox. GPU access (for ASPIRE's programs, which run with Isaac Sim) is not provided yet.
+sandbox.
+
+ASPIRE's trials run Isaac Sim, so their sandbox also gets the GPUs: `devices=nvidia_devices()` binds every NVIDIA
+device node (CUDA_VISIBLE_DEVICES picks the GPU), `system_info` binds /sys read-only (CUDA reads the PCI topology
+there), and nothing else of the host's /dev appears. A Unix socket bound in (`sockets`) is the one way a sandbox can
+reach a service outside, such as the trial service or the model relay of an ASPIRE campaign.
 """
 from __future__ import annotations
 
@@ -16,6 +21,7 @@ import json
 import os
 import shutil
 import socket
+import stat
 import subprocess
 from pathlib import Path
 
@@ -42,26 +48,57 @@ def python_paths(python):
     return pairs
 
 
-def bwrap_prefix(*, writable, readonly=(), cwd=None):
-    """The bwrap command that runs what follows it in a sandbox (see the module docstring). `readonly` holds paths
-    or (source, path inside) pairs; `writable` paths must exist."""
+def nvidia_devices():
+    """The NVIDIA device nodes a CUDA or Vulkan process opens: every GPU's, the control, UVM and modeset nodes, and
+    /dev/nvidia-caps."""
+    nodes = sorted(str(path) for path in Path('/dev').glob('nvidia*') if path.is_char_device())
+    return nodes + (['/dev/nvidia-caps'] if os.path.isdir('/dev/nvidia-caps') else [])
+
+
+def _pair(entry):
+    return entry if isinstance(entry, tuple) else (Path(entry).resolve(), Path(entry).absolute())
+
+
+def bwrap_prefix(*, writable, readonly=(), cwd=None, devices=(), system_info=False, sockets=(), shadows=(),
+                 hidden=()):
+    """The bwrap command that runs what follows it in a sandbox (see the module docstring). `readonly` and `writable`
+    hold paths or (source, path inside) pairs, bound in that order, so a writable directory may sit inside a read-only
+    one; writable sources must be directories that exist. `shadows` are read-only (source, path inside) binds made
+    after those, so one can cover part of a writable directory; `hidden` paths inside appear empty (a directory) or
+    as /dev/null (a file). `devices` are device nodes bound as they are, `system_info` binds /sys read-only, and
+    `sockets` are (source, path inside) pairs of Unix sockets."""
     if not available():
         raise RuntimeError('bwrap is not installed: model-written code is never run outside a sandbox')
     args = ['bwrap', '--unshare-all', '--die-with-parent', '--new-session', '--proc', '/proc', '--dev', '/dev',
             '--tmpfs', '/tmp']
+    for device in devices:
+        args += ['--dev-bind', str(device), str(device)]
+    if system_info:
+        args += ['--ro-bind', '/sys', '/sys']
     for path in SYSTEM_PATHS:
         if os.path.islink(path):
             args += ['--symlink', os.readlink(path), path]
         elif os.path.isdir(path):
             args += ['--ro-bind', path, path]
     for entry in readonly:
-        source, inside = entry if isinstance(entry, tuple) else (Path(entry).resolve(), Path(entry))
+        source, inside = _pair(entry)
         args += ['--ro-bind', str(source), str(inside)]
-    for path in writable:
-        path = Path(path)
-        if not path.is_dir():
-            raise FileNotFoundError(f'writable directory {path} does not exist')
-        args += ['--bind', str(path.resolve()), str(path.absolute())]
+    for entry in writable:
+        source, inside = _pair(entry)
+        if not Path(source).is_dir():
+            raise FileNotFoundError(f'writable directory {source} does not exist')
+        args += ['--bind', str(Path(source).resolve()), str(inside)]
+    for source, inside in shadows:
+        args += ['--ro-bind', str(Path(source).resolve()), str(inside)]
+    for path in hidden:
+        if os.path.isdir(path):
+            args += ['--tmpfs', str(path)]
+        elif os.path.lexists(path):
+            args += ['--ro-bind', '/dev/null', str(path)]
+    for source, inside in sockets:
+        if not stat.S_ISSOCK(os.stat(source).st_mode):
+            raise ValueError(f'{source} is not a Unix socket')
+        args += ['--bind', str(source), str(inside)]
     if cwd is not None:
         args += ['--chdir', str(Path(cwd).absolute())]
     return args + ['--']

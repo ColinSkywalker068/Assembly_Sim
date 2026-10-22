@@ -191,12 +191,80 @@ re-raised.
 Tests: `PYTHONDONTWRITEBYTECODE=1 $P -B -m pytest tasks/dual_arm_crag_skull/tests/test_baselines_aspire.py -q`
 (the file skips where `cap_harness` is not installed).
 
+## Campaign: the coding-agent loop
+
+`campaign.py` runs ASPIRE's iterative-debugging fix loop for this one task with Claude Code as the subagent,
+scaled down (user, 2026-10-22; `configs/jing.json` `baselines.aspire.campaign`) and adapted to this harness:
+
+- Seeds: development 101-105 (the first five practice seeds; upstream Robosuite uses 101-125), unseen check
+  126-130 (the selection seeds, as upstream), held-out 1-100 never during the loop.
+- Budget as upstream: every version runs on all development seeds; v00 plus at most 8 fix versions ("3 versions
+  per mode, 8 in total"); the selected version once on the unseen-check seeds. Probes (observation programs on one
+  development seed) are capped at 12, the scene snapshot included (upstream has no cap). Harness failures (a seed
+  with no `outcome.json`, other than a trial the service killed for its time or memory, which counts against the
+  program) can be rerun twice per request at no cost.
+- One campaign, no coordinator: upstream's coordinator dispatches a subagent per task, runs Stage 2 and curates the
+  shared skill library with a verifier. Here the single agent plays the subagent and Stage 2 is
+  `evaluate_frozen_program` on `frozen/fix_code.py`, run separately. The skill report (upstream Step 6) and the
+  verifier are dropped: with one task nothing is promoted.
+
+The agent's prompt is `prompts/fix_loop_subagent.md`, upstream's `subagent-prompt.md` (sha256 `ca78d55c...`, between
+its TEMPLATE markers) with these changes, nothing else reworded: the assignment block carries this task and
+`/workspace` as TASK_DIR; every `cap-harness run`/`run-batch` command is `aspire-trial`, and the GPU, single-GPU,
+perception-service, `--init-mode`, cuRobo and benchmark-profile passages are gone (the service schedules GPUs; no
+perception or planning service runs here); the FORBIDDEN and ALLOWED API lists name this harness's objects and
+tools, with a note that the poses come from the task context; a paragraph states S0's checks and the contact
+windows; the failure-mode table's Provider and Perception rows become a Safety-rejection row and the artifact list
+loses `media/overlays/` and videos; `debug/` is the service's (blocked notes move to `blocked/`), Step 3 copies the
+selection unchanged (`cp`), since the unseen check takes only a swept version's bytes; the skill report (Step 6) and
+the findings' Skill report section are dropped.
+
+How it runs (`campaign.py` docstring for the layout):
+
+```
+agent sandbox (bwrap: no GPU, no network, no home)        this process (holds the API key)
+  Claude Code --print  --127.0.0.1:8787-> forwarder --relay.sock--> relay --> api.anthropic.com (budget pool)
+  aspire-trial  ----------------------------------------trials.sock--> trial service --> one GPU sandbox per seed:
+  /workspace (rw), /aspire, /aspire-embodiment (ro)                        Isaac trial, run dir into /workspace
+```
+
+- The agent: Claude Code with upstream's subagent tools (Bash, Read, Write, Edit, Glob, Grep), `rm`/`sudo` denied,
+  every model slot on `claude-opus-5-5`, a placeholder API key; it sees only the workspace, its home, the patched
+  checkout and the embodiment notes (README sections and the adapter's source), and reaches nothing but the two
+  sockets. Its stream-json transcript is `transcript.jsonl`.
+- The trial service (`trials.py`) is its only simulator: it enforces the seeds and the budget above, reads a program
+  without following symbolic links (the agent could swap one in for a link to a credential between a check and a
+  read) and freezes it, runs each seed as one Isaac trial in a GPU sandbox (code and task inputs read-only, our
+  scripted solution, DexAgent and the tests hidden, Kit's cache a copy, nothing inherited from the environment) at
+  most one per GPU, writes upstream's `results.jsonl` rows, and keeps the ledger the agent cannot see. It writes only
+  in the campaign's `debug/`, which the agent sees read-only at /workspace/debug, so no link the agent plants can
+  redirect a write.
+- The relay (`../relay.py`) adds the key, refuses other models and paths, reserves each call's worst case in the
+  budget pool (`../budget.py`) and settles it at the metered usage.
+- `summarize` (also at the end of `run`) writes `summary.json`: sim trials, versions, probes, refusals, passes per
+  request, the selected version, calls and cost, and freezes `fix_code.py` in `frozen/`.
+
+```bash
+# prepare (no key): GPUs picked from nvidia-smi at the time
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=. envs/asm/bin/python -B -m tasks.dual_arm_crag_skull.baselines.aspire.campaign \
+  prepare --root runs/aspire_campaign_<stamp> --task runs/baseline_tasks/skull_base.json --gpus 1,2 \
+  --isaac-python /local_data/jz6676/miniconda3/envs/behavior/bin/python
+# run, live: the key only in the process that runs the relay
+( set -a; . ~/.config/anthropic.env; set +a; exec env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=. envs/asm/bin/python -B \
+  -m tasks.dual_arm_crag_skull.baselines.aspire.campaign run --root runs/aspire_campaign_<stamp> --live )
+```
+
+Tests: `tests/test_baselines_aspire_trials.py` (the service's rules, results, reruns, client, GPU sandbox command)
+and `tests/test_baselines_aspire_campaign.py` (layout, prompt, the agent's sandbox, a whole campaign with a scripted
+agent), both with a fake launcher in place of Isaac.
+
 ## Security
 
 ASPIRE executes generated Python in this process. Its runtime validates the program's AST and restricts builtins and
 imports, but that is not a sandbox, and the coding-agent loop runs arbitrary code by design. Run programs and the
 loop on an isolated host without credentials, tokens or sensitive mounts, with restricted network access, and never
-with access to robot hardware.
+with access to robot hardware. A campaign does: the agent and every trial run in bwrap sandboxes (Campaign), and the
+key never enters either.
 
 ## What remains
 
@@ -208,14 +276,15 @@ with access to robot hardware.
   the run directory (`protective_stop.json`). `reference_program_physics.py` jammed on the fixed anchor before
   (`runs/aspire_isaac_ref_20261019_005140`), because the fragments interlock (`../README.md`).
 - The planner slows both arms while either has a contact declared (ASPIRE reads one joint bound for all arms).
-- The adapter takes an observation, cameras included, after every control step; on Isaac the backend re-renders at
-  most at 10 Hz, but three 1920x1440 RTX cameras still cost wall time.
-- A wall-clock limit per trial: refused commands use no steps and no simulated time, so a program that retries a
-  refused command forever never ends (ASPIRE has no wall-clock limit either).
-- A benchmark profile and task context (instructions, tool notes) for ASPIRE's coding-agent loop, with a counting
-  shim around `run_program` that refuses held-out seeds and trials beyond the practice budget and records how many
-  trials the loop spent (`RunRecord.sim_trials`).
-- Cost metering of the loop (model calls and dollars into `RunRecord.cost_usd`/`llm_calls`).
+- (Done 2026-10-22) cameras only on request: without videos (`--no-videos`, every campaign trial) a motion's steps
+  carry the cameras' last frames and the adapter renders anew when the program asks for an observation, at a
+  motion's last step and for ASPIRE's keyframes (`SkullAssemblyAdapter(step_frames=False)`). On Isaac, the same
+  program, seed and GPU: 3243 steps in 175 s instead of 901 s (0.049 instead of 0.251 s a step), identical steps
+  and outcome (`runs/aspire_timing_{noframes,frames}_20261022_130332`). With videos every step still renders.
+- A wall-clock limit per trial outside a campaign: refused commands use no steps and no simulated time, so a program
+  that retries a refused command forever never ends (ASPIRE has no wall-clock limit either). In a campaign the trial
+  service ends a trial after `trial_timeout_s` and counts it as the program's failure.
+- (Done 2026-10-22) the coding-agent loop, its trial counting and its cost metering: see Campaign.
 
 ## Shared S2 program runtime
 

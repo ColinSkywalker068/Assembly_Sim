@@ -94,7 +94,7 @@ def _validated(program_path, task, seed, backend, *, config, mode, max_steps, re
     return program_path, base, split, digest, harness, claim
 
 
-def _execute(recorder, backend, *, model, limits, config, mode, base, seed, program_path):
+def _execute(recorder, backend, *, model, limits, config, mode, base, seed, program_path, step_frames=True):
     """Reset, run the program and close the run directory as run.py does; returns (adapter, termination_reason,
     program_ok, execution). Harness errors and interrupts are re-raised once the directory is closed."""
     adapter, execution, task_success, cleanup_errors = None, None, None, []
@@ -118,7 +118,8 @@ def _execute(recorder, backend, *, model, limits, config, mode, base, seed, prog
         return adapter, termination_reason, program_ok, execution
 
     try:
-        adapter = SkullAssemblyAdapter(backend, model, limits, config=config, mode=mode, run_observer=recorder)
+        adapter = SkullAssemblyAdapter(backend, model, limits, config=config, mode=mode, run_observer=recorder,
+                                       step_frames=step_frames)
         recorder.save_program(program_path)
         with recorder.timing.measure('reset'):
             observation = adapter.reset(base, seed)
@@ -184,7 +185,7 @@ def run_program(program_path, task, seed, *, config, backend, output_root, mode,
         executing = True
         adapter, termination_reason, program_ok, execution = _execute(
             recorder, backend, model=model, limits=limits, config=config, mode=mode, base=base, seed=seed,
-            program_path=program_path)
+            program_path=program_path, step_frames=capture_videos)  # per-step video needs per-step frames
         if program_sha256(recorder.root / 'source/program.py') != digest:
             raise ValueError(f'{program_path} changed during the trial; {recorder.root} is not a trial of '
                              f'{digest[:12]}')

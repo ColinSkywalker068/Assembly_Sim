@@ -283,8 +283,10 @@ review's surviving mutations and the new behaviour, 54 mutations are now caught.
 - `python -m tasks.dual_arm_crag_skull.baselines sandbox-check` probes that sandbox with DexAgent's venv and its
   scrubbed environment and exits 1 unless all of it holds; `tests/test_baselines_sandbox.py` checks the same and
   that killing a sandbox leaves no process behind.
-- DexAgent: every process of a live trial after the export runs in it (Stage 3, the delivery re-check). ASPIRE's
-  programs run in-process with Isaac Sim on the GPU and are not sandboxed yet: no live ASPIRE run until they are.
+- DexAgent: every process of a live trial after the export runs in it (Stage 3, the delivery re-check).
+- ASPIRE (2026-10-22, `aspire/README.md` Campaign): the coding agent (Claude Code) runs in a sandbox without a GPU
+  whose only ways out are two Unix sockets, the trial service's and the billing relay's (`relay.py`, which holds the
+  key and spends from the pool); each trial runs in a GPU sandbox of its own (`sandbox.py` `devices`/`system_info`).
 - Load the API key only in the process that calls the API, and never put it on a command line.
 - DexAgent's processes get a scrubbed environment, and the runner makes itself non-dumpable before a live trial. Neither stops code running as the same user from reading the user's files.
 - Details are in each baseline's README.
